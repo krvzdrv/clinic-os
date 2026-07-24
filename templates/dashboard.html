@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Контроль АГ — Дашборд</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#faf9f5; --ink:#20201c; --soft:#54524a; --faint:#8a877d;
+    --coral:#d97757; --coral-deep:#c25e3f; --line:#e6e3d9; --tint:#f3f1e9;
+    --green:#5a8a6a; --green-bg:#eef5f0; --red:#c25e3f; --red-bg:#f7ede8;
+  }
+  *,*::before,*::after{box-sizing:border-box;} *{margin:0;padding:0;}
+  body{font-family:"Inter",sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;}
+  .wrap{max-width:960px;margin:0 auto;padding:32px 24px;}
+  h1{font-family:"Spectral",serif;font-weight:600;font-size:28px;letter-spacing:-.01em;}
+  .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--coral-deep);font-weight:600;margin-bottom:6px;}
+  .lead{font-family:"Spectral",serif;font-style:italic;font-size:16px;color:var(--soft);margin:8px 0 24px;padding-left:14px;border-left:3px solid var(--coral);}
+
+  /* Метрика */
+  .metric-bar{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:28px;}
+  .metric-cell{flex:1;padding:18px 20px;border-right:1px solid var(--line);}
+  .metric-cell:last-child{border-right:none;}
+  .metric-cell .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;}
+  .metric-cell .v{font-family:"Spectral",serif;font-size:28px;font-weight:600;}
+  .metric-cell .v.green{color:var(--green);}
+  .metric-cell .v.red{color:var(--coral-deep);}
+  .metric-cell .sub{font-size:12px;color:var(--faint);margin-top:2px;}
+
+  /* Прогресс-бар */
+  .progress{height:8px;background:var(--red-bg);border-radius:4px;overflow:hidden;margin:8px 0 28px;}
+  .progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width .6s ease;}
+
+  /* Таблица */
+  h2{font-family:"Spectral",serif;font-size:18px;font-weight:600;margin:24px 0 12px;}
+  table{width:100%;border-collapse:collapse;}
+  th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 12px;border-bottom:2px solid var(--line);}
+  td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;}
+  tr:hover td{background:var(--tint);}
+  a{color:var(--ink);text-decoration:none;font-weight:500;}
+  a:hover{color:var(--coral-deep);}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;}
+  .badge.green{background:var(--green-bg);color:var(--green);}
+  .badge.red{background:var(--red-bg);color:var(--coral-deep);}
+  .badge.grey{background:var(--tint);color:var(--faint);}
+  .bp-val{font-family:"Spectral",serif;font-size:15px;font-weight:500;}
+  .bp-val.high{color:var(--coral-deep);}
+  .arch-note{margin-top:32px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
+  .arch-note b{color:var(--ink);}
+  .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">Демо · Контроль артериальной гипертензии</div>
+  <h1>Дашборд качества</h1>
+  <p class="lead">10 пациентов с артериальной гипертензией. Метрика и подсказки считаются одним движком правил — single source of truth.</p>
+
+  <!-- Метрика -->
+  <div class="metric-bar">
+    <div class="metric-cell">
+      <div class="k">Всего пациентов</div>
+      <div class="v">{{ measure.total }}</div>
+      <div class="sub">с активной АГ</div>
+    </div>
+    <div class="metric-cell">
+      <div class="k">Контролируется</div>
+      <div class="v green">{{ measure.controlled }}</div>
+      <div class="sub">АД &lt; 140/90</div>
+    </div>
+    <div class="metric-cell">
+      <div class="k">Не контролируется</div>
+      <div class="v red">{{ measure.uncontrolled }}</div>
+      <div class="sub">АД ≥ 140/90</div>
+    </div>
+    <div class="metric-cell">
+      <div class="k">Доля контроля</div>
+      <div class="v">{{ measure.rate }}%</div>
+      <div class="sub">целевая ≥ 70%</div>
+    </div>
+    <div class="metric-cell">
+      <div class="k">Передержка</div>
+      <div class="v red">{{ measure.overdue }}</div>
+      <div class="sub">нет АД &gt; 90 дней</div>
+    </div>
+  </div>
+
+  <div class="progress">
+    <div class="progress-fill" style="width:{{ measure.rate }}%"></div>
+  </div>
+
+  <!-- Таблица пациентов -->
+  <h2>Пациенты</h2>
+  <div style="margin: 12px 0 16px;">
+    <a href="{{ url_for('export_csv') }}" style="font-size:13px;color:var(--coral-deep);font-weight:600;text-decoration:none;">↓ Экспорт в CSV (для отчётов)</a>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ФИО</th>
+        <th>Возраст</th>
+        <th>Пол</th>
+        <th>Последнее АД</th>
+        <th>Дата</th>
+        <th>Статус</th>
+        <th>Флаги</th>
+        <th>Этап пути</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in patients %}
+      <tr>
+        <td><a href="{{ url_for('patient_detail', pid=p.id) }}">{{ p.name }}</a></td>
+        <td>{{ p.age }}</td>
+        <td>{{ "М" if p.gender == "male" else "Ж" }}</td>
+        <td class="bp-val {{ '' if p.controlled else 'high' }}">{{ p.bp }}</td>
+        <td>{{ p.bp_date }}</td>
+        <td>
+          {% if p.controlled %}
+            <span class="badge green">Контролируется</span>
+          {% else %}
+            <span class="badge red">Не контролируется</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.overdue %}<span class="badge red" title="Нет измерения АД > 90 дней">⏱ Передержка</span>{% endif %}
+          {% if p.diabetes %}<span class="badge grey" title="Сопутствующий диабет — целевое АД < 130/80">СД</span>{% endif %}
+          {% if not p.overdue and not p.diabetes %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
+        </td>
+        <td><span class="badge grey">{{ p.state_label }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="arch-note">
+    <b>Как это работает.</b> Данные хранятся в <code>fhir_store.py</code> (Слой 0, имитация FHIR).
+    Правила — в <code>rules_engine.py</code> (Слой 3, имитация CQL): <code>has_hypertension()</code>,
+    <code>last_bp()</code>, <code>uncontrolled_bp()</code> — те же три правила из конспекта.
+    Метрика <code>quality_measure_controlled()</code> использует <code>uncontrolled_bp()</code> —
+    <b>тот же код, что и подсказка</b>. CDS-карточки — в <code>cds_service.py</code> (Слой 5).
+    Кликни на пациента → увидишь CDS-карточки, которые врач получил бы при открытии карты.
+  </div>
+</div>
+</body>
+</html>

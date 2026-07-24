@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ full_name }} — Карта пациента</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#faf9f5; --ink:#20201c; --soft:#54524a; --faint:#8a877d;
+    --coral:#d97757; --coral-deep:#c25e3f; --line:#e6e3d9; --tint:#f3f1e9;
+    --green:#5a8a6a; --green-bg:#eef5f0; --red-bg:#f7ede8;
+  }
+  *,*::before,*::after{box-sizing:border-box;} *{margin:0;padding:0;}
+  body{font-family:"Inter",sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;}
+  .wrap{max-width:800px;margin:0 auto;padding:32px 24px;}
+  .back{font-size:13px;color:var(--faint);text-decoration:none;margin-bottom:16px;display:inline-block;}
+  .back:hover{color:var(--coral-deep);}
+  h1{font-family:"Spectral",serif;font-weight:600;font-size:26px;letter-spacing:-.01em;}
+  .role{font-family:"Spectral",serif;font-style:italic;font-size:15px;color:var(--coral-deep);margin-top:4px;}
+  .meta{font-size:13px;color:var(--faint);margin-top:3px;}
+  .rule{height:1px;background:var(--line);margin:16px 0;}
+
+  /* Секции */
+  h2{font-family:"Spectral",serif;font-size:16px;font-weight:600;margin:20px 0 8px;display:flex;align-items:center;gap:8px;}
+  h2::before{content:"";width:14px;height:2px;background:var(--coral);border-radius:2px;}
+  .info-row{display:flex;gap:24px;margin-bottom:4px;}
+  .info-row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;width:140px;}
+  .info-row .v{font-size:14px;color:var(--ink);}
+
+  /* CDS-карточки */
+  .card{border-radius:12px;padding:14px 16px;margin:8px 0;border-left:4px solid;}
+  .card.warning{background:var(--red-bg);border-color:var(--coral);}
+  .card.info{background:var(--tint);border-color:var(--faint);}
+  .card.critical{background:#fde8e8;border-color:#c0392b;}
+  .card .card-type{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin-bottom:4px;}
+  .card.warning .card-type{color:var(--coral-deep);}
+  .card.info .card-type{color:var(--faint);}
+  .card.critical .card-type{color:#c0392b;}
+  .card .card-summary{font-weight:600;font-size:15px;margin-bottom:4px;}
+  .card .card-detail{font-size:13px;color:var(--soft);line-height:1.5;}
+  .card .card-source{font-size:11px;color:var(--faint);margin-top:6px;}
+  .card .card-btn{display:inline-block;margin-top:8px;padding:6px 14px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;border:none;cursor:pointer;text-decoration:none;}
+  .card .card-btn:hover{background:var(--coral-deep);}
+  .no-cards{padding:14px;background:var(--green-bg);border-radius:10px;color:var(--green);font-size:14px;font-weight:500;}
+
+  /* State machine */
+  .pathway{display:flex;gap:0;align-items:center;flex-wrap:wrap;margin:12px 0;}
+  .step{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--tint);color:var(--faint);}
+  .step.active{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
+  .arrow{color:var(--faint);font-size:14px;margin:0 4px;}
+
+  .arch-note{margin-top:28px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
+  .arch-note b{color:var(--ink);}
+  .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="{{ url_for('dashboard') }}" class="back">← К списку пациентов</a>
+
+  <h1>{{ full_name }}</h1>
+  <div class="role">Артериальная гипертензия</div>
+  <div class="meta">{{ age }} лет · {{ "Мужской" if patient.gender == "male" else "Женский" }} · ID: {{ patient.id }}</div>
+  <div style="margin-top:10px;">
+    <a href="{{ url_for('record_bp', pid=patient.id) }}" style="display:inline-block;padding:7px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;">+ Записать измерение АД</a>
+  </div>
+
+  <div class="rule"></div>
+
+  <!-- CDS-карточки -->
+  <h2>CDS-подсказки</h2>
+  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">
+    То, что врач увидел бы при открытии карты (хук <code style="font-family:monospace;font-size:11px;">patient-view</code>):
+  </p>
+
+  {% if cards %}
+    {% for card in cards %}
+    <div class="card {{ card.indicator }}">
+      <div class="card-type">{{ card.type }}</div>
+      <div class="card-summary">{{ card.summary }}</div>
+      <div class="card-detail">{{ card.detail }}</div>
+      <div class="card-source">{{ card.source.label }}</div>
+      {% if card.type == "suggestion" %}
+        {% for s in card.suggestions %}
+        <button class="card-btn" onclick="alert('В реальной системе это добавило бы назначение в карту.')">{{ s.label }}</button>
+        {% endfor %}
+      {% endif %}
+      {% if card.type == "hard-stop" %}
+        <button class="card-btn" onclick="alert('В реальной системе это потребовало бы подтверждения.')">{{ card.overrideAction }}</button>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="no-cards">✓ Всё в порядке — подсказок нет. АД контролируется.</div>
+  {% endif %}
+
+  <!-- Проверка противопоказания (демо order-sign) -->
+  {% if fertile %}
+  <div style="margin-top:12px;">
+    <h2>Демо: проверка назначения</h2>
+    <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">
+      Имитация хука <code style="font-family:monospace;font-size:11px;">order-sign</code> — врач назначает ингибитор АПФ (эналаприл):
+    </p>
+    <div class="card critical">
+      <div class="card-type">hard-stop</div>
+      <div class="card-summary">Ингибиторы АПФ противопоказаны при беременности</div>
+      <div class="card-detail">Пациентка — женщина фертильного возраста ({{ age }} лет). Назначение ингибитора АПФ требует подтверждения, что беременность исключена. Категория D по FDA.</div>
+      <div class="card-source">Противопоказания, ред. 2024</div>
+      <button class="card-btn" onclick="alert('В реальной системе это потребовало бы подтверждения.')">Подтвердить, что беременность исключена</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="rule"></div>
+
+  <!-- Клинические данные -->
+  <h2>Клинические данные</h2>
+  <div class="info-row"><span class="k">Диагноз</span><span class="v">{{ condition.display }} ({{ condition.code }})</span></div>
+  <div class="info-row"><span class="k">Статус</span><span class="v">{{ condition.clinicalStatus }}</span></div>
+  <div class="info-row"><span class="k">Дата установки</span><span class="v">{{ condition.onsetDate }}</span></div>
+
+  <div class="info-row" style="margin-top:10px;"><span class="k">Последнее АД</span><span class="v" style="font-family:'Spectral',serif;font-size:18px;font-weight:600;{{ '' if not uncontrolled else 'color:var(--coral-deep);' }}">{{ bp.systolic }}/{{ bp.diastolic }} мм рт. ст.</span></div>
+  <div class="info-row"><span class="k">Дата измерения</span><span class="v">{{ bp.date }}</span></div>
+  <div class="info-row"><span class="k">Контроль</span><span class="v">{{ "Не контролируется (АД ≥ 140/90)" if uncontrolled else "Контролируется (АД < 140/90)" }}</span></div>
+
+  <div class="info-row" style="margin-top:10px;"><span class="k">Препараты</span><span class="v">{% for m in meds %}{{ m.display }}{% if not loop.last %}, {% endif %}{% endfor %}</span></div>
+
+  <div class="rule"></div>
+
+  <!-- Путь пациента -->
+  <h2>Этап пути пациента</h2>
+  <div class="pathway">
+    <div class="step {{ 'active' if pathway.state == 'screening' }}">Скрининг</div>
+    <span class="arrow">→</span>
+    <div class="step {{ 'active' if pathway.state == 'diagnosis' }}">Диагноз</div>
+    <span class="arrow">→</span>
+    <div class="step {{ 'active' if pathway.state == 'treatment' }}">Терапия</div>
+    <span class="arrow">→</span>
+    <div class="step {{ 'active' if pathway.state == 'monitoring' }}">Мониторинг</div>
+    <span class="arrow">→</span>
+    <div class="step {{ 'active' if pathway.state == 'controlled' }}">Контролируется</div>
+    <span class="arrow">→</span>
+    <div class="step {{ 'active' if pathway.state == 'adjustment' }}">Коррекция</div>
+  </div>
+  <p style="font-size:12px;color:var(--faint);">Текущий этап: <b>{{ pathway.label }}</b></p>
+
+  <div class="arch-note">
+    <b>Что произошло при открытии этой страницы.</b><br>
+    1. Flask-роут <code>/patient/{{ patient.id }}</code> вызвал <code>cds_patient_view("{{ patient.id }}")</code> из <code>cds_service.py</code>.<br>
+    2. <code>cds_service</code> вызвал <code>uncontrolled_bp("{{ patient.id }}")</code> из <code>rules_engine.py</code>.<br>
+    3. <code>rules_engine</code> проверил <code>has_hypertension()</code> → <code>last_bp()</code> → <code>uncontrolled_bp()</code> — те же 3 правила из конспекта.<br>
+    4. Результат: {{ "есть подсказка — АД не контролируется" if cards else "подсказок нет — всё ок" }}.<br>
+    5. <b>Та же функция</b> <code>uncontrolled_bp()</code> используется в метрике качества на дашборде — single source of truth.
+  </div>
+</div>
+</body>
+</html>
