@@ -1,192 +1,58 @@
 """
-Слой 0 — Хранилище данных (SQLite, FHIR-подобная модель).
+Слой 0/1 — Репозиторий FHIR-подобных ресурсов.
 
-Постоянное хранилище. Бэкап = скопировать файл clinic.db.
-В реальной системе здесь был бы FHIR-сервер (HAPI FHIR),
-но для маленькой клиники без IT-команды SQLite — разумный выбор:
-один файл, без сервера, переносится на любой компьютер.
+Единственный модуль, знающий структуру таблиц. Ходит в БД только через db.py.
+Правила (rules_engine), проверка лекарств (drug_service), регламенты
+(protocol_engine), CDS (cds_service) и путь пациента (care_plan_service)
+вызывают функции этого модуля и никогда не трогают БД напрямую.
 
-Модель данных близка к FHIR: Patient, Condition, Observation, MedicationRequest.
-Это значит, что при росте можно мигрировать на настоящий FHIR-сервер
-без переписывания бизнес-логики.
+Модель — FHIR R4-подобная: Patient, Practitioner, Encounter, Condition,
+Observation, DiagnosticReport, ServiceRequest, MedicationRequest,
+MedicationKnowledge, AllergyIntolerance, CarePlan, Goal, Pathway.
+
+Фейковых пациентов нет: БД стартует пустой. Демо-данные — опционально (seed_demo).
 """
-import sqlite3
-import os
+import uuid
 from datetime import datetime, date
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "clinic.db")
+import db
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def init_db():
-    """Создаёт таблицы и заполняет тестовыми данными, если БД пустая."""
-    conn = get_db()
-    c = conn.cursor()
+    db.init_schema()
 
-    c.execute("""CREATE TABLE IF NOT EXISTS patient (
-        id TEXT PRIMARY KEY,
-        family TEXT, given TEXT, patronymic TEXT,
-        gender TEXT, birth_date TEXT
-    )""")
 
-    c.execute("""CREATE TABLE IF NOT EXISTS condition_ (
-        id TEXT PRIMARY KEY,
-        patient_id TEXT, code_system TEXT, code TEXT, display TEXT,
-        clinical_status TEXT, onset_date TEXT
-    )""")
+def _new_id(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:10]}"
 
-    c.execute("""CREATE TABLE IF NOT EXISTS observation (
-        id TEXT PRIMARY KEY,
-        patient_id TEXT, code TEXT, systolic INTEGER, diastolic INTEGER,
-        status TEXT, date TEXT
-    )""")
 
-    c.execute("""CREATE TABLE IF NOT EXISTS medication_request (
-        id TEXT PRIMARY KEY,
-        patient_id TEXT, code TEXT, display TEXT, status TEXT, date TEXT
-    )""")
+def _today():
+    return date.today().isoformat()
 
-    c.execute("""CREATE TABLE IF NOT EXISTS pathway (
-        patient_id TEXT PRIMARY KEY,
-        state TEXT, label TEXT
-    )""")
 
-    # Заполняем, если пусто
-    c.execute("SELECT COUNT(*) FROM patient")
-    if c.fetchone()[0] == 0:
-        _seed(c)
+# ============ Practitioner ============
 
-    conn.commit()
-    conn.close()
+def get_all_practitioners():
+    return db.fetchall("SELECT * FROM practitioner ORDER BY family")
 
-def _seed(c):
-    """Тестовые данные: 10 пациентов с гипертонией."""
-    patients = [
-        ("p1","Иванов","Иван","Иванович","male","1965-03-15"),
-        ("p2","Петрова","Мария","Сергеевна","female","1980-07-22"),
-        ("p3","Сидоров","Пётр","Алексеевич","male","1958-11-03"),
-        ("p4","Кузнецова","Анна","Владимировна","female","1990-02-14"),
-        ("p5","Смирнов","Алексей","Дмитриевич","male","1972-09-30"),
-        ("p6","Волкова","Елена","Игоревна","female","1968-05-18"),
-        ("p7","Морозов","Дмитрий","Николаевич","male","1955-12-01"),
-        ("p8","Орлова","Татьяна","Михайловна","female","1985-04-25"),
-        ("p9","Новиков","Сергей","Андреевич","male","1978-08-10"),
-        ("p10","Зайцева","Ольга","Петровна","female","1963-06-07"),
-    ]
-    c.executemany("INSERT INTO patient VALUES (?,?,?,?,?,?)", patients)
+def get_practitioner(pr_id):
+    return db.fetchone("SELECT * FROM practitioner WHERE id = %s", (pr_id,))
 
-    conditions = [
-        ("c1","p1","ICD-10","I10","Гипертензивная болезнь","active","2020-01-15"),
-        ("c2","p2","ICD-10","I10","Гипертензивная болезнь","active","2021-06-20"),
-        ("c3","p3","ICD-10","I10","Гипертензивная болезнь","active","2018-03-10"),
-        ("c4","p4","ICD-10","I10","Гипертензивная болезнь","active","2022-09-05"),
-        ("c5","p5","ICD-10","I10","Гипертензивная болезнь","active","2019-11-12"),
-        ("c6","p6","ICD-10","I10","Гипертензивная болезнь","active","2020-04-18"),
-        ("c7","p7","ICD-10","I10","Гипертензивная болезнь","active","2017-02-28"),
-        ("c8","p8","ICD-10","I10","Гипертензивная болезнь","active","2023-01-15"),
-        ("c9","p9","ICD-10","I10","Гипертензивная болезнь","active","2021-10-03"),
-        ("c10","p10","ICD-10","I10","Гипертензивная болезнь","active","2019-07-22"),
-    ]
-    c.executemany("INSERT INTO condition_ VALUES (?,?,?,?,?,?,?)", conditions)
+def add_practitioner(family, given, specialty):
+    pid = _new_id("dr")
+    db.execute(
+        "INSERT INTO practitioner (id, family, given, specialty) VALUES (%s,%s,%s,%s)",
+        (pid, family, given, specialty))
+    return pid
 
-    observations = [
-        ("o1","p1","BP",155,95,"final","2026-07-15"),
-        ("o2","p2","BP",128,82,"final","2026-07-10"),
-        ("o3","p3","BP",162,98,"final","2026-07-12"),
-        ("o4","p4","BP",135,85,"final","2026-07-08"),
-        ("o5","p5","BP",148,92,"final","2026-07-14"),
-        ("o6","p6","BP",130,80,"final","2026-07-09"),
-        ("o7","p7","BP",170,105,"final","2026-07-11"),
-        ("o8","p8","BP",138,88,"final","2026-07-13"),
-        ("o9","p9","BP",158,96,"final","2026-07-16"),
-        ("o10","p10","BP",132,82,"final","2026-07-07"),
-    ]
-    c.executemany("INSERT INTO observation VALUES (?,?,?,?,?,?,?)", observations)
 
-    meds = [
-        ("m1","p1","C09AA01","Эналаприл 10 мг","active","2024-01-10"),
-        ("m2","p2","C09AA01","Эналаприл 10 мг","active","2023-06-15"),
-        ("m3","p3","C09AA01","Эналаприл 10 мг","active","2022-03-20"),
-        ("m4","p4","C09AA01","Эналаприл 5 мг","active","2024-09-10"),
-        ("m5","p5","C09AA01","Эналаприл 10 мг","active","2023-11-15"),
-        ("m6","p6","C07AB02","Бисопролол 5 мг","active","2023-04-20"),
-        ("m7","p7","C09AA01","Эналаприл 20 мг","active","2021-02-28"),
-        ("m8","p8","C07AB02","Бисопролол 5 мг","active","2025-01-15"),
-        ("m9","p9","C09AA01","Эналаприл 10 мг","active","2023-10-03"),
-        ("m10","p10","C07AB02","Бисопролол 2.5 мг","active","2022-07-22"),
-    ]
-    c.executemany("INSERT INTO medication_request VALUES (?,?,?,?,?,?)", meds)
-
-    pathways = [
-        ("p1","monitoring","Мониторинг"),
-        ("p2","controlled","Контролируется"),
-        ("p3","adjustment","Коррекция терапии"),
-        ("p4","controlled","Контролируется"),
-        ("p5","monitoring","Мониторинг"),
-        ("p6","controlled","Контролируется"),
-        ("p7","adjustment","Коррекция терапии"),
-        ("p8","controlled","Контролируется"),
-        ("p9","monitoring","Мониторинг"),
-        ("p10","controlled","Контролируется"),
-    ]
-    c.executemany("INSERT INTO pathway VALUES (?,?,?)", pathways)
-
-# --- API ---
+# ============ Patient ============
 
 def get_all_patients():
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM patient ORDER BY family").fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
+    return db.fetchall("SELECT * FROM patient ORDER BY family")
 
 def get_patient(pid):
-    conn = get_db()
-    r = conn.execute("SELECT * FROM patient WHERE id=?", (pid,)).fetchone()
-    conn.close()
-    return dict(r) if r else None
-
-def get_condition(pid):
-    conn = get_db()
-    r = conn.execute("SELECT * FROM condition_ WHERE patient_id=? AND clinical_status='active'", (pid,)).fetchone()
-    conn.close()
-    return dict(r) if r else None
-
-def get_last_bp(pid):
-    conn = get_db()
-    r = conn.execute(
-        "SELECT * FROM observation WHERE patient_id=? AND code='BP' ORDER BY date DESC LIMIT 1",
-        (pid,)
-    ).fetchone()
-    conn.close()
-    return dict(r) if r else None
-
-def get_medications(pid):
-    conn = get_db()
-    rows = conn.execute("SELECT * FROM medication_request WHERE patient_id=? AND status='active'", (pid,)).fetchall()
-    conn.close()
-    return [dict(r) for r in rows]
-
-def get_pathway(pid):
-    conn = get_db()
-    r = conn.execute("SELECT * FROM pathway WHERE patient_id=?", (pid,)).fetchone()
-    conn.close()
-    return dict(r) if r else {"state":"unknown","label":"—"}
-
-def add_bp_observation(pid, systolic, diastolic, obs_date=None):
-    """Записывает новое измерение АД."""
-    if obs_date is None:
-        obs_date = date.today().isoformat()
-    conn = get_db()
-    oid = f"o-{pid}-{int(datetime.now().timestamp())}"
-    conn.execute(
-        "INSERT INTO observation (id, patient_id, code, systolic, diastolic, status, date) VALUES (?,?,?,?,?,?,?)",
-        (oid, pid, "BP", int(systolic), int(diastolic), "final", obs_date)
-    )
-    conn.commit()
-    conn.close()
+    return db.fetchone("SELECT * FROM patient WHERE id = %s", (pid,))
 
 def get_age(pid):
     p = get_patient(pid)
@@ -201,3 +67,315 @@ def is_fertile_female(pid):
     if not p or p["gender"] != "female":
         return False
     return 15 <= get_age(pid) <= 49
+
+def add_patient(family, given, patronymic, gender, birth_date):
+    pid = _new_id("p")
+    db.execute(
+        "INSERT INTO patient (id, family, given, patronymic, gender, birth_date) "
+        "VALUES (%s,%s,%s,%s,%s,%s)",
+        (pid, family, given, patronymic, gender, birth_date))
+    db.execute("INSERT INTO pathway (patient_id, state, label) VALUES (%s,'screening','Скрининг')",
+                (pid,))
+    return pid
+
+
+# ============ Encounter (приём) ============
+
+def get_encounters(pid):
+    return db.fetchall("SELECT * FROM encounter WHERE patient_id = %s ORDER BY start DESC", (pid,))
+
+def get_encounter(eid):
+    return db.fetchone("SELECT * FROM encounter WHERE id = %s", (eid,))
+
+def add_encounter(pid, practitioner_id=None, status="in-progress", cls="ambulatory",
+                  start=None, reason_code=None, complaint=None):
+    eid = _new_id("e")
+    if not start:
+        start = _today()
+    db.execute(
+        "INSERT INTO encounter (id, patient_id, practitioner_id, status, class, start, ended_at, reason_code, complaint) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (eid, pid, practitioner_id, status, cls, start, None, reason_code, complaint))
+    return eid
+
+def finish_encounter(eid, end=None):
+    if not end:
+        end = _today()
+    db.execute("UPDATE encounter SET status='finished', ended_at=%s WHERE id=%s", (end, eid))
+
+
+# ============ Condition (диагноз) ============
+
+def get_condition(pid):
+    return db.fetchone(
+        "SELECT * FROM condition_ WHERE patient_id = %s AND clinical_status = 'active' "
+        "ORDER BY recorded_date DESC LIMIT 1", (pid,))
+
+def get_conditions(pid):
+    return db.fetchall(
+        "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC", (pid,))
+
+def add_condition(pid, code, display, onset_date=None, encounter_id=None,
+                  code_system="ICD-10", clinical_status="active",
+                  verification_status="confirmed"):
+    cid = _new_id("c")
+    if not onset_date:
+        onset_date = _today()
+    db.execute(
+        "INSERT INTO condition_ (id, patient_id, encounter_id, code_system, code, display, "
+        "clinical_status, verification_status, onset_date, recorded_date) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (cid, pid, encounter_id, code_system, code, display,
+         clinical_status, verification_status, onset_date, _today()))
+    return cid
+
+
+# ============ Observation (числовые измерения и анализы) ============
+
+def get_observations(pid, code=None, limit=None):
+    sql = "SELECT * FROM observation WHERE patient_id = %s"
+    params = [pid]
+    if code:
+        sql += " AND code = %s"
+        params.append(code)
+    sql += " ORDER BY date DESC"
+    if limit:
+        sql += " LIMIT %s"
+        params.append(limit)
+    return db.fetchall(sql, tuple(params))
+
+def get_last_observation(pid, code):
+    return db.fetchone(
+        "SELECT * FROM observation WHERE patient_id = %s AND code = %s ORDER BY date DESC LIMIT 1",
+        (pid, code))
+
+# Совместимость со старым кодом: АД как пара систола/диастола.
+_BP_SYS = "85254-4"   # LOINC: Systolic BP
+_BP_DIA = "8462-4"     # LOINC: Diastolic BP
+
+def get_last_bp(pid):
+    s = get_last_observation(pid, _BP_SYS)
+    d = get_last_observation(pid, _BP_DIA)
+    if not s and not d:
+        return None
+    return {
+        "systolic": s["value_numeric"] if s else None,
+        "diastolic": d["value_numeric"] if d else None,
+        "date": (s or d)["date"],
+    }
+
+def get_bp_history(pid):
+    """История АД — объединяем систолу и диастолу по дате."""
+    rows = db.fetchall(
+        "SELECT * FROM observation WHERE patient_id = %s AND code IN (%s,%s) ORDER BY date DESC",
+        (pid, _BP_SYS, _BP_DIA))
+    by_date = {}
+    for r in rows:
+        d = r["date"]
+        by_date.setdefault(d, {"date": d, "systolic": None, "diastolic": None})
+        if r["code"] == _BP_SYS:
+            by_date[d]["systolic"] = r["value_numeric"]
+        else:
+            by_date[d]["diastolic"] = r["value_numeric"]
+    return sorted(by_date.values(), key=lambda x: x["date"], reverse=True)
+
+def add_observation(pid, code, display, value_numeric=None, value_unit=None,
+                    value_text=None, ref_low=None, ref_high=None, interpretation=None,
+                    obs_date=None, encounter_id=None, status="final"):
+    oid = _new_id("o")
+    if not obs_date:
+        obs_date = _today()
+    db.execute(
+        "INSERT INTO observation (id, patient_id, encounter_id, code, display, "
+        "value_numeric, value_unit, value_text, ref_low, ref_high, interpretation, status, date) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (oid, pid, encounter_id, code, display, value_numeric, value_unit,
+         value_text, ref_low, ref_high, interpretation, status, obs_date))
+    return oid
+
+def add_bp_observation(pid, systolic, diastolic, obs_date=None, encounter_id=None):
+    """Совместимый хелпер: записывает систолу и диастолу двумя observation."""
+    if not obs_date:
+        obs_date = _today()
+    systolic = int(systolic)
+    diastolic = int(diastolic)
+    add_observation(pid, _BP_SYS, "АД систолическое", value_numeric=systolic,
+                    value_unit="mmHg", ref_low=90, ref_high=140,
+                    interpretation=_interp_bp(systolic, 140), obs_date=obs_date,
+                    encounter_id=encounter_id)
+    add_observation(pid, _BP_DIA, "АД диастолическое", value_numeric=diastolic,
+                    value_unit="mmHg", ref_low=60, ref_high=90,
+                    interpretation=_interp_bp(diastolic, 90), obs_date=obs_date,
+                    encounter_id=encounter_id)
+
+def _interp_bp(val, threshold):
+    if val is None:
+        return None
+    return "high" if val > threshold else "normal"
+
+
+# ============ DiagnosticReport (ЭКГ, УЗИ, холтер) ============
+
+def get_diagnostic_reports(pid):
+    return db.fetchall("SELECT * FROM diagnostic_report WHERE patient_id = %s ORDER BY date DESC", (pid,))
+
+def add_diagnostic_report(pid, code, display, conclusion=None, attachment_url=None,
+                          status="final", rep_date=None, encounter_id=None):
+    rid = _new_id("r")
+    if not rep_date:
+        rep_date = _today()
+    db.execute(
+        "INSERT INTO diagnostic_report (id, patient_id, encounter_id, code, display, status, "
+        "conclusion, attachment_url, date) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (rid, pid, encounter_id, code, display, status, conclusion, attachment_url, rep_date))
+    return rid
+
+
+# ============ ServiceRequest (заказы) ============
+
+def get_service_requests(pid, status=None):
+    sql = "SELECT * FROM service_request WHERE patient_id = %s"
+    params = [pid]
+    if status:
+        sql += " AND status = %s"
+        params.append(status)
+    sql += " ORDER BY occurrence_date DESC"
+    return db.fetchall(sql, tuple(params))
+
+def add_service_request(pid, code, display, practitioner_id=None, occurrence_date=None,
+                         reason_code=None, encounter_id=None, status="active", intent="order"):
+    sid = _new_id("sr")
+    if not occurrence_date:
+        occurrence_date = _today()
+    db.execute(
+        "INSERT INTO service_request (id, patient_id, encounter_id, practitioner_id, code, display, "
+        "status, intent, occurrence_date, reason_code) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (sid, pid, encounter_id, practitioner_id, code, display, status, intent,
+         occurrence_date, reason_code))
+    return sid
+
+def complete_service_request(sid):
+    db.execute("UPDATE service_request SET status='completed' WHERE id=%s", (sid,))
+
+
+# ============ MedicationRequest ============
+
+def get_medications(pid, status="active"):
+    return db.fetchall(
+        "SELECT * FROM medication_request WHERE patient_id = %s AND status = %s ORDER BY date DESC",
+        (pid, status))
+
+def add_medication(pid, code, display, dose=None, frequency=None, period_start=None,
+                   period_end=None, med_date=None, encounter_id=None, status="active"):
+    mid = _new_id("m")
+    if not med_date:
+        med_date = _today()
+    if not period_start:
+        period_start = med_date
+    db.execute(
+        "INSERT INTO medication_request (id, patient_id, encounter_id, code, display, status, "
+        "dose, frequency, period_start, period_end, date) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (mid, pid, encounter_id, code, display, status, dose, frequency,
+         period_start, period_end, med_date))
+    return mid
+
+def stop_medication(mid):
+    db.execute("UPDATE medication_request SET status='stopped' WHERE id=%s", (mid,))
+
+
+# ============ MedicationKnowledge (кэш справочника) ============
+
+def get_medication_knowledge(atc_code):
+    return db.fetchone("SELECT * FROM medication_knowledge WHERE atc_code = %s", (atc_code,))
+
+def upsert_medication_knowledge(atc_code, name, indications=None, contraindications=None,
+                                interactions=None, pregnancy_category=None, dose_info=None):
+    db.execute(
+        "INSERT INTO medication_knowledge (atc_code, name, indications, contraindications, "
+        "interactions, pregnancy_category, dose_info, fetched_at) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+        "ON CONFLICT(atc_code) DO UPDATE SET name=EXCLUDED.name, indications=EXCLUDED.indications, "
+        "contraindications=EXCLUDED.contraindications, interactions=EXCLUDED.interactions, "
+        "pregnancy_category=EXCLUDED.pregnancy_category, dose_info=EXCLUDED.dose_info, "
+        "fetched_at=EXCLUDED.fetched_at",
+        (atc_code, name, indications, contraindications, interactions,
+         pregnancy_category, dose_info, _today()))
+
+
+# ============ AllergyIntolerance ============
+
+def get_allergies(pid):
+    return db.fetchall("SELECT * FROM allergy_intolerance WHERE patient_id = %s", (pid,))
+
+def add_allergy(pid, code, display, criticality="high", recorded_date=None):
+    aid = _new_id("a")
+    if not recorded_date:
+        recorded_date = _today()
+    db.execute(
+        "INSERT INTO allergy_intolerance (id, patient_id, code, display, criticality, recorded_date) "
+        "VALUES (%s,%s,%s,%s,%s,%s)",
+        (aid, pid, code, display, criticality, recorded_date))
+    return aid
+
+
+# ============ CarePlan + Goal ============
+
+def get_care_plans(pid, status="active"):
+    return db.fetchall("SELECT * FROM care_plan WHERE patient_id = %s AND status = %s",
+                       (pid, status))
+
+def add_care_plan(pid, condition_id=None, period_start=None, period_end=None):
+    cpid = _new_id("cp")
+    if not period_start:
+        period_start = _today()
+    db.execute(
+        "INSERT INTO care_plan (id, patient_id, condition_id, status, intent, period_start, period_end, created_date) "
+        "VALUES (%s,%s,%s,'active','plan',%s,%s,%s)",
+        (cpid, pid, condition_id, period_start, period_end, _today()))
+    return cpid
+
+def get_goals(pid, status=None):
+    sql = "SELECT * FROM goal WHERE patient_id = %s"
+    params = [pid]
+    if status:
+        sql += " AND status = %s"
+        params.append(status)
+    return db.fetchall(sql, tuple(params))
+
+def add_goal(pid, care_plan_id, description, target_metric, target_value, target_unit=None):
+    gid = _new_id("g")
+    db.execute(
+        "INSERT INTO goal (id, patient_id, care_plan_id, description, target_metric, target_value, "
+        "target_unit, status, start_date) VALUES (%s,%s,%s,%s,%s,%s,%s,'in-progress',%s)",
+        (gid, pid, care_plan_id, description, target_metric, target_value, target_unit, _today()))
+    return gid
+
+def set_goal_status(gid, status, achievement_date=None):
+    if not achievement_date:
+        achievement_date = _today()
+    db.execute("UPDATE goal SET status=%s, achievement_date=%s WHERE id=%s",
+                (status, achievement_date, gid))
+
+
+# ============ Pathway ============
+
+def get_pathway(pid):
+    return db.fetchone("SELECT * FROM pathway WHERE patient_id = %s", (pid,)) \
+        or {"state": "unknown", "label": "—"}
+
+def set_pathway(pid, state, label):
+    existing = get_pathway(pid)
+    if existing and existing.get("state") != "unknown":
+        db.execute("UPDATE pathway SET state=%s, label=%s WHERE patient_id=%s", (state, label, pid))
+    else:
+        db.execute("INSERT INTO pathway (patient_id, state, label) VALUES (%s,%s,%s)", (pid, state, label))
+
+
+# ============ Опциональные демо-данные ============
+
+def seed_demo():
+    if get_all_patients():
+        return
+    from _seed_data import seed_all
+    seed_all()

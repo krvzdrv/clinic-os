@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Новый пациент</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#faf9f5; --ink:#20201c; --soft:#54524a; --faint:#8a877d;
+    --coral:#d97757; --coral-deep:#c25e3f; --line:#e6e3d9; --tint:#f3f1e9;
+  }
+  *,*::before,*::after{box-sizing:border-box;} *{margin:0;padding:0;}
+  body{font-family:"Inter",sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;}
+  .wrap{max-width:520px;margin:0 auto;padding:32px 24px;}
+  .back{font-size:13px;color:var(--faint);text-decoration:none;margin-bottom:16px;display:inline-block;}
+  .back:hover{color:var(--coral-deep);}
+  h1{font-family:"Spectral",serif;font-weight:600;font-size:22px;letter-spacing:-.01em;margin-bottom:4px;}
+  .sub{font-size:13px;color:var(--faint);margin-bottom:24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;}
+  .field input,.field select{width:100%;padding:10px 12px;font-size:15px;font-family:"Inter",sans-serif;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--coral);}
+  .row{display:flex;gap:12px;}
+  .row .field{flex:1;}
+  .btn{display:block;width:100%;padding:12px;background:var(--coral);color:#fff;font-size:15px;font-weight:600;border:none;border-radius:10px;cursor:pointer;margin-top:8px;}
+  .btn:hover{background:var(--coral-deep);}
+  .hint{margin-top:16px;padding:12px 14px;background:var(--tint);border-radius:8px;font-size:12px;color:var(--soft);line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="{{ url_for('dashboard') }}" class="back">← К списку пациентов</a>
+  <h1>Новый пациент</h1>
+  <div class="sub">Заполните ФИО, пол и дату рождения. Диагноз и препараты добавляются в карте.</div>
+
+  <form method="POST">
+    <div class="field">
+      <label>Фамилия</label>
+      <input type="text" name="family" required autofocus>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Имя</label>
+        <input type="text" name="given" required>
+      </div>
+      <div class="field">
+        <label>Отчество</label>
+        <input type="text" name="patronymic">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Пол</label>
+        <select name="gender">
+          <option value="male">Мужской</option>
+          <option value="female">Женский</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Дата рождения</label>
+        <input type="date" name="birth_date" required>
+      </div>
+    </div>
+    <button type="submit" class="btn">Создать карту пациента</button>
+  </form>
+
+  <div class="hint">
+    После создания пациент попадёт на этап «Скрининг». Дальше в карте:
+    диагноз (МКБ-10), препараты (ATC) и измерения АД — система сама пересчитает
+    подсказки и метрику качества.
+  </div>
+</div>
+</body>
+</html>

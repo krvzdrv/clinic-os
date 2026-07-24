@@ -6,6 +6,8 @@ PythonAnywhere использует WSGI для запуска Flask-прило�
 """
 import sys
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Добавляем папку проекта в путь
 project_home = os.path.dirname(__file__)

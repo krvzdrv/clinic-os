@@ -14,22 +14,23 @@
   }
   *,*::before,*::after{box-sizing:border-box;} *{margin:0;padding:0;}
   body{font-family:"Inter",sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;}
-  .wrap{max-width:800px;margin:0 auto;padding:32px 24px;}
+  .wrap{max-width:880px;margin:0 auto;padding:32px 24px;}
   .back{font-size:13px;color:var(--faint);text-decoration:none;margin-bottom:16px;display:inline-block;}
   .back:hover{color:var(--coral-deep);}
   h1{font-family:"Spectral",serif;font-weight:600;font-size:26px;letter-spacing:-.01em;}
   .role{font-family:"Spectral",serif;font-style:italic;font-size:15px;color:var(--coral-deep);margin-top:4px;}
   .meta{font-size:13px;color:var(--faint);margin-top:3px;}
+  .allergy-tag{display:inline-block;background:#fde8e8;color:#c0392b;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;margin:4px 4px 0 0;}
   .rule{height:1px;background:var(--line);margin:16px 0;}
-
-  /* Секции */
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .btn{display:inline-block;padding:7px 14px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;border:none;cursor:pointer;}
+  .btn:hover{background:var(--coral-deep);color:#fff;}
+  .btn.ghost{background:#fff;color:var(--coral-deep);border:1px solid var(--coral);}
   h2{font-family:"Spectral",serif;font-size:16px;font-weight:600;margin:20px 0 8px;display:flex;align-items:center;gap:8px;}
   h2::before{content:"";width:14px;height:2px;background:var(--coral);border-radius:2px;}
   .info-row{display:flex;gap:24px;margin-bottom:4px;}
   .info-row .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;width:140px;}
   .info-row .v{font-size:14px;color:var(--ink);}
-
-  /* CDS-карточки */
   .card{border-radius:12px;padding:14px 16px;margin:8px 0;border-left:4px solid;}
   .card.warning{background:var(--red-bg);border-color:var(--coral);}
   .card.info{background:var(--tint);border-color:var(--faint);}
@@ -39,121 +40,352 @@
   .card.info .card-type{color:var(--faint);}
   .card.critical .card-type{color:#c0392b;}
   .card .card-summary{font-weight:600;font-size:15px;margin-bottom:4px;}
-  .card .card-detail{font-size:13px;color:var(--soft);line-height:1.5;}
+  .card .card-detail{font-size:13px;color:var(--soft);line-height:1.5;white-space:pre-line;}
   .card .card-source{font-size:11px;color:var(--faint);margin-top:6px;}
-  .card .card-btn{display:inline-block;margin-top:8px;padding:6px 14px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;border:none;cursor:pointer;text-decoration:none;}
-  .card .card-btn:hover{background:var(--coral-deep);}
   .no-cards{padding:14px;background:var(--green-bg);border-radius:10px;color:var(--green);font-size:14px;font-weight:500;}
-
-  /* State machine */
-  .pathway{display:flex;gap:0;align-items:center;flex-wrap:wrap;margin:12px 0;}
-  .step{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--tint);color:var(--faint);}
+  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;}
+  .badge.green{background:var(--green-bg);color:var(--green);}
+  .badge.red{background:var(--red-bg);color:var(--coral-deep);}
+  .badge.grey{background:var(--tint);color:var(--faint);}
+  table{width:100%;border-collapse:collapse;margin-top:8px;}
+  th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:6px 10px;border-bottom:2px solid var(--line);}
+  td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;}
+  .mini-form{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0;}
+  .mini-form summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:600;color:var(--coral-deep);list-style:none;}
+  .mini-form summary::-webkit-details-marker{display:none;}
+  .mini-form[open] summary{border-bottom:1px solid var(--line);}
+  .mini-form form{padding:12px 14px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+  .mini-form .field{display:flex;flex-direction:column;gap:4px;}
+  .mini-form label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;}
+  .mini-form input,.mini-form select,.mini-form textarea{padding:8px 10px;font-size:14px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;}
+  .mini-form textarea{min-width:280px;}
+  .btn-small{padding:7px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:7px;cursor:pointer;}
+  .btn-small:hover{background:var(--coral-deep);}
+  .gap{padding:8px 12px;border-radius:8px;margin:6px 0;font-size:13px;line-height:1.5;}
+  .gap.warning{background:var(--red-bg);border-left:3px solid var(--coral);}
+  .gap.info{background:var(--tint);border-left:3px solid var(--faint);}
+  .gap b{display:block;margin-bottom:2px;}
+  .gap .rec{color:var(--soft);font-size:12px;}
+  .empty{padding:12px 14px;background:var(--tint);border-radius:8px;color:var(--soft);font-size:13px;}
+  .step{display:inline-block;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--tint);color:var(--faint);}
   .step.active{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
   .arrow{color:var(--faint);font-size:14px;margin:0 4px;}
-
-  .arch-note{margin-top:28px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
-  .arch-note b{color:var(--ink);}
-  .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <a href="{{ url_for('dashboard') }}" class="back">← К списку пациентов</a>
-
   <h1>{{ full_name }}</h1>
-  <div class="role">Артериальная гипертензия</div>
+  <div class="role">Клиническая карта</div>
   <div class="meta">{{ age }} лет · {{ "Мужской" if patient.gender == "male" else "Женский" }} · ID: {{ patient.id }}</div>
-  <div style="margin-top:10px;">
-    <a href="{{ url_for('record_bp', pid=patient.id) }}" style="display:inline-block;padding:7px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;">+ Записать измерение АД</a>
+  {% if allergies %}
+    <div style="margin-top:6px;">
+      <span style="font-size:11px;color:var(--faint);font-weight:600;">АЛЛЕРГИИ:</span>
+      {% for a in allergies %}<span class="allergy-tag">{{ a.display }}</span>{% endfor %}
+    </div>
+  {% endif %}
+  <div class="actions">
+    <a href="{{ url_for('record_bp', pid=patient.id) }}" class="btn">+ Записать АД</a>
+    <a href="{{ url_for('new_patient') }}" class="btn ghost">Новый пациент</a>
+    <a href="{{ url_for('export_csv') }}" class="btn ghost">↓ CSV</a>
   </div>
-
   <div class="rule"></div>
 
-  <!-- CDS-карточки -->
+  <!-- CDS-подсказки -->
   <h2>CDS-подсказки</h2>
-  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">
-    То, что врач увидел бы при открытии карты (хук <code style="font-family:monospace;font-size:11px;">patient-view</code>):
-  </p>
-
+  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">Хук <code>patient-view</code> — что врач увидел бы при открытии карты.</p>
   {% if cards %}
-    {% for card in cards %}
-    <div class="card {{ card.indicator }}">
-      <div class="card-type">{{ card.type }}</div>
-      <div class="card-summary">{{ card.summary }}</div>
-      <div class="card-detail">{{ card.detail }}</div>
-      <div class="card-source">{{ card.source.label }}</div>
-      {% if card.type == "suggestion" %}
-        {% for s in card.suggestions %}
-        <button class="card-btn" onclick="alert('В реальной системе это добавило бы назначение в карту.')">{{ s.label }}</button>
-        {% endfor %}
-      {% endif %}
-      {% if card.type == "hard-stop" %}
-        <button class="card-btn" onclick="alert('В реальной системе это потребовало бы подтверждения.')">{{ card.overrideAction }}</button>
-      {% endif %}
+    {% for c in cards %}
+    <div class="card {{ c.indicator }}">
+      <div class="card-type">{{ c.type }}</div>
+      <div class="card-summary">{{ c.summary }}</div>
+      <div class="card-detail">{{ c.detail }}</div>
+      <div class="card-source">{{ c.source.label }}</div>
     </div>
     {% endfor %}
   {% else %}
-    <div class="no-cards">✓ Всё в порядке — подсказок нет. АД контролируется.</div>
+    <div class="no-cards">✓ Подсказок нет — АД контролируется, отклонений от протокола не найдено.</div>
   {% endif %}
 
-  <!-- Проверка противопоказания (демо order-sign) -->
-  {% if fertile %}
-  <div style="margin-top:12px;">
-    <h2>Демо: проверка назначения</h2>
-    <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">
-      Имитация хука <code style="font-family:monospace;font-size:11px;">order-sign</code> — врач назначает ингибитор АПФ (эналаприл):
-    </p>
-    <div class="card critical">
-      <div class="card-type">hard-stop</div>
-      <div class="card-summary">Ингибиторы АПФ противопоказаны при беременности</div>
-      <div class="card-detail">Пациентка — женщина фертильного возраста ({{ age }} лет). Назначение ингибитора АПФ требует подтверждения, что беременность исключена. Категория D по FDA.</div>
-      <div class="card-source">Противопоказания, ред. 2024</div>
-      <button class="card-btn" onclick="alert('В реальной системе это потребовало бы подтверждения.')">Подтвердить, что беременность исключена</button>
+  <!-- Регламент (независимая проверка) -->
+  {% if protocol.applicable %}
+  <h2>Соответствие регламенту АГ</h2>
+  <div class="info-row"><span class="k">Целевое АД</span><span class="v">≤ {{ protocol.target.systolic }}/{{ protocol.target.diastolic }}</span></div>
+  <div class="info-row"><span class="k">Достигнуто</span><span class="v">
+    {% if protocol.at_target is none %}<span class="badge grey">нет данных</span>
+    {% elif protocol.at_target %}<span class="badge green">да</span>
+    {% else %}<span class="badge red">нет</span>{% endif %}
+  </span></div>
+  <div class="info-row"><span class="k">Итог</span><span class="v">
+    {% if protocol.compliant %}<span class="badge green">соответствует</span>
+    {% else %}<span class="badge red">есть отклонения</span>{% endif %}
+  </span></div>
+  {% for g in protocol.gaps %}
+    <div class="gap {{ g.severity }}">
+      <b>{{ g.message }}</b>
+      <div class="rec">→ {{ g.recommendation }}</div>
     </div>
-  </div>
+  {% endfor %}
+  <div class="rule"></div>
   {% endif %}
 
+  <!-- Регламент внебольничной пневмонии (КП МЗ РБ №204) -->
+  {% if cap.applicable %}
+  <h2>Регламент ВП — КП №204 (дети)</h2>
+  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">{{ cap.protocol }}</p>
+  <div class="info-row"><span class="k">Тяжесть</span><span class="v">
+    {% if cap.severity == 'severe' %}<span class="badge red">тяжёлая</span>
+    {% else %}<span class="badge grey">средняя</span>{% endif %}
+  </span></div>
+  <div class="info-row"><span class="k">Госпитализация</span><span class="v">
+    {% if cap.hospitalization %}<span class="badge red">показана</span>
+    {% else %}<span class="badge green">нет показаний</span>{% endif %}
+  </span></div>
+  <div class="info-row"><span class="k">АБТ первой линии</span><span class="v">
+    {{ cap.expected_atb.name }} · {{ cap.expected_atb.atc_code }}<br>
+    <span style="font-size:12px;color:var(--soft);">{{ cap.expected_atb.rationale }} ({{ cap.expected_atb.ref }})</span>
+  </span></div>
+  <div class="info-row"><span class="k">Итог</span><span class="v">
+    {% if cap.compliant %}<span class="badge green">соответствует</span>
+    {% else %}<span class="badge red">есть отклонения</span>{% endif %}
+  </span></div>
+  {% for g in cap.gaps %}
+    <div class="gap {{ g.severity }}">
+      <b>{{ g.message }}</b>
+      <div class="rec">→ {{ g.recommendation }}</div>
+    </div>
+  {% endfor %}
+  <div class="actions" style="margin-top:10px;">
+    <form method="POST" action="{{ url_for('create_cap_plan_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn">+ План ВП + цель «выздоровление»</button>
+    </form>
+    <form method="POST" action="{{ url_for('cap_followup_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn ghost">Контроль АБТ через 48–72 ч</button>
+    </form>
+    <form method="POST" action="{{ url_for('evaluate_goal_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn ghost">⟳ Оценить цель ВП</button>
+    </form>
+  </div>
+  <div class="rule"></div>
+  {% endif %}
+
+  <!-- План лечения и цель -->
+  <h2>План лечения и цель</h2>
+  {% if care_plans %}
+    {% for g in goals %}
+      <div class="info-row"><span class="k">Цель</span><span class="v">{{ g.description }}</span></div>
+      <div class="info-row"><span class="k">Статус цели</span><span class="v">
+        {% if g.status == 'achieved' %}<span class="badge green">достигнута</span>
+        {% elif g.status == 'not-achieved' %}<span class="badge red">не достигнута</span>
+        {% else %}<span class="badge grey">в работе</span>{% endif %}
+      </span></div>
+    {% endfor %}
+    <form method="POST" action="{{ url_for('evaluate_goal_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn">⟳ Оценить достижение цели (по последнему АД)</button>
+    </form>
+    <details class="mini-form" style="margin-top:10px;">
+      <summary>+ Запланировать контрольный визит</summary>
+      <form method="POST" action="{{ url_for('schedule_followup_route', pid=patient.id) }}">
+        <div class="field"><label>Через (дней)</label><input type="number" name="days" value="14"></div>
+        <button class="btn-small" type="submit">Запланировать</button>
+      </form>
+    </details>
+  {% else %}
+    <div class="empty">План не создан. Создайте — поставится цель по АД (с учётом ко-морбидностей).</div>
+    <form method="POST" action="{{ url_for('create_careplan_route', pid=patient.id) }}" style="margin-top:8px;">
+      <button class="btn">+ Создать план и цель</button>
+    </form>
+  {% endif %}
+  {% if followups %}
+    <div style="margin-top:8px;font-size:13px;color:var(--soft);">Плановые визиты:
+      {% for f in followups %}<span class="badge grey">{{ f.start }} · {{ f.complaint or 'контроль' }}</span> {% endfor %}
+    </div>
+  {% endif %}
   <div class="rule"></div>
 
-  <!-- Клинические данные -->
-  <h2>Клинические данные</h2>
-  <div class="info-row"><span class="k">Диагноз</span><span class="v">{{ condition.display }} ({{ condition.code }})</span></div>
-  <div class="info-row"><span class="k">Статус</span><span class="v">{{ condition.clinicalStatus }}</span></div>
-  <div class="info-row"><span class="k">Дата установки</span><span class="v">{{ condition.onsetDate }}</span></div>
+  <!-- Приёмы -->
+  <h2>Приёмы (Encounters)</h2>
+  {% if encounters %}
+  <table>
+    <thead><tr><th>Дата</th><th>Тип</th><th>Статус</th><th>Жалоба</th></tr></thead>
+    <tbody>
+      {% for e in encounters %}
+      <tr><td>{{ e.start }}</td><td>{{ e.class }}</td><td>{{ e.status }}</td><td>{{ e.complaint or '—' }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Приёмов пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Новый приём (жалоба)</summary>
+    <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
+      <div class="field"><label>Тип</label><select name="class"><option value="ambulatory">амбулаторный</option><option value="followup">контрольный</option></select></div>
+      <div class="field"><label>Дата</label><input type="date" name="start"></div>
+      <div class="field"><label>Жалоба</label><input type="text" name="complaint" placeholder="Скачки давления, сердцебиение"></div>
+      <button class="btn-small" type="submit">Открыть приём</button>
+    </form>
+  </details>
+  <div class="rule"></div>
 
-  <div class="info-row" style="margin-top:10px;"><span class="k">Последнее АД</span><span class="v" style="font-family:'Spectral',serif;font-size:18px;font-weight:600;{{ '' if not uncontrolled else 'color:var(--coral-deep);' }}">{{ bp.systolic }}/{{ bp.diastolic }} мм рт. ст.</span></div>
-  <div class="info-row"><span class="k">Дата измерения</span><span class="v">{{ bp.date }}</span></div>
-  <div class="info-row"><span class="k">Контроль</span><span class="v">{{ "Не контролируется (АД ≥ 140/90)" if uncontrolled else "Контролируется (АД < 140/90)" }}</span></div>
+  <!-- Измерения и анализы -->
+  <h2>Измерения и анализы</h2>
+  {% if observations %}
+  <table>
+    <thead><tr><th>Дата</th><th>Показатель</th><th>Значение</th><th>Норма</th><th>Флаг</th></tr></thead>
+    <tbody>
+      {% for o in observations %}
+      <tr>
+        <td>{{ o.date }}</td><td>{{ o.display }}</td>
+        <td>{{ o.value_numeric }} {{ o.value_unit or '' }}</td>
+        <td>{{ o.ref_low }}–{{ o.ref_high }}</td>
+        <td>{% if o.interpretation == 'high' %}<span class="badge red">↑</span>{% elif o.interpretation == 'low' %}<span class="badge red">↓</span>{% else %}<span class="badge green">норма</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Измерений пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Записать показатель</summary>
+    <form method="POST" action="{{ url_for('add_observation_route', pid=patient.id) }}">
+      <div class="field"><label>Показатель</label>
+        <select name="code">
+          {% for c in loinc_options %}<option value="{{ c }}">{{ loinc_display(c) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Значение</label><input type="number" step="0.1" name="value_numeric" required></div>
+      <div class="field"><label>Дата</label><input type="date" name="date"></div>
+      <button class="btn-small" type="submit">Сохранить</button>
+    </form>
+  </details>
+  <div class="rule"></div>
 
-  <div class="info-row" style="margin-top:10px;"><span class="k">Препараты</span><span class="v">{% for m in meds %}{{ m.display }}{% if not loop.last %}, {% endif %}{% endfor %}</span></div>
+  <!-- Заказы исследований -->
+  <h2>Заказы исследований</h2>
+  {% if service_requests %}
+  <table>
+    <thead><tr><th>Дата</th><th>Исследование</th><th>Статус</th></tr></thead>
+    <tbody>
+      {% for s in service_requests %}
+      <tr><td>{{ s.occurrence_date }}</td><td>{{ s.display }}</td>
+        <td>{% if s.status == 'completed' %}<span class="badge green">выполнено</span>{% else %}<span class="badge grey">{{ s.status }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Заказов пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Заказать исследование</summary>
+    <form method="POST" action="{{ url_for('add_service_request_route', pid=patient.id) }}">
+      <div class="field"><label>Исследование</label>
+        <select name="code">
+          {% for c in study_options %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="occurrence_date"></div>
+      <button class="btn-small" type="submit">Заказать</button>
+    </form>
+  </details>
+  <div class="rule"></div>
 
+  <!-- Заключения (ЭКГ/УЗИ/холтер) -->
+  <h2>Заключения исследований</h2>
+  {% if reports %}
+  <table>
+    <thead><tr><th>Дата</th><th>Тип</th><th>Заключение</th></tr></thead>
+    <tbody>
+      {% for r in reports %}<tr><td>{{ r.date }}</td><td>{{ r.display }}</td><td>{{ r.conclusion or '—' }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Заключений пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Записать заключение</summary>
+    <form method="POST" action="{{ url_for('add_report_route', pid=patient.id) }}">
+      <div class="field"><label>Тип</label>
+        <select name="code">{% for c in study_options %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="date"></div>
+      <div class="field"><label>Заключение</label><textarea name="conclusion" placeholder="Ритм синусовый, ЧСС 72…"></textarea></div>
+      <button class="btn-small" type="submit">Сохранить</button>
+    </form>
+  </details>
+  <div class="rule"></div>
+
+  <!-- Препараты -->
+  <h2>Препараты</h2>
+  {% if meds %}
+  <table>
+    <thead><tr><th>Препарат</th><th>ATC</th><th>Доза</th><th>Назначен</th><th></th></tr></thead>
+    <tbody>
+      {% for m in meds %}
+      <tr><td>{{ m.display }}</td><td>{{ m.code }}</td><td>{{ m.dose or '—' }}</td><td>{{ m.date }}</td>
+        <td><form method="POST" action="{{ url_for('stop_medication_route', pid=patient.id, mid=m.id) }}"><button class="btn-small" type="submit">отменить</button></form></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Препаратов пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Назначить препарат (с проверкой по карточке)</summary>
+    <form method="POST" action="{{ url_for('add_medication_route', pid=patient.id) }}">
+      <div class="field"><label>ATC-код</label><input type="text" name="code" placeholder="C09AA01" required></div>
+      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Эналаприл 10 мг" required></div>
+      <div class="field"><label>Доза</label><input type="text" name="dose" placeholder="10 мг"></div>
+      <div class="field"><label>Кратность</label><input type="text" name="frequency" placeholder="2 раза в день"></div>
+      <div class="field"><label>Дата начала</label><input type="date" name="med_date"></div>
+      <div class="field"><label>Дата окончания</label><input type="date" name="period_end" placeholder="длительность курса"></div>
+      <button class="btn-small" type="submit">Назначить</button>
+    </form>
+    <div style="font-size:12px;color:var(--faint);padding:0 14px 12px;">Проверка показаний/противопоказаний/взаимодействий сработает при следующем открытии карты (в CDS-подсказках и регламенте).</div>
+  </details>
+  <div class="rule"></div>
+
+  <!-- Диагнозы -->
+  <h2>Диагнозы</h2>
+  {% if conditions %}
+  <table>
+    <thead><tr><th>Код</th><th>Название</th><th>Статус</th><th>С</th></tr></thead>
+    <tbody>
+      {% for c in conditions %}<tr><td>{{ c.code }}</td><td>{{ c.display }}</td><td>{{ c.clinical_status }}</td><td>{{ c.onset_date }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">Диагнозов пока нет.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Добавить диагноз</summary>
+    <form method="POST" action="{{ url_for('add_condition_route', pid=patient.id) }}">
+      <div class="field"><label>Код МКБ-10</label><input type="text" name="code" placeholder="I10" required></div>
+      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Гипертензивная болезнь" required></div>
+      <div class="field"><label>Дата установки</label><input type="date" name="onset_date"></div>
+      <button class="btn-small" type="submit">Добавить</button>
+    </form>
+  </details>
+  <div class="rule"></div>
+
+  <!-- Аллергии -->
+  <h2>Аллергии</h2>
+  {% if allergies %}
+  <table><thead><tr><th>Код</th><th>Описание</th><th>Критичность</th></tr></thead>
+    <tbody>{% for a in allergies %}<tr><td>{{ a.code }}</td><td>{{ a.display }}</td><td>{{ a.criticality }}</td></tr>{% endfor %}</tbody>
+  </table>
+  {% else %}<div class="empty">Аллергий не зафиксировано.</div>{% endif %}
+  <details class="mini-form">
+    <summary>+ Добавить аллергию</summary>
+    <form method="POST" action="{{ url_for('add_allergy_route', pid=patient.id) }}">
+      <div class="field"><label>Код/группа</label><input type="text" name="code" placeholder="C09AA"></div>
+      <div class="field"><label>Описание</label><input type="text" name="display" placeholder="Ингибиторы АПФ" required></div>
+      <button class="btn-small" type="submit">Добавить</button>
+    </form>
+  </details>
   <div class="rule"></div>
 
   <!-- Путь пациента -->
   <h2>Этап пути пациента</h2>
-  <div class="pathway">
-    <div class="step {{ 'active' if pathway.state == 'screening' }}">Скрининг</div>
-    <span class="arrow">→</span>
-    <div class="step {{ 'active' if pathway.state == 'diagnosis' }}">Диагноз</div>
-    <span class="arrow">→</span>
-    <div class="step {{ 'active' if pathway.state == 'treatment' }}">Терапия</div>
-    <span class="arrow">→</span>
-    <div class="step {{ 'active' if pathway.state == 'monitoring' }}">Мониторинг</div>
-    <span class="arrow">→</span>
-    <div class="step {{ 'active' if pathway.state == 'controlled' }}">Контролируется</div>
-    <span class="arrow">→</span>
-    <div class="step {{ 'active' if pathway.state == 'adjustment' }}">Коррекция</div>
+  <div>
+    <span class="step {{ 'active' if pathway.state == 'screening' }}">Скрининг</span><span class="arrow">→</span>
+    <span class="step {{ 'active' if pathway.state == 'treatment' }}">Терапия</span><span class="arrow">→</span>
+    <span class="step {{ 'active' if pathway.state == 'monitoring' }}">Мониторинг</span><span class="arrow">→</span>
+    <span class="step {{ 'active' if pathway.state == 'controlled' }}">Контролируется</span><span class="arrow">→</span>
+    <span class="step {{ 'active' if pathway.state == 'adjustment' }}">Коррекция</span>
   </div>
-  <p style="font-size:12px;color:var(--faint);">Текущий этап: <b>{{ pathway.label }}</b></p>
-
-  <div class="arch-note">
-    <b>Что произошло при открытии этой страницы.</b><br>
-    1. Flask-роут <code>/patient/{{ patient.id }}</code> вызвал <code>cds_patient_view("{{ patient.id }}")</code> из <code>cds_service.py</code>.<br>
-    2. <code>cds_service</code> вызвал <code>uncontrolled_bp("{{ patient.id }}")</code> из <code>rules_engine.py</code>.<br>
-    3. <code>rules_engine</code> проверил <code>has_hypertension()</code> → <code>last_bp()</code> → <code>uncontrolled_bp()</code> — те же 3 правила из конспекта.<br>
-    4. Результат: {{ "есть подсказка — АД не контролируется" if cards else "подсказок нет — всё ок" }}.<br>
-    5. <b>Та же функция</b> <code>uncontrolled_bp()</code> используется в метрике качества на дашборде — single source of truth.
-  </div>
+  <p style="font-size:12px;color:var(--faint);margin-top:8px;">Текущий этап: <b>{{ pathway.label }}</b></p>
 </div>
 </body>
 </html>

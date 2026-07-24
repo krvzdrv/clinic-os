@@ -1,1 +1,5 @@
 flask==3.1.2
+python-dotenv==1.1.0
+# Драйвер PostgreSQL — нужен только при работе с Supabase (DATABASE_URL задана).
+# Для локальной разработки на SQLite не требуется.
+psycopg2-binary==2.9.10

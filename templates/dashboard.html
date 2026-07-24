@@ -50,13 +50,19 @@
   .arch-note{margin-top:32px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
   .arch-note b{color:var(--ink);}
   .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
+
+  .action-btn{display:inline-block;padding:8px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;}
+  .action-btn:hover{background:var(--coral-deep);color:#fff;}
+  .action-link{font-size:13px;color:var(--coral-deep);font-weight:600;text-decoration:none;}
+  .action-link:hover{text-decoration:underline;}
+  .empty-state{padding:24px;background:var(--tint);border-radius:10px;color:var(--soft);font-size:14px;line-height:1.6;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="kicker">Демо · Контроль артериальной гипертензии</div>
   <h1>Дашборд качества</h1>
-  <p class="lead">10 пациентов с артериальной гипертензией. Метрика и подсказки считаются одним движком правил — single source of truth.</p>
+  <p class="lead">Пациенты с артериальной гипертензией. Метрика и подсказки считаются одним движком правил — single source of truth.</p>
 
   <!-- Метрика -->
   <div class="metric-bar">
@@ -91,11 +97,27 @@
     <div class="progress-fill" style="width:{{ measure.rate }}%"></div>
   </div>
 
+  <!-- Действия -->
+  <div style="display:flex;gap:10px;align-items:center;margin:0 0 16px;">
+    <a href="{{ url_for('new_patient') }}" class="action-btn">+ Добавить пациента</a>
+    <a href="{{ url_for('export_csv') }}" class="action-link">↓ Экспорт в CSV</a>
+    {% if patients|length == 0 %}
+    <form method="POST" action="{{ url_for('seed_route') }}" style="margin:0;">
+      <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font-family:inherit;">
+        ⟳ Заполнить демо-данными (10 пациентов)
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
   <!-- Таблица пациентов -->
   <h2>Пациенты</h2>
-  <div style="margin: 12px 0 16px;">
-    <a href="{{ url_for('export_csv') }}" style="font-size:13px;color:var(--coral-deep);font-weight:600;text-decoration:none;">↓ Экспорт в CSV (для отчётов)</a>
-  </div>
+  {% if patients|length == 0 %}
+    <div class="empty-state">
+      Список пациентов пуст. Добавьте первого пациента кнопкой выше
+      или заполните демо-данными для знакомства с интерфейсом.
+    </div>
+  {% else %}
   <table>
     <thead>
       <tr>
@@ -134,6 +156,7 @@
       {% endfor %}
     </tbody>
   </table>
+  {% endif %}
 
   <div class="arch-note">
     <b>Как это работает.</b> Данные хранятся в <code>fhir_store.py</code> (Слой 0, имитация FHIR).
