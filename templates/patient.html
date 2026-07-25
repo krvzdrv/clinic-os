@@ -336,7 +336,8 @@
       <div class="verdict-next-row">
         <p>{{ v.next_step }}</p>
         {% if v.cta_label and v.focus_stage %}
-        <a class="verdict-cta" href="#flow-{{ v.focus_stage }}">{{ v.cta_label }}</a>
+        <a class="verdict-cta" href="{% if v.focus_stage == 'actions' %}#panel-assessment{% else %}#flow-{{ v.focus_stage }}{% endif %}"
+           {% if v.focus_stage == 'actions' %}data-open-panel="panel-assessment"{% endif %}>{{ v.cta_label }}</a>
         {% endif %}
       </div>
     </div>
@@ -1047,6 +1048,12 @@
     window.scrollTo(0,0);
   }
   tabs.forEach(function(t){t.addEventListener('click',function(){show(t.getAttribute('data-panel'));});});
+  document.querySelectorAll('[data-open-panel]').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      show(a.getAttribute('data-open-panel'));
+    });
+  });
   var initial=(location.hash||'').replace('#','');
   if(initial && document.getElementById(initial) && initial!=='panel-encounters'){show(initial);}
 

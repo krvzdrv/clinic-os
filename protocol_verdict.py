@@ -139,8 +139,8 @@ _FOCUS_BY_GAP = {
     "cxr_indicated": "diag",
     "no_repeat_cxr": "diag",
     "missing_spo2": "exam",
-    "hospitalization_indicated": "exam",
-    "icu_indicated": "exam",
+    "hospitalization_indicated": "actions",
+    "icu_indicated": "actions",
     "diagnosis_unsupported": "cond",
 }
 
@@ -189,6 +189,7 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
         "exam": "К осмотру",
         "cond": "К диагнозу",
         "anam": "К анамнезу",
+        "actions": "К госпитализации",
     }
 
     headline = (

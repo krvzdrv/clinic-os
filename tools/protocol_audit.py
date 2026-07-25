@@ -132,6 +132,8 @@ def main() -> int:
     blob_c = ui_blob(vc)
     check(any(x in blob_c.lower() for x in ("госпитал", "орит", "антибиот", "цефтриак")),
           f"UI clinical language: {vc.get('next_step')}")
+    check(vc.get("focus_stage") == "actions", f"focus_stage=actions (got {vc.get('focus_stage')})")
+    check(vc.get("cta_label") == "К госпитализации", f"cta={vc.get('cta_label')}")
     check(not ATC_RE.search(blob_c), "UI без ATC")
     check(not GAP_RE.search(blob_c), "UI без gap-кодов")
     # тяжёлая → цефтриаксон III (+ макролид addon)

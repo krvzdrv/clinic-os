@@ -131,6 +131,9 @@ def main():
         or "орит" in vc.lower(),
         "ДемоВ клиническая подсказка",
     )
+    check("К госпитализации" in c, "ДемоВ CTA к госпитализации")
+    check('data-open-panel="panel-assessment"' in c or "#panel-assessment" in c,
+          "ДемоВ CTA открывает быстрые действия")
     check(not ATC_RE.search(vc), "ДемоВ verdict no ATC")
     check(not GAP_RE.search(vc), "ДемоВ verdict no gap")
 
