@@ -65,7 +65,17 @@
 <div class="wrap">
   <div class="kicker">Демо · Внебольничная пневмония (взрослые) · КП МЗ РБ №768</div>
   <h1>Дашборд качества</h1>
-  <p class="lead">Пациенты с внебольничной пневмонией.</p>
+  <p class="lead">Система подсказывает следующий шаг по протоколу и проверяет, что уже сделано.</p>
+
+  {% if guest %}
+  <div style="margin:0 0 22px;padding:16px 18px;border:1px solid var(--line);border-left:5px solid var(--coral);border-radius:12px;background:#fff;">
+    <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--coral-deep);font-weight:700;margin-bottom:6px;">С чего начать демо</div>
+    <p style="font-size:15px;font-weight:600;margin:0 0 6px;line-height:1.4;">Откройте {{ guest.full }} — здесь назначена не та АБТ.</p>
+    <p style="font-size:13px;color:var(--soft);margin:0 0 12px;line-height:1.45;">Вверху карточки увидите проверку и следующий шаг: амоксициллин вместо азитромицина.</p>
+    <a href="{{ url_for('demo_guest') }}" class="action-btn">Открыть карточку гостя →</a>
+    <a href="{{ url_for('patient_detail', pid=guest.id) }}" class="action-link" style="margin-left:12px;">или прямо к {{ guest.name }}</a>
+  </div>
+  {% endif %}
 
   <!-- Метрика -->
   <div class="metric-bar">

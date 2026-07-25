@@ -68,10 +68,14 @@ def quality_measure_cap():
 # ====================================================================
 
 def has_pneumonia(pid):
-    """exists [Condition] C where C.code in PNEUMONIA_CODES and C.clinical_status='active'"""
-    return any(c.get("code") in PNEUMONIA_CODES
-               and c.get("clinical_status") == "active"
-               for c in get_conditions(pid))
+    """exists [Condition] C where C.code in protocol_registry icd_codes and C.clinical_status='active'"""
+    import protocol_rules as pr
+
+    codes = pr.protocol_icd_codes(pr.DEFAULT_PROTOCOL_ID)
+    return any(
+        c.get("code") in codes and c.get("clinical_status") == "active"
+        for c in get_conditions(pid)
+    )
 
 
 def age_years(pid):

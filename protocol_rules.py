@@ -17,12 +17,46 @@ from terminology import atc_drug_display, atc_group, adult_dose
 _RULES_PATH = os.path.join(
     os.path.dirname(__file__), "docs", "protocols", "cap_abt_rules.yaml"
 )
+_REGISTRY_PATH = os.path.join(
+    os.path.dirname(__file__), "docs", "protocols", "protocol_registry.yaml"
+)
+
+DEFAULT_PROTOCOL_ID = "cap_adult_768"
 
 
 @lru_cache(maxsize=1)
 def load_rules() -> dict:
     with open(_RULES_PATH, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+@lru_cache(maxsize=1)
+def load_protocol_registry() -> dict:
+    with open(_REGISTRY_PATH, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def get_protocol(protocol_id: str = DEFAULT_PROTOCOL_ID) -> dict | None:
+    return (load_protocol_registry().get("protocols") or {}).get(protocol_id)
+
+
+@lru_cache(maxsize=8)
+def protocol_icd_codes(protocol_id: str = DEFAULT_PROTOCOL_ID) -> frozenset[str]:
+    proto = get_protocol(protocol_id)
+    if not proto:
+        raise KeyError(f"Протокол не найден в protocol_registry.yaml: {protocol_id}")
+    return frozenset(proto.get("icd_codes") or [])
+
+
+def protocol_applicable(pid, protocol_id: str = DEFAULT_PROTOCOL_ID) -> bool:
+    """Активный диагноз МКБ из реестра протокола (не свободный текст)."""
+    import fhir_store as fs
+
+    codes = protocol_icd_codes(protocol_id)
+    return any(
+        c.get("code") in codes and c.get("clinical_status") == "active"
+        for c in fs.get_conditions(pid)
+    )
 
 
 def _facts(pid, severity=None) -> dict:

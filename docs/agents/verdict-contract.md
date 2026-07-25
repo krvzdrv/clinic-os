@@ -63,6 +63,8 @@
 | `expected_therapy.title` | str | Ожидаемая терапия **без ATC** |
 | `expected_therapy.detail` | str | Краткое обоснование языком врача |
 | `checks[]` | list | Список **проверок** |
+| `focus_stage` | str\|null | Куда вести: `med` / `diag` / `exam` / `cond` / `anam` |
+| `cta_label` | str\|null | Подпись кнопки «К назначениям» и т.п. |
 
 ### Элемент `checks[]`
 

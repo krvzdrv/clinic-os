@@ -29,6 +29,7 @@ import fhir_store as fs
 import rules_engine as re
 import drug_service
 import protocol_cap as pcap
+import protocol_verdict
 import care_plan_service as cps
 import cds_service as cds
 from terminology import (
@@ -137,6 +138,11 @@ def dashboard():
         return (s, r["name"].lower())
     rows.sort(key=_priority)
 
+    # Гостевой вход: ДемоБ (неверная АБТ) — главный сценарий демо.
+    guest = next((r for r in rows if (r.get("full") or "").startswith("ДемоБ")), None)
+    if not guest:
+        guest = next((r for r in rows if r.get("compliant") is False), None)
+
     # Фильтры и поиск
     q = (request.args.get("q", "") or "").strip().lower()
     f_sev = request.args.get("severity", "")
@@ -156,7 +162,22 @@ def dashboard():
     return render_template("dashboard.html", measure=measure, patients=rows,
                            q=q, f_sev=f_sev, f_set=f_set, f_com=f_com,
                            total=len(caches),
-                           demo_mode=os.environ.get("DEMO_MODE", "") == "1")
+                           guest=guest,
+                           demo_mode=os.environ.get("DEMO_MODE", "1") == "1")
+
+
+@app.route("/demo")
+def demo_guest():
+    """Прямая ссылка для гостя → карточка ДемоБ (или первый с отклонением)."""
+    for p in fs.get_all_patients():
+        if (p.get("family") or "") == "ДемоБ":
+            return redirect(url_for("patient_detail", pid=p["id"]))
+    caches = {c["patient_id"]: c for c in fs.get_all_cap_caches()}
+    for p in fs.get_all_patients():
+        c = caches.get(p["id"])
+        if c and c.get("applicable") and not c.get("compliant"):
+            return redirect(url_for("patient_detail", pid=p["id"]))
+    return redirect(url_for("dashboard"))
 
 
 # ---------- Новый пациент ----------
@@ -184,6 +205,7 @@ def patient_detail(pid):
     try:
         cap = pcap.evaluate_cap(pid)
         fs.save_cap_cache(pid, cap)
+        verdict = protocol_verdict.verdict_for_ui(cap)
         goals = fs.get_goals(pid)
         care_plans = fs.get_care_plans(pid)
 
@@ -242,6 +264,7 @@ def patient_detail(pid):
             pathway=fs.get_pathway(pid),
             cards=cds.cds_patient_view(pid),
             cap=cap,
+            verdict=verdict,
             has_pneumonia=re.has_pneumonia(pid),
             diabetes=re.has_diabetes(pid),
             general_condition=re.general_condition(pid),

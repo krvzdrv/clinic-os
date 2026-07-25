@@ -39,9 +39,38 @@ _PID_CACHE = {}
 
 
 def load_pid_cache(pid):
-    """Загрузить все ресурсы пациента в память за ОДИН round-trip к БД
-    (один SELECT с json_agg подзапросами по всем таблицам)."""
-    import json
+    """Загрузить все ресурсы пациента в память.
+
+    Postgres: один round-trip с json_agg.
+    SQLite: отдельные SELECT (json_agg/row_to_json недоступны) — иначе карточка падает.
+    """
+    if db.backend() == "sqlite":
+        _PID_CACHE[pid] = {
+            "patient": db.fetchone("SELECT * FROM patient WHERE id = %s", (pid,)),
+            "encounters": db.fetchall(
+                "SELECT * FROM encounter WHERE patient_id = %s ORDER BY start DESC", (pid,)),
+            "conditions": db.fetchall(
+                "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC", (pid,)),
+            "observations": db.fetchall(
+                "SELECT * FROM observation WHERE patient_id = %s ORDER BY date DESC", (pid,)),
+            "diagnostic_reports": db.fetchall(
+                "SELECT * FROM diagnostic_report WHERE patient_id = %s ORDER BY date DESC", (pid,)),
+            "service_requests": db.fetchall(
+                "SELECT * FROM service_request WHERE patient_id = %s ORDER BY occurrence_date DESC", (pid,)),
+            "medications_all": db.fetchall(
+                "SELECT * FROM medication_request WHERE patient_id = %s ORDER BY date DESC", (pid,)),
+            "flags": db.fetchall(
+                "SELECT * FROM clinical_flag WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,)),
+            "allergies": db.fetchall(
+                "SELECT * FROM allergy_intolerance WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,)),
+            "goals": db.fetchall(
+                "SELECT * FROM goal WHERE patient_id = %s ORDER BY start_date DESC", (pid,)),
+            "care_plans": db.fetchall(
+                "SELECT * FROM care_plan WHERE patient_id = %s ORDER BY created_date DESC", (pid,)),
+            "pathway": db.fetchone("SELECT * FROM pathway WHERE patient_id = %s", (pid,)),
+        }
+        return
+
     sql = (
         "SELECT "
         "(SELECT row_to_json(t) FROM (SELECT * FROM patient WHERE id = %s) t) AS patient, "
@@ -158,10 +187,11 @@ def delete_patient(pid):
         "observation", "diagnostic_report", "service_request",
         "medication_request", "condition_", "clinical_flag",
         "allergy_intolerance", "goal", "care_plan", "encounter",
-        "pathway",
+        "pathway", "cap_cache",
     ):
         db.execute(f"DELETE FROM {tbl} WHERE patient_id = %s", (pid,))
     db.execute("DELETE FROM patient WHERE id = %s", (pid,))
+    clear_pid_cache(pid)
 
 
 # ============ Encounter (приём) ============

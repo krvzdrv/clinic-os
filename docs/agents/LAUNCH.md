@@ -1,7 +1,7 @@
 # Ворота запуска воркеров
 
 Документация и промпты спринта 1 **готовы**.  
-Статус: команда **«запускай»** получена — воркеры стартуют в отдельных worktree.
+Статус: спринт 1 воркеров **завершён**; `verdict` подключён в `app.py`. Merge/сид облака — у architect.
 
 ## Когда можно запускать
 
@@ -25,5 +25,14 @@
 
 ## После команды «запускай»
 
-Architect открывает три чата, вставляет промпты из `PROMPTS.md`, указывает ветки,
-не даёт воркерам коммитить без спроса.
+Запущено (изолированные worktree, без коммитов воркеров):
+
+| Агент | Ветка | ID |
+|---|---|---|
+| clinic-protocol | `agent/clinic-protocol/sprint1-verdict` | `8df4de57-200a-4343-80a6-b230a60935f7` |
+| clinic-ui | `agent/clinic-ui/sprint1-verdict-panel` | `0e52b929-ee00-4896-8644-0e1926525a36` |
+| clinic-qa | `agent/clinic-qa/sprint1-demo-patients` | `f5621eaa-f67a-4909-9643-5514db450781` |
+
+База для worktree: коммит WIP на `master` (`chore: WIP base for sprint-1 parallel agents`).
+
+Merge после готовности: **protocol → ui → qa** (делает `clinic-architect`).
