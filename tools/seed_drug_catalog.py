@@ -18,10 +18,21 @@ import sys
 import urllib.parse
 import urllib.request
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, REPO)
 
-import fhir_store as fs
-from terminology import ADULT_DOSES, ATC_DRUGS, ATC_GROUPS, atc_group
+# Привязка к нужному SQLite до импорта db (иначе уходит в clinic.db / .env Postgres).
+_clinic_db = os.environ.get("CLINIC_DB")
+if _clinic_db and not os.environ.get("FORCE_DATABASE_URL"):
+    os.environ.pop("DATABASE_URL", None)
+
+import db  # noqa: E402
+
+if _clinic_db and not os.environ.get("DATABASE_URL"):
+    db.DB_PATH = os.path.abspath(_clinic_db)
+
+import fhir_store as fs  # noqa: E402
+from terminology import ADULT_DOSES, ATC_DRUGS, ATC_GROUPS, atc_group  # noqa: E402
 
 
 # ATC → (search_name_en, category, default_frequency, note)

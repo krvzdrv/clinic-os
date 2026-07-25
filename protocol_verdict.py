@@ -98,13 +98,25 @@ def _gap_to_check(gap: dict) -> dict:
     return {"level": level, "title": title, "action": action}
 
 
-def _pick_next_step(checks: list[dict], expected_regimen: dict | None, setting: str) -> str | None:
+def _pick_next_step(
+    checks: list[dict],
+    expected_regimen: dict | None,
+    setting: str,
+    *,
+    ok: bool,
+) -> str | None:
     for check in checks:
         if check["level"] == "problem" and check.get("action"):
             return check["action"].rstrip(".")
     problems = [c for c in checks if c["level"] == "problem"]
     if problems:
         return problems[0].get("title")
+    # Уже соответствует: не предлагать «назначить АБТ», только info или продолжение.
+    if ok:
+        for check in checks:
+            if check["level"] == "info" and check.get("action"):
+                return check["action"].rstrip(".")
+        return "Продолжить ведение по протоколу"
     if expected_regimen:
         return _therapy_next_step(expected_regimen, setting)
     return None
@@ -193,9 +205,9 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
         "severity_label": _SEVERITY_LABELS.get(severity, severity),
         "ok": ok,
         "headline": headline,
-        "next_step": _pick_next_step(checks, expected, setting),
+        "next_step": _pick_next_step(checks, expected, setting, ok=ok),
         "expected_therapy": expected_therapy,
         "checks": checks,
-        "focus_stage": focus,
+        "focus_stage": focus if not ok else None,
         "cta_label": cta_labels.get(focus) if focus and not ok else None,
     }

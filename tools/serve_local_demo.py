@@ -37,6 +37,28 @@ def _force_sqlite():
 if __name__ == "__main__":
     import protocol_cap as pcap
 
+    # Пустой каталог = «кнопки назначений не работают» — дозаполняем в эту же БД.
+    if len(fs.get_drug_catalog()) < 10:
+        os.environ["CLINIC_DB"] = db.DB_PATH
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location(
+            "seed_drug_catalog", os.path.join(REPO, "tools", "seed_drug_catalog.py")
+        )
+        mod = importlib.util.module_from_spec(spec)
+        argv = sys.argv[:]
+        sys.argv = ["seed_drug_catalog.py"]
+        try:
+            spec.loader.exec_module(mod)
+            mod.main()
+        finally:
+            sys.argv = argv
+
+    if not fs.get_all_patients():
+        from _seed_data import seed_all
+
+        seed_all()
+
     for p in fs.get_all_patients():
         fs.save_cap_cache(p["id"], pcap.evaluate_cap(p["id"]))
 
@@ -44,6 +66,7 @@ if __name__ == "__main__":
     print(
         f"SQLite={db.DB_PATH} backend={db.backend()} "
         f"patients={len(fs.get_all_patients())} "
+        f"drugs={len(fs.get_drug_catalog())} "
         f"families={[p['family'] for p in fs.get_all_patients()]}"
     )
     app.run(host="127.0.0.1", port=port, debug=False, use_reloader=False)
