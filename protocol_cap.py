@@ -1,151 +1,229 @@
 """
-Слой 3b — Регламент лечения внебольничной пневмонии (дети), КП МЗ РБ №204 от 18.12.2023.
+Слой 3b — Регламент лечения внебольничной пневмонии (взрослые), КП МЗ РБ №768 от 05.07.2012.
 
-Параллельный профиль к protocol_engine (АГ). Тот же принцип: независимый
-валидатор, который проверяет совокупность ресурсов пациента на соответствие
-клиническому протоколу. Не подсказывает в момент одного действия (это CDS),
-а оценивает всю картину: диагноз + тяжесть + обязательные исследования +
-выбор АБТ + оценка эффективности + длительность курса + показания к
-госпитализации.
+Полная версия: амбулаторный + стационарный блоки, структурированный анамнез/осмотр.
 
-Машинно-проверяемое подмножество протокола (с указанием пунктов):
-  - п.6.3 + приложение — класс тяжести (средняя / тяжёлая) по SpO2 и ДН;
-  - п.11 — обязательные исследования: ОАК, СРБ, пульсоксиметрия, термометрия;
-  - п.12 — показания к рентгенографии ОГК;
-  - п.15–21 — выбор АБТ первой линии (амоксициллин / амоксициллин-клавуланат /
-    макролид / цефуроксим) с учётом возраста, факторов риска и аллергии;
-  - п.15, 30 — оценка эффективности АБТ через 48–72 ч (лихорадка <38, СРБ);
-  - п.15 — длительность курса 10–14 дней (средняя тяжесть);
-  - п.26 — показания к госпитализации (возраст <1 г, ДН II+, тахипноэ/тахикардия
-    по возрасту, тяжёлый фон, отсутствие эффекта через 48–72 ч).
+Машинно-проверяемое подмножество протокола (КП №768, взрослое население):
+  АМБУЛАТОРНЫЙ БЛОК
+  - тяжесть: нетяжёлая (лёгкая + средней тяжести) / тяжёлая (≥2 «малых» или ≥1 «большой» критерий);
+  - обязательные исследования: ОАК, СРБ, пульсоксиметрия, термометрия;
+  - показания к рентгенографии ОГК (в т.ч. локальные знаки при осмотре);
+  - длительность курса 7–14 дней; пероральный маршрут;
+  - оценка эффективности АБТ через 48–72 ч (лихорадка <38, снижение СРБ);
+  - амбулаторно: амоксициллин/клавуланат 875/125 мг 2 р/сут (при факторах риска) или амоксициллин;
+  - при IgE-аллергии на β-лактамы → макролид (азитромицин 500 мг);
+  - при не-IgE гиперчувствительности → цефуроксим (осторожно);
+  - показания к госпитализации (ЧД≥30, САД<90, ДАД≤60, ЧСС≥125, t°<35,5/≥39,9, лейкоциты<4/>20,
+    SaO2<92, креатинин>176,7, мочевина>7, инфильтрация>1 доли, полости, выпот, Hb<90,
+    возраст>60, сопутствующие, неэффективность АБТ, беременность).
 
-Что НЕ учтено (упрощения для демо — отмечаем честно):
-  - локальность/асимметрия аускультативных и перкуторных данных (нет структурированного
-    поля физикального осмотра) — поэтому показание к R-графии «локальные изменения»
-    не проверяется;
-  - IgE vs не-IgE гиперчувствительность к β-лактамам не различаются — цефуроксим
-    выдаётся как альтернатива с пометкой «осторожно», а не как жёсткая замена;
-  - социальные факторы риска (посещение детсада, контакт с детсадовцами, путешествия,
-    проживание в интернате) не структурированы — учитываются только медицинские
-    (предшествующая АБТ за 3 мес, хронические болезни лёгких, СД).
+  СТАЦИОНАРНЫЙ БЛОК
+  - показания к ОРИТ (≥2 «малых» или ≥1 «большой» критерий: ИВЛ, быстрое прогрессирование,
+    септический шок/вазопрессоры≥4ч, ОПН);
+  - старт АБТ в/в: цефтриаксон 1–2 г 1 р/сут (или амокс/клавуланат, цефуроксим в/в);
+  - тяжёлая ВП → цефалоспорин III + макролид;
+  - MRSA → линезолид/ванкомицин;
+  - аспирация → амокс/клавуланат 1,2 г в/в или карбапенем + метронидазол;
+  - резерв → респираторные фторхинолоны (левофлоксацин 0,75 г, моксифлоксацин 0,4 г);
+  - ступенчатая терапия: переход в/в → per os при клиническом ответе;
+  - критерии выписки (нормотермия, ЧД/SpO2 в норме).
 
-Главный вход: evaluate_cap(pid) → {applicable, severity, hospitalization,
-expected_atb, compliant, gaps}.
+Главный вход: evaluate_cap(pid) → {applicable, setting, severity, hospitalization,
+expected_regimen, compliant, gaps, protocol}.
 """
 from datetime import datetime, date
 
 import fhir_store as fs
 import rules_engine as re
 import drug_service
+import protocol_rules
 from terminology import (
     PNEUMONIA_CODES, atc_group, atc_drug_display,
-    TEMP_CODE, SPO2_CODE, WBC_CODE, CRP_CODE,
-    PARENTERAL_ONLY,
+    TEMP_CODE, SPO2_CODE, WBC_CODE, CRP_CODE, RR_CODE, HR_CODE,
+    PARENTERAL_ONLY, ORAL_ANTIBIOTICS,
+    general_condition_display, general_condition_needs_inpatient,
+    adult_dose,
 )
 
-PROTOCOL_REF = "КП МЗ РБ №204 от 18.12.2023 (Внебольничная пневмония, дети)"
+PROTOCOL_REF = "КП МЗ РБ №768 от 05.07.2012 (Внебольничная пневмония, взрослое население)"
 
 
-# ---- Тяжесть (п.6.3 + приложение) ----
+# ---- Тяжесть (КП №768: малые/большие критерии тяжёлого течения) ----
 
 def classify_severity(pid):
     """
-    Средняя тяжесть — признаки пневмонии без ДН или с ДН I (SpO2 ≥ 90).
-    Тяжёлая — SpO2 < 90 (центральный цианоз / ДН II–IV) либо осложнения.
-    Возвращает 'moderate' | 'severe' | None (если пневмонии нет).
+    Нетяжёлая — пневмония лёгкого или средней тяжести (объединены в КП №768 в одну группу).
+    Тяжёлая — ≥2 «малых» либо ≥1 «большой» критерий тяжёлого течения (КП №768).
+    Возвращает 'mild' | 'severe' | None (если пневмонии нет).
     """
     if not re.has_pneumonia(pid):
         return None
-    spo2 = re.latest_spo2(pid)
-    if spo2 is not None and spo2 < 90:
+    if re.large_severe_criteria(pid):
         return "severe"
-    # ДН II+ по SpO2 75–89 тоже тяжёлая
-    if spo2 is not None and spo2 < 90:
+    if len(re.small_severe_criteria(pid)) >= 2:
         return "severe"
-    return "moderate"
+    return "mild"
 
 
-# ---- Показания к госпитализации (п.26) ----
+def _setting(pid):
+    """'inpatient' если есть стационарный приём (любой статус — активный или выписанный), иначе 'outpatient'."""
+    for e in fs.get_encounters(pid):
+        if e.get("class") in ("inpatient", "program", "day"):
+            return "inpatient"
+    return "outpatient"
+
+
+# ---- Показания к госпитализации (КП №768, взрослые) ----
 
 def hospitalization_reasons(pid):
-    """Список причин для госпитализации по п.26 КП №204."""
+    """Список причин для госпитализации по КП №768 (взрослые)."""
     reasons = []
     if not re.has_pneumonia(pid):
         return reasons
 
-    if re.age_years(pid) < 1:
-        reasons.append("возраст ребёнка до 1 года (п.26.1)")
+    # 1. Данные физического обследования (острые/пиковые значения — тяжесть при поступлении)
+    rr = re.worst_rr(pid)
+    if rr is not None and rr >= 30:
+        reasons.append(f"тахипноэ: ЧД {rr} ≥30/мин")
+    sbp = re.worst_sbp(pid)
+    if sbp is not None and sbp < 90:
+        reasons.append(f"САД {sbp} <90 мм рт.ст.")
+    dbp = re.worst_dbp(pid)
+    if dbp is not None and dbp <= 60:
+        reasons.append(f"ДАД {dbp} ≤60 мм рт.ст.")
+    hr = re.worst_hr(pid)
+    if hr is not None and hr >= 125:
+        reasons.append(f"тахикардия: ЧСС {hr} ≥125/мин")
+    t = re.worst_temp(pid)
+    if t is not None and (t < 35.5 or t >= 39.9):
+        reasons.append(f"температура {t}°C (<35,5 или ≥39,9)")
+    if re.has_clinical_flag(pid, "consciousness_disorder"):
+        reasons.append("нарушение сознания")
 
-    if re.dn_degree(pid) and re.dn_degree(pid) >= 2:
-        reasons.append(f"ДН II+ (SpO2 {re.latest_spo2(pid)}%, п.26.3)")
+    # 2. Лабораторные и рентгенологические данные (острые значения)
+    wbc = re.worst_wbc(pid)
+    if wbc is not None and (wbc < 4.0 or wbc > 20.0):
+        reasons.append(f"лейкоциты {wbc}×10⁹/л (<4,0 или >20,0)")
+    s = re.worst_spo2(pid)
+    if s is not None and s < 92:
+        reasons.append(f"SaO2 {s}% (<92%)")
+    cr = re.worst_creat(pid)
+    if cr is not None and cr > 176.7:
+        reasons.append(f"креатинин {cr} мкмоль/л (>176,7)")
+    u = re.worst_urea(pid)
+    if u is not None and u > 7.0:
+        reasons.append(f"мочевина {u} ммоль/л (>7,0)")
+    hb = re.worst_hb(pid)
+    if hb is not None and hb < 90:
+        reasons.append(f"гемоглобин {hb} г/л (<90)")
+    if re.has_clinical_flag(pid, "bilateral_infiltration"):
+        reasons.append("двусторонняя/многодолевая инфильтрация")
+    if re.has_clinical_flag(pid, "cavity"):
+        reasons.append("полости распада")
+    if re.has_clinical_flag(pid, "pleural_effusion"):
+        reasons.append("плевральный выпот")
 
-    if re.is_tachypneic(pid):
-        reasons.append(
-            f"тахипноэ: ЧД {re.latest_rr(pid)} > {re.tachypnea_threshold(pid)} "
-            f"для возраста (п.26.3)"
-        )
+    # 3. Невозможность адекватного ухода дома — по социальным флагам
+    if re.has_clinical_flag(pid, "alcoholism") or re.has_clinical_flag(pid, "drug_addiction"):
+        reasons.append("невозможность адекватного ухода дома (алкоголизм/наркомания)")
 
-    if re.is_tachycardic(pid):
-        reasons.append(
-            f"тахикардия: ЧСС {re.latest_hr(pid)} > {re.tachycardia_threshold(pid)} "
-            f"для возраста (п.26.4)"
-        )
+    # Экстренные/неотложные признаки
+    if re.has_clinical_flag(pid, "shock"):
+        reasons.append("шок / сепсис")
 
-    if re.has_chronic_lung_disease(pid):
-        reasons.append("тяжёлый фон: хронические болезни лёгких (п.26.7)")
-    if re.has_diabetes(pid):
-        reasons.append("тяжёлый фон: сахарный диабет (п.26.7)")
+    # Общее состояние по оценке врача: тяжёлое/крайне тяжёлое — показание к госпитализации.
+    gc = re.general_condition(pid)
+    if gc and general_condition_needs_inpatient(gc):
+        reasons.append(f"общее состояние: {general_condition_display(gc)} — показание к госпитализации")
 
-    # Отсутствие эффекта через 48–72 ч — лихорадка сохраняется ПОСЛЕ контрольной оценки.
+    # Отсутствие эффекта через 48–72 ч — лихорадка сохраняется.
     abt = _earliest_active_antibiotic(pid)
     if abt:
         days = (date.today() - _parse_date(abt["date"])).days
         if days >= 3 and re.has_fever(pid) and _has_observation_after(pid, [TEMP_CODE], abt["date"]):
-            reasons.append("нет эффекта АБТ через 72 ч: лихорадка сохраняется (п.26.8)")
+            reasons.append("нет эффекта АБТ через 72 ч: лихорадка сохраняется")
 
     return reasons
 
 
-# ---- Выбор АБТ первой линии (п.15–21) ----
+def prefer_inpatient_reasons(pid):
+    """Предпочтительность стационарного лечения (КП №768) — не жёсткие показания,
+    а факторы, при которых стационар предпочтительнее амбулаторного. Отдельно от
+    hospitalization_reasons, чтобы не уводить нетяжёлую ВП в стационар автоматически."""
+    pref = []
+    if not re.has_pneumonia(pid):
+        return pref
+    if re.age_years(pid) > 60:
+        pref.append(f"возраст старше 60 лет ({re.age_years(pid)})")
+    if re.has_chronic_lung_disease(pid):
+        pref.append("сопутствующее: хронические болезни лёгких/ХОБЛ")
+    if re.has_diabetes(pid):
+        pref.append("сопутствующее: сахарный диабет")
+    if re.has_ckd(pid):
+        pref.append("сопутствующее: хроническая почечная недостаточность")
+    if re.has_clinical_flag(pid, "pregnancy"):
+        pref.append("беременность")
+    return pref
+
+
+# ---- Выбор АБТ (SSOT: docs/protocols/cap_abt_rules.yaml) ----
 
 def _risk_factors(pid):
-    """Факторы риска инфицирования резистентными/β-лактамазообразующими возбудителями."""
+    """Человекочитаемый список факторов риска (для текстов gap'ов / UI)."""
     factors = []
     if re.antibiotics_in_last_3mo(pid):
-        factors.append("АБТ в предшествующие 3 мес (п.17)")
+        factors.append("АБТ в предшествующие 3 мес")
+    if re.has_clinical_flag(pid, "hospitalized_3mo"):
+        factors.append("госпитализация в предшествующие 3 мес")
     if re.has_chronic_lung_disease(pid):
-        factors.append("хронические болезни лёгких (п.18)")
+        factors.append("хронические болезни лёгких/ХОБЛ")
     if re.has_diabetes(pid):
-        factors.append("сахарный диабет (п.17)")
+        factors.append("сахарный диабет")
+    if re.has_clinical_flag(pid, "immunosuppression"):
+        factors.append("иммуносупрессия")
     return factors
 
 
 def expected_antibiotic(pid):
+    """Ожидаемая амбулаторная АБТ — по YAML-правилам (не по drug_catalog.protocol_role)."""
+    return protocol_rules.select_outpatient(pid)
+
+
+def expected_inpatient_regimen(pid, severity=None):
+    """Ожидаемый стационарный режим АБТ — по YAML-правилам."""
+    return protocol_rules.select_inpatient(pid, severity=severity)
+
+
+def icu_criteria(pid):
+    """Показания к переводу в ОРИТ (КП №768). Возвращает список причин."""
+    crit = []
+    large = re.large_severe_criteria(pid)
+    crit.extend(large)
+    small = re.small_severe_criteria(pid)
+    if len(small) >= 2 and not large:
+        crit.append("≥2 «малых» критерия тяжёлого течения")
+    if re.has_clinical_flag(pid, "shock"):
+        if not any("шок" in c for c in crit):
+            crit.append("септический шок / вазопрессоры ≥4 ч")
+    return crit
+
+
+def discharge_criteria(pid):
     """
-    Возвращает ожидаемую первую линию АБТ для амбулаторного лечения ВП
-    средней тяжести: {atc_group, atc_code, name, rationale, ref}.
+    Критерии выписки (КП №768). Возвращает {met: bool, missing: [...]}.
+    Оценивается по последним наблюдениям: нормотермия, ЧД в норме, SpO2 >= 95.
     """
-    if drug_service.has_allergy_class(pid, "beta-lactam"):
-        return {
-            "atc_group": "J01FA", "atc_code": "J01FA09",
-            "name": atc_drug_display("J01FA09"),
-            "rationale": "Аллергия на β-лактамы → макролид (кларитромицин/азитромицин).",
-            "ref": "п.19 КП №204",
-        }
-    if re.age_years(pid) <= 2 or _risk_factors(pid):
-        return {
-            "atc_group": "J01CR", "atc_code": "J01CR02",
-            "name": atc_drug_display("J01CR02"),
-            "rationale": "Возраст ≤2 лет и/или факторы риска резистентности → "
-                         "амоксициллин/клавулановая кислота.",
-            "ref": "п.17–18 КП №204",
-        }
-    return {
-        "atc_group": "J01CA", "atc_code": "J01CA04",
-        "name": atc_drug_display("J01CA04"),
-        "rationale": "Без факторов риска, возраст >2 лет → амоксициллин.",
-        "ref": "п.16 КП №204",
-    }
+    missing = []
+    t = re.latest_temp(pid)
+    if t is None or t >= 38.0:
+        missing.append("нормотермия (<38 °C) не достигнута")
+    rr = re.latest_rr(pid)
+    if rr is not None and rr >= 30:
+        missing.append(f"тахипноэ сохраняется (ЧД {rr})")
+    spo2 = re.latest_spo2(pid)
+    if spo2 is not None and spo2 < 95:
+        missing.append(f"SpO2 {spo2}% < 95%")
+    return {"met": len(missing) == 0, "missing": missing}
 
 
 # ---- Вспомогательные ----
@@ -170,12 +248,40 @@ def _has_observation(pid, code):
     return fs.get_last_observation(pid, code) is not None
 
 
+def _active_abts(pid):
+    """Активные антибиотики (J01*), отсортированные по дате начала."""
+    meds = [m for m in fs.get_medications(pid)
+            if m["code"].startswith("J01") and m.get("status") == "active"]
+    return sorted(meds, key=lambda m: m.get("date") or "")
+
+
+def _has_med_class(pid, prefix):
+    return any(m["code"].startswith(prefix) for m in fs.get_medications(pid)
+               if m.get("status") == "active")
+
+
+def _step_down_done(pid):
+    """Выполнен ли переход в/в → per os: есть пероральный антибиотик, начатый
+    после стартового в/в препарата."""
+    abts = _active_abts(pid)
+    if not abts:
+        return False
+    iv = [m for m in abts if (m.get("route") or "") in ("iv", "im")]
+    oral = [m for m in abts if (m.get("route") or "") == "oral"]
+    if not iv or not oral:
+        return False
+    first_iv_date = iv[0].get("date") or ""
+    return any((o.get("date") or "") > first_iv_date for o in oral)
+
+
 # ---- Главная функция ----
 
 def evaluate_cap(pid):
     """
-    Полная оценка соответствия протоколу ВП (КП №204) для пациента.
-    Возвращает {applicable, severity, hospitalization, expected_atb, compliant, gaps}.
+    Полная оценка соответствия протоколу ВП (КП №768, взрослые) для пациента.
+    Ветвится на амбулаторный и стационарный блоки по тяжести/наличию госпитализации.
+    Возвращает {applicable, setting, severity, hospitalization, expected_regimen,
+    icu, discharge, compliant, gaps, protocol}.
     compliant = True если нет warning-уровневых gap'ов.
     """
     if not re.has_pneumonia(pid):
@@ -184,131 +290,146 @@ def evaluate_cap(pid):
     gaps = []
     severity = classify_severity(pid)
     hosp = hospitalization_reasons(pid)
-    expected = expected_antibiotic(pid)
+    prefer = prefer_inpatient_reasons(pid)
+    encounter_setting = _setting(pid)
+    needed_inpatient = (severity == "severe") or bool(hosp)
+    setting = "inpatient" if needed_inpatient else encounter_setting
 
-    # 1. Показания к госпитализации — приоритетная проверка
-    if hosp:
+    # 0. Диагноз должен подтверждаться данными: жалобами/анамнезом или объективным осмотром.
+    has_anam, has_exam = re.diagnosis_support(pid)
+    if not has_anam and not has_exam:
         gaps.append({
             "severity": "warning",
-            "code": "hospitalization_indicated",
-            "message": "Есть показания к госпитализации: " + "; ".join(hosp),
-            "recommendation": "Госпитализация в больничную организацию (п.26).",
+            "code": "diagnosis_unsupported",
+            "message": "Диагноз ВП не подтверждён данными: нет записей анамнеза/жалоб и объективного осмотра.",
+            "recommendation": "Заполните анамнез (жалобы, анамнез заболевания) или объективный осмотр (t, SpO2, ЧД, ЧСС, локальные знаки).",
         })
 
-    # 2. Обязательные исследования (п.11)
+    if setting == "inpatient":
+        expected = expected_inpatient_regimen(pid, severity)
+    else:
+        expected = expected_antibiotic(pid)
+
+    # 1. Показания к госпитализации / ОРИТ
+    # Сигнализируем, когда по факту приём амбулаторный, а по тяжести/показаниям нужен стационар.
+    if encounter_setting == "outpatient" and needed_inpatient:
+        if hosp:
+            gaps.append({
+                "severity": "warning",
+                "code": "hospitalization_indicated",
+                "message": "Есть показания к госпитализации: " + "; ".join(hosp),
+                "recommendation": "Госпитализация (КП №768).",
+            })
+        else:
+            gaps.append({
+                "severity": "warning",
+                "code": "hospitalization_indicated",
+                "message": "Тяжёлая ВП — показана госпитализация.",
+                "recommendation": "Госпитализация (КП №768).",
+            })
+    # Предпочтительность стационара (возраст >60, сопутствующие, беременность) — info, не жёсткое показание.
+    if encounter_setting == "outpatient" and not needed_inpatient and prefer:
+        gaps.append({
+            "severity": "info",
+            "code": "inpatient_preferable",
+            "message": "Предпочтителен стационар: " + "; ".join(prefer),
+            "recommendation": "Рассмотреть стационарное лечение (КП №768).",
+        })
+    # Предпочтительность стационара (возраст >60, сопутствующие, беременность) — info, не жёсткое показание.
+    if encounter_setting == "outpatient" and not needed_inpatient and prefer:
+        gaps.append({
+            "severity": "info",
+            "code": "inpatient_preferable",
+            "message": "Предпочтителен стационар: " + "; ".join(prefer),
+            "recommendation": "Рассмотреть стационарное лечение (КП №768).",
+        })
+    icu = icu_criteria(pid) if setting == "inpatient" else []
+    if icu:
+        gaps.append({
+            "severity": "warning",
+            "code": "icu_indicated",
+            "message": "Показания к переводу в ОРИТ: " + "; ".join(icu),
+            "recommendation": "Перевод в ОРИТ (КП №768).",
+        })
+
+    # 2. Обязательные исследования (КП №768)
     if not (_has_service_request(pid, "CBC") or _has_observation(pid, WBC_CODE)):
         gaps.append({
             "severity": "warning", "code": "missing_cbc",
             "message": "Не назначен/не выполнен общий анализ крови (ОАК).",
-            "recommendation": "Назначить ОАК двукратно (п.11.2).",
+            "recommendation": "Назначить ОАК (КП №768).",
         })
     if not (_has_service_request(pid, "CRP") or _has_observation(pid, CRP_CODE)):
         gaps.append({
             "severity": "warning", "code": "missing_crp",
             "message": "Не определён С-реактивный белок (СРБ).",
-            "recommendation": "Назначить СРБ — критерий эффективности АБТ (п.11.2, п.15).",
+            "recommendation": "Назначить СРБ — критерий эффективности АБТ (КП №768).",
         })
     if not _has_observation(pid, SPO2_CODE):
         gaps.append({
             "severity": "warning", "code": "missing_spo2",
             "message": "Не выполнена пульсоксиметрия (SpO2).",
-            "recommendation": "Пульсоксиметрия при каждом осмотре (п.11.3).",
+            "recommendation": "Пульсоксиметрия при каждом осмотре (КП №768).",
         })
     if not _has_observation(pid, TEMP_CODE):
         gaps.append({
             "severity": "info", "code": "missing_temp",
             "message": "Нет записи температуры тела.",
-            "recommendation": "Термометрия при каждом медицинском осмотре (п.11.3).",
+            "recommendation": "Термометрия при каждом медицинском осмотре (КП №768).",
         })
 
-    # 3. Рентгенография ОГК по показаниям (п.12)
+    # 2b. Доп. исследования в стационаре (КП №768)
+    if setting == "inpatient":
+        if not (_has_service_request(pid, "URINE") or _has_service_request(pid, "ECG")):
+            gaps.append({
+                "severity": "info", "code": "missing_inpt_studies",
+                "message": "В стационаре не назначены ОАМ / ЭКГ.",
+                "recommendation": "ОАМ, ЭКГ, по показаниям ПКТ и посевы (КП №768).",
+            })
+        # Посевы (гемокультура/мокрота) — при тяжёлом течении.
+        if severity == "severe" and not (_has_service_request(pid, "BLOOD_CULT") or _has_service_request(pid, "SPUTUM_CULT")):
+            gaps.append({
+                "severity": "info", "code": "missing_cultures",
+                "message": "Не взяты посевы (гемокультура/мокрота).",
+                "recommendation": "До старта АБТ — посевы при тяжёлом течении (КП №768).",
+            })
+
+    # 3. Рентгенография ОГК по показаниям (КП №768)
     cxr_ordered = _has_service_request(pid, "CXR") or any(
         r["code"] == "CXR" for r in fs.get_diagnostic_reports(pid)
     )
     if severity == "severe" and not cxr_ordered:
         gaps.append({
             "severity": "warning", "code": "cxr_indicated",
-            "message": "Тяжёлая ВП (SpO2<90) — показана рентгенография ОГК, но она не назначена.",
-            "recommendation": "Назначить R-графию ОГК в прямой проекции (п.12).",
+            "message": "Тяжёлая ВП — показана рентгенография ОГК, но она не назначена.",
+            "recommendation": "Назначить R-графию ОГК в прямой проекции (КП №768).",
+        })
+    if re.has_local_signs(pid) and not cxr_ordered:
+        gaps.append({
+            "severity": "info", "code": "cxr_local_signs",
+            "message": "Локальные/асимметричные знаки в лёгких — показание к R-графии ОГК.",
+            "recommendation": "Назначить R-графию ОГК (КП №768).",
         })
 
     # 4. Антибактериальная терапия
-    abt = _earliest_active_antibiotic(pid)
-    if not abt:
-        gaps.append({
-            "severity": "warning", "code": "no_abt",
-            "message": "Внебольничная пневмония диагностирована, АБТ не назначена.",
-            "recommendation": f"Назначить АБТ первой линии: {expected['name']} ({expected['ref']}).",
-        })
-    else:
-        # 4a. Соответствие первой линии
-        grp, _ = atc_group(abt["code"])
-        if grp != expected["atc_group"]:
-            gaps.append({
-                "severity": "warning", "code": "not_first_line_abt",
-                "message": (
-                    f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
-                    f"по протоколу первая линия — {expected['name']} (группа {expected['atc_group']})."
-                ),
-                "recommendation": f"{expected['rationale']} ({expected['ref']}).",
-            })
+    _evaluate_abt(pid, setting, severity, expected, gaps)
 
-        # 4b. Маршрут: в амбулаторных условиях — перорально (п.15)
-        if abt["code"] in PARENTERAL_ONLY:
-            gaps.append({
-                "severity": "warning", "code": "parenteral_in_outpatient",
-                "message": (
-                    f"{atc_drug_display(abt['code'])} — парентеральный препарат, "
-                    "в амбулаторных условиях АБП назначаются перорально."
-                ),
-                "recommendation": "Перейти на пероральную форму или госпитализировать (п.15, п.30).",
-            })
+    # 5. Симптоматическая терапия по показаниям (п.40-42)
+    _evaluate_symptomatic(pid, gaps)
 
-        # 4c. Оценка эффективности через 48–72 ч (п.15, п.30)
-        days = (date.today() - _parse_date(abt["date"])).days
-        if days >= 3:
-            reassess = _has_observation_after(pid, [TEMP_CODE, SPO2_CODE], abt["date"])
-            if not reassess:
-                gaps.append({
-                    "severity": "warning", "code": "no_reassessment",
-                    "message": f"Прошло {days} дн. от начала АБТ, нет контрольной записи (t°/SpO2).",
-                    "recommendation": "Оценить эффективность АБТ через 48–72 ч (п.15, п.30).",
-                })
-            elif re.has_fever(pid):
-                gaps.append({
-                    "severity": "warning", "code": "abt_no_effect",
-                    "message": "На фоне АБТ сохраняется лихорадка ≥38 °C — нет эффекта.",
-                    "recommendation": "Госпитализация или смена АБП (п.15, п.30, п.26.8).",
-                })
-
-        # 4d. Длительность курса 10–14 дней (п.15)
-        if abt.get("period_start") and abt.get("period_end"):
-            dur = (_parse_date(abt["period_end"]) - _parse_date(abt["period_start"])).days
-            if dur < 10:
-                gaps.append({
-                    "severity": "warning", "code": "course_too_short",
-                    "message": f"Курс АБТ {dur} дн. — короче протокольных 10–14 дней.",
-                    "recommendation": "Продолжить курс до 10–14 дней при средней тяжести (п.15).",
-                })
-            elif dur > 14:
-                gaps.append({
-                    "severity": "info", "code": "course_too_long",
-                    "message": f"Курс АБТ {dur} дн. — длиннее 14 дней.",
-                    "recommendation": "Обосновать продление (осложнённая/тяжёлая ВП).",
-                })
-        else:
-            gaps.append({
-                "severity": "info", "code": "course_not_set",
-                "message": "Не задана дата окончания курса АБТ.",
-                "recommendation": "Указать period_end: курс 10–14 дней при средней тяжести (п.15).",
-            })
+    # 6. Динамическая оценка и завершение
+    _evaluate_followup(pid, setting, gaps)
 
     compliant = not any(g["severity"] == "warning" for g in gaps)
     return {
         "applicable": True,
+        "setting": setting,
         "severity": severity,
         "hospitalization": hosp,
-        "expected_atb": expected,
+        "prefer_inpatient": prefer,
+        "expected_regimen": expected,
+        "icu": icu,
+        "discharge": discharge_criteria(pid) if setting == "inpatient" else None,
         "compliant": compliant,
         "gaps": gaps,
         "protocol": PROTOCOL_REF,
@@ -322,3 +443,231 @@ def _has_observation_after(pid, codes, after_iso):
         if o and o["date"] > after_iso:
             return True
     return False
+
+
+def _evaluate_abt(pid, setting, severity, expected, gaps):
+    """Проверка антибактериальной терапии: наличие, соответствие, маршрут, длительность."""
+    abt = _earliest_active_antibiotic(pid)
+    sev_label = "Тяжёлая ВП" if severity == "severe" else "ВП в стационаре"
+
+    if setting == "outpatient":
+        exp_name = expected["name"]
+        exp_grp = expected["atc_group"]
+        exp_dose = expected.get("dose", "")
+        if not abt:
+            gaps.append({
+                "severity": "warning", "code": "no_abt",
+                "message": "Внебольничная пневмония диагностирована, АБТ не назначена.",
+                "recommendation": f"Назначить АБТ первой линии: {exp_name} — {exp_dose} ({expected['ref']}).",
+            })
+            return
+        grp, _ = atc_group(abt["code"])
+        if grp != exp_grp:
+            gaps.append({
+                "severity": "warning", "code": "not_first_line_abt",
+                "message": (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
+                            f"по протоколу первая линия — {exp_name} (группа {exp_grp})."),
+                "recommendation": f"{expected['rationale']} ({expected['ref']}).",
+            })
+        # Маршрут: в амбулаторных условиях — перорально (КП №768)
+        if abt["code"] in PARENTERAL_ONLY or (abt.get("route") or "") in ("iv", "im"):
+            gaps.append({
+                "severity": "warning", "code": "parenteral_in_outpatient",
+                "message": (f"{atc_drug_display(abt['code'])} — парентеральный препарат, "
+                            "в амбулаторных условиях АБП назначаются перорально."),
+                "recommendation": "Перейти на пероральную форму или госпитализировать (КП №768).",
+            })
+        _check_dose(abt, expected, gaps)
+        _check_course(abt, gaps)
+    else:
+        # Стационар
+        primary = expected["primary"]
+        if not abt:
+            gaps.append({
+                "severity": "warning", "code": "no_abt",
+                "message": f"{sev_label}, АБТ не назначена.",
+                "recommendation": f"Старт АБТ в/в: {primary['name']} — {primary.get('dose','')} ({expected['ref']}).",
+            })
+            return
+        grp, _ = atc_group(abt["code"])
+        exp_grp, _ = atc_group(primary["atc_code"])
+        if grp != exp_grp and not _has_med_class(pid, exp_grp or ""):
+            gaps.append({
+                "severity": "warning", "code": "not_inpatient_first_line",
+                "message": (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
+                            f"по протоколу стационар — {primary['name']} (группа {exp_grp})."),
+                "recommendation": f"{primary['reason']} ({expected['ref']}).",
+            })
+        # Маршрут: в стационаре старт в/в (КП №768)
+        if (abt.get("route") or "") not in ("iv", "im") and abt["code"] in PARENTERAL_ONLY:
+            gaps.append({
+                "severity": "warning", "code": "oral_in_inpatient",
+                "message": (f"{atc_drug_display(abt['code'])} назначен не в/в — "
+                            "в стационаре старт АБТ внутривенно (КП №768)."),
+                "recommendation": "Назначить препарат внутривенно (КП №768).",
+            })
+        # Аддоны (MRSA, грипп, атипичная)
+        for addon in expected.get("addons", []):
+            ag, _ = atc_group(addon["atc_code"])
+            if ag and not _has_med_class(pid, ag):
+                gaps.append({
+                    "severity": "info", "code": "missing_addon",
+                    "message": f"Не назначен {addon['name']}.",
+                    "recommendation": f"{addon['reason']}",
+                })
+        # Ступенчатая терапия: после клинического ответа — переход в/в → per os
+        days = (date.today() - _parse_date(abt["date"])).days
+        if days >= 3 and not re.has_fever(pid) and not _step_down_done(pid):
+            gaps.append({
+                "severity": "info", "code": "no_stepdown",
+                "message": "Клинический ответ есть, но переход в/в → per os не выполнен.",
+                "recommendation": "Ступенчатая терапия: перейти на пероральный приём (КП №768).",
+            })
+        _check_dose(abt, expected, gaps)
+        _check_course(abt, gaps)
+
+
+def _check_dose(abt, expected, gaps):
+    """Сверка дозы назначенного препарата с ожидаемой взрослой дозой (КП №768).
+    Проверяет по дневной дозе (period_start..period_end + dose_per_day), если заданы."""
+    exp_dose = adult_dose(abt["code"])
+    if not exp_dose:
+        return
+    route, dose_text, min_mg, max_mg = exp_dose
+    dpd = abt.get("dose_per_day")
+    if dpd is None:
+        return
+    try:
+        v = float(dpd)
+    except (TypeError, ValueError):
+        return
+    if v < min_mg * 0.5:
+        gaps.append({
+            "severity": "warning", "code": "dose_too_low",
+            "message": f"Доза {atc_drug_display(abt['code'])} {v} мг/сут — ниже ожидаемой ({dose_text}).",
+            "recommendation": f"Ожидаемая доза: {dose_text} (КП №768).",
+        })
+    elif v > max_mg * 1.5:
+        gaps.append({
+            "severity": "warning", "code": "dose_too_high",
+            "message": f"Доза {atc_drug_display(abt['code'])} {v} мг/сут — выше ожидаемой ({dose_text}).",
+            "recommendation": f"Ожидаемая доза: {dose_text} (КП №768).",
+        })
+
+
+def _check_course(abt, gaps):
+    """Длительность курса 7–14 дней (КП №768, взрослые)."""
+    if abt.get("period_start") and abt.get("period_end"):
+        dur = (_parse_date(abt["period_end"]) - _parse_date(abt["period_start"])).days
+        if dur < 5:
+            gaps.append({
+                "severity": "warning", "code": "course_too_short",
+                "message": f"Курс АБТ {dur} дн. — короче протокольных 7–14 дней.",
+                "recommendation": "Продолжить курс до 7–14 дней (КП №768).",
+            })
+        elif dur > 14:
+            gaps.append({
+                "severity": "info", "code": "course_too_long",
+                "message": f"Курс АБТ {dur} дн. — длиннее 14 дней.",
+                "recommendation": "Обосновать продление (осложнённая/тяжёлая ВП).",
+            })
+    else:
+        gaps.append({
+            "severity": "info", "code": "course_not_set",
+            "message": "Не задана дата окончания курса АБТ.",
+            "recommendation": "Указать period_end: курс 7–14 дней (КП №768).",
+        })
+
+
+def _evaluate_symptomatic(pid, gaps):
+    """Симптоматическая терапия по показаниям (КП №768)."""
+    # Муколитики без показаний — не назначать избыточно (info)
+    if _has_med_class(pid, "R05CB") and not re.has_bronchial_obstruction(pid):
+        gaps.append({
+            "severity": "info", "code": "mucolytic_optional",
+            "message": "Муколитик назначен без бронхообструкции/показаний.",
+            "recommendation": "Муколитики по показаниям — при продуктивном кашле (КП №768).",
+        })
+    # Бронхолитик без бронхообструкции — warning
+    if _has_med_class(pid, "R03AC") or _has_med_class(pid, "R03AK"):
+        if not re.has_bronchial_obstruction(pid):
+            gaps.append({
+                "severity": "warning", "code": "bronchodilator_not_indicated",
+                "message": "Бронхолитик назначен без признаков бронхообструкции.",
+                "recommendation": "Бронхолитики — при бронхообструкции (КП №768).",
+            })
+    # Глюкокортикоиды системные без показаний — warning
+    if _has_med_class(pid, "H02AB"):
+        if not (re.has_bronchial_obstruction(pid) or re.has_complication(pid) or re.has_emergency_sign(pid)):
+            gaps.append({
+                "severity": "warning", "code": "steroid_not_indicated",
+                "message": "Системный глюкокортикоид назначен без показаний.",
+                "recommendation": "ГКС — при тяжёлой ВП с бронхообструкцией/сепсисом (КП №768).",
+            })
+    # Осельтамивир без подозрения на грипп — info
+    if _has_med_class(pid, "J05AH") and not re.has_influenza_suspicion(pid):
+        gaps.append({
+            "severity": "info", "code": "oseltamivir_not_indicated",
+            "message": "Осельтамивир назначен без подозрения на грипп.",
+            "recommendation": "Осельтамивир — при подозрении на грипп (КП №768).",
+        })
+
+
+def _evaluate_followup(pid, setting, gaps):
+    """Динамическая оценка эффективности АБТ, выписка, повторная R-графия."""
+    abt = _earliest_active_antibiotic(pid)
+    if not abt:
+        return
+    days = (date.today() - _parse_date(abt["date"])).days
+
+    # Оценка эффективности через 48-72 ч (амбулаторно) / 24-48 ч (стационар) (КП №768)
+    if days >= 3:
+        reassess = _has_observation_after(pid, [TEMP_CODE, SPO2_CODE], abt["date"])
+        if not reassess:
+            gaps.append({
+                "severity": "warning", "code": "no_reassessment",
+                "message": f"Прошло {days} дн. от начала АБТ, нет контрольной записи (t/SpO2).",
+                "recommendation": "Оценить эффективность АБТ через 48–72 ч (КП №768).",
+            })
+        else:
+            if re.has_fever(pid):
+                gaps.append({
+                    "severity": "warning", "code": "abt_no_effect",
+                    "message": "На фоне АБТ сохраняется лихорадка — нет эффекта.",
+                    "recommendation": "Госпитализация или смена АБП (КП №768).",
+                })
+            # СРБ должен снижаться
+            dec = re.crp_decreased(pid)
+            if dec is False:
+                gaps.append({
+                    "severity": "warning", "code": "crp_not_decreasing",
+                    "message": "СРБ не снижается на фоне АБТ — нет эффекта.",
+                    "recommendation": "Снижение СРБ — критерий эффективности (КП №768).",
+                })
+
+    # Повторная R-графия ОГК через 4-6 нед (КП №768)
+    if not (_has_service_request(pid, "CXR_REPEAT") or
+            any(r["code"] == "CXR_REPEAT" for r in fs.get_diagnostic_reports(pid))):
+        gaps.append({
+            "severity": "info", "code": "no_repeat_cxr",
+            "message": "Не запланирована повторная R-графия ОГК через 4–6 нед.",
+            "recommendation": "Контрольная R-графия ОГК через 4–6 нед (КП №768).",
+        })
+
+    # Критерии выписки — только в стационаре
+    if setting == "inpatient":
+        dc = discharge_criteria(pid)
+        if not dc["met"]:
+            gaps.append({
+                "severity": "info", "code": "discharge_not_ready",
+                "message": "Критерии выписки не выполнены: " + "; ".join(dc["missing"]),
+                "recommendation": "Выписка при нормотермии, нормальном ЧД, SpO2 ≥ 95% (КП №768).",
+            })
+
+    # Вакцинопрофилактика
+    if re.has_clinical_flag(pid, "no_pneumo_vaccine"):
+        gaps.append({
+            "severity": "info", "code": "vaccination",
+            "message": "Пневмококковая вакцинация не завершена.",
+            "recommendation": "Вакцинопрофилактика пневмококковой инфекции (КП №768).",
+        })

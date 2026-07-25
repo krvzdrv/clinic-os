@@ -1,0 +1,89 @@
+# SSOT выбора АБТ при внебольничной пневмонии (взрослые).
+# Протокол: КП МЗ РБ №768 от 05.07.2012.
+#
+# Движок (protocol_rules.py) берёт первое совпавшее правило по возрастанию priority.
+# Каталог препаратов (drug_catalog) — только справочник: название, доза, маршрут.
+# Роль препарата в протоколе задаётся ЗДЕСЬ, не полем protocol_role в каталоге.
+#
+# when:
+#   allergy: none | ige | non-ige | any   (по умолчанию any)
+#   risk_factors: true | false | any      (по умолчанию any)
+#   severity: mild | severe | any
+#   aspiration / mrsa / influenza / atypical / complication / severe_background:
+#     true | false | any
+
+protocol: "КП МЗ РБ №768 от 05.07.2012 (Внебольничная пневмония, взрослое население)"
+version: 1
+
+outpatient:
+  - priority: 10
+    when: { allergy: ige }
+    atc_code: J01FA10
+    rationale: "IgE-опосредованная аллергия на β-лактамы → макролид."
+
+  - priority: 20
+    when: { allergy: non-ige }
+    atc_code: J01DC02
+    rationale: "Не-IgE гиперчувствительность к β-лактамам → цефуроксим (осторожно)."
+
+  - priority: 30
+    when: { risk_factors: true }
+    atc_code: J01CR02
+    rationale: "Факторы риска резистентности → амоксициллин/клавулановая кислота."
+
+  - priority: 40
+    when: {}
+    atc_code: J01CA04
+    rationale: "Нетяжёлая ВП без факторов риска → амоксициллин."
+
+# primary — выбор основного препарата (первое совпадение).
+# addons — дополнительные препараты; каждое правило проверяется независимо.
+inpatient:
+  primary:
+    - priority: 10
+      when: { aspiration: true, complication: true }
+      atc_code: J01DH02
+      rationale: "Аспирация + осложнение → карбапенем."
+      addons:
+        - atc_code: J01XD01
+          rationale: "Добавить метронидазол при аспирации."
+
+    - priority: 15
+      when: { aspiration: true, severe_background: true }
+      atc_code: J01DH02
+      rationale: "Аспирация + тяжёлый фон → карбапенем."
+      addons:
+        - atc_code: J01XD01
+          rationale: "Добавить метронидазол при аспирации."
+
+    - priority: 20
+      when: { aspiration: true }
+      atc_code: J01CR02
+      rationale: "Подозрение на аспирацию → амокс/клавуланат в/в."
+
+    - priority: 30
+      when: { severity: severe }
+      atc_code: J01DD04
+      rationale: "Тяжёлая ВП → цефалоспорин III в/в."
+      addons:
+        - atc_code: J01FA10
+          rationale: "Добавить макролид при тяжёлом течении."
+
+    - priority: 40
+      when: {}
+      atc_code: J01DD04
+      rationale: "ВП нетяжёлая в стационаре → цефалоспорин III в/в."
+
+  addons:
+    - when: { mrsa: true }
+      atc_code: J01XX08
+      rationale: "Подозрение на MRSA → добавить линезолид (или ванкомицин)."
+
+    - when: { influenza: true }
+      atc_code: J05AH02
+      rationale: "Подозрение на грипп → осельтамивир."
+
+    - when: { atypical: true }
+      atc_code: J01FA10
+      rationale: "Атипичная этиология → макролид."
+      skip_if_group: J01FA   # не дублировать, если макролид уже в схеме

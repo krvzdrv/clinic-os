@@ -2,9 +2,9 @@
 Слой 5 — CDS Hooks (точка оказания помощи).
 
 Хуки:
-  patient-view — врач открыл карту. Карточки: АД не контролируется,
-                 передержка, ко-морбидность с СД, и сводка соответствия
-                 протоколу (из protocol_engine — Слой 3b).
+  patient-view — врач открыл карту. Карточки: показания к госпитализации/ОРИТ,
+                 отсутствие обязательных исследований, и сводка соответствия
+                 протоколу ВП (из protocol_cap — Слой 3b).
   order-sign   — врач назначает препарат. Проверка через drug_service
                  (Слой 2): hard-stop при противопоказании, suggestion при
                  взаимодействии/дублировании.
@@ -15,67 +15,72 @@ CDS использует правила (Слой 3), проверку лека�
 import fhir_store as fs
 import rules_engine as re
 import drug_service
-import protocol_engine
+import protocol_cap as pcap
 
 
 def cds_patient_view(pid):
     cards = []
 
-    # --- АД не контролируется (suggestion) ---
-    if re.uncontrolled_bp(pid):
-        bp = fs.get_last_bp(pid)
-        cards.append({
-            "uuid": f"card-bp-{pid}",
-            "summary": f"АД не контролируется ({bp['systolic']:.0f}/{bp['diastolic']:.0f} мм рт. ст.)",
-            "detail": "По протоколу АГ: при АД ≥ 140/90 на фоне монотерапии — рассмотрите "
-                      "добавление 2-го препарата (амлодипин 5 мг или тиазид).",
-            "indicator": "warning",
-            "source": {"label": "Протокол АГ, ред. 2024"},
-            "type": "suggestion",
-            "suggestions": [{"label": "Добавить амлодипин 5 мг",
-                             "actions": [{"type": "create", "resource": "MedicationRequest"}]}],
-        })
-
-    # --- Передержка наблюдения (info) ---
-    if re.bp_overdue(pid, days=90):
-        bp = fs.get_last_bp(pid)
-        summary = (f"Последнее измерение АД — {_days_ago(bp)} дней назад"
-                   if bp else "Нет ни одного измерения АД")
-        cards.append({
-            "uuid": f"card-bp-overdue-{pid}",
-            "summary": summary,
-            "detail": "Пациент выпал из наблюдения. Контроль АД не реже 1 раза в 3 месяца.",
-            "indicator": "info",
-            "source": {"label": "Протокол АГ, ред. 2024"},
-            "type": "info",
-        })
-
-    # --- Ко-морбидность с диабетом (info) ---
-    if re.has_diabetes(pid):
-        cards.append({
-            "uuid": f"card-diabetes-{pid}",
-            "summary": "Сопутствующий сахарный диабет — целевое АД < 130/80",
-            "detail": "Препараты первого выбора: ингибитор АПФ или сартан (нефропротекция). "
-                      "Контроль HbA1c 1 раз в 3 мес.",
-            "indicator": "info",
-            "source": {"label": "Протокол АГ+СД, ред. 2024"},
-            "type": "info",
-        })
-
-    # --- Сводка соответствия протоколу (из независимого слоя регламента) ---
-    assessment = protocol_engine.evaluate_htn(pid)
-    if assessment.get("applicable") and assessment["gaps"]:
+    # --- Сводка соответствия протоколу ВП (независимая проверка) ---
+    assessment = pcap.evaluate_cap(pid)
+    if assessment.get("applicable"):
         warnings = [g for g in assessment["gaps"] if g["severity"] == "warning"]
         if warnings:
             detail = "\n".join(f"• {g['message']} → {g['recommendation']}" for g in warnings)
             cards.append({
-                "uuid": f"card-protocol-{pid}",
-                "summary": f"Отклонения от протокола: {len(warnings)}",
+                "uuid": f"card-cap-{pid}",
+                "summary": f"Отклонения от протокола ВП: {len(warnings)}",
                 "detail": detail,
                 "indicator": "warning",
-                "source": {"label": "Регламент АГ (независимая проверка)"},
+                "source": {"label": "Регламент ВП (КП №768, независимая проверка)"},
                 "type": "info",
             })
+
+        # --- Показания к госпитализации ---
+        if assessment.get("hospitalization"):
+            cards.append({
+                "uuid": f"card-cap-hosp-{pid}",
+                "summary": "Показания к госпитализации: " + "; ".join(assessment["hospitalization"]),
+                "detail": "Госпитализация (КП №768).",
+                "indicator": "warning",
+                "source": {"label": "Регламент ВП (КП №768)"},
+                "type": "suggestion",
+            })
+
+        # --- Показания к ОРИТ ---
+        if assessment.get("icu"):
+            cards.append({
+                "uuid": f"card-cap-icu-{pid}",
+                "summary": "Показания к переводу в ОРИТ: " + "; ".join(assessment["icu"]),
+                "detail": "Перевод в отделение реанимации (КП №768).",
+                "indicator": "critical",
+                "source": {"label": "Регламент ВП (КП №768)"},
+                "type": "suggestion",
+            })
+
+        # --- Нет АБТ при диагностированной ВП ---
+        if not _has_active_antibiotic(pid):
+            exp = assessment.get("expected_regimen", {})
+            name = exp.get("name") or (exp.get("primary", {}) or {}).get("name")
+            cards.append({
+                "uuid": f"card-cap-noabt-{pid}",
+                "summary": "ВП диагностирована, АБТ не назначена",
+                "detail": f"Назначить АБТ первой линии: {name}" if name else "Назначить АБТ.",
+                "indicator": "warning",
+                "source": {"label": "Регламент ВП (КП №768)"},
+                "type": "suggestion",
+            })
+
+    # --- Ко-морбидность с диабетом (info) — влияет на тяжесть фона ---
+    if re.has_diabetes(pid):
+        cards.append({
+            "uuid": f"card-diabetes-{pid}",
+            "summary": "Сопутствующий сахарный диабет — фактор тяжёлого течения",
+            "detail": "Учитывается при решении о госпитализации и выборе режима АБТ.",
+            "indicator": "info",
+            "source": {"label": "Регламент ВП (КП №768)"},
+            "type": "info",
+        })
 
     return cards
 
@@ -115,9 +120,5 @@ def cds_order_sign(pid, medication_code):
     return cards
 
 
-def _days_ago(bp):
-    from datetime import datetime, date
-    if not bp:
-        return 0
-    bp_date = datetime.strptime(bp["date"], "%Y-%m-%d").date()
-    return (date.today() - bp_date).days
+def _has_active_antibiotic(pid):
+    return any(m["code"].startswith("J01") for m in fs.get_medications(pid))

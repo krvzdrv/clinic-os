@@ -5,77 +5,22 @@
 коррекция → снова». Это CarePlan + Goal из FHIR, плюс state machine пациента.
 
 Использует репозиторий (fhir_store), правила (rules_engine) и регламент
-(protocol_engine) — но сам логики лечения не выдумает, только оркестрирует
+(protocol_cap) — но сам логики лечения не выдумает, только оркестрирует
 переходы состояния и сравнение результата с целью.
+
+Все функции относятся к протоколу внебольничной пневмонии (КП МЗ РБ №768, взрослые).
 """
 import fhir_store as fs
 import rules_engine as re
-import protocol_engine
-from terminology import BP_SYS, TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE
-
-
-def create_plan(pid, condition_id=None):
-    """Создаёт план лечения и цель по АД (с учётом ко-морбидностей)."""
-    if not condition_id:
-        cond = fs.get_condition(pid)
-        condition_id = cond["id"] if cond else None
-    cp_id = fs.add_care_plan(pid, condition_id=condition_id)
-    t_sys, t_dia = protocol_engine.target_bp(pid)
-    fs.add_goal(pid, cp_id,
-                description=f"Контроль АД: ≤ {t_sys}/{t_dia} мм рт. ст.",
-                target_metric=BP_SYS, target_value=t_sys, target_unit="mmHg")
-    fs.set_pathway(pid, "treatment", "Терапия")
-    return cp_id
-
-
-def evaluate_goal(pid):
-    """
-    Сравнивает последнее АД с целью. Обновляет статус цели и путь пациента.
-    Возвращает {status, bp, target, goal_id}.
-    """
-    goals = fs.get_goals(pid)  # все цели; берём последнюю (любого статуса)
-    bp = fs.get_last_bp(pid)
-    if not goals or not bp or bp["systolic"] is None:
-        return {"status": "in-progress", "bp": bp, "target": None}
-
-    goal = goals[0]
-    t_sys = goal["target_value"]
-    t_dia = protocol_engine.target_bp(pid)[1]
-    achieved = bp["systolic"] <= t_sys and (bp["diastolic"] is None or bp["diastolic"] <= t_dia)
-
-    if achieved:
-        fs.set_goal_status(goal["id"], "achieved")
-        fs.set_pathway(pid, "controlled", "Контролируется")
-        return {"status": "achieved", "bp": bp, "target": t_sys, "goal_id": goal["id"]}
-    else:
-        # Не достиг — путь уходит в коррекцию (цикл начнётся заново при следующем назначении)
-        fs.set_goal_status(goal["id"], "not-achieved")
-        fs.set_pathway(pid, "adjustment", "Коррекция терапии")
-        return {"status": "not-achieved", "bp": bp, "target": t_sys, "goal_id": goal["id"]}
-
-
-def schedule_followup(pid, days=14, practitioner_id=None, reason="Контроль АД"):
-    """Создаёт плановый контрольный визит через N дней."""
-    from datetime import date, timedelta
-    when = (date.today() + timedelta(days=days)).isoformat()
-    return fs.add_encounter(pid, practitioner_id=practitioner_id,
-                             status="planned", cls="followup", start=when, complaint=reason)
+from terminology import TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE
 
 
 def get_followups(pid):
     return [e for e in fs.get_encounters(pid) if e["status"] == "planned"]
 
 
-def start_adjustment(pid):
-    """Отмечает, что начат цикл коррекции терапии (цель сбрасывается, ставится новая)."""
-    # Закрываем старые in-progress цели
-    for g in fs.get_goals(pid, status="in-progress"):
-        fs.set_goal_status(g["id"], "not-achieved")
-    fs.set_pathway(pid, "adjustment", "Коррекция терапии")
-
-
 # ====================================================================
-#  Цикл лечения внебольничной пневмонии (КП МЗ РБ №204)
+#  Цикл лечения внебольничной пневмонии (КП МЗ РБ №768, взрослые)
 # ====================================================================
 
 # Цель выздоровления: афебрильность (t° <38) + SpO2 ≥95% + нет тахипноэ.
@@ -98,10 +43,10 @@ def create_cap_plan(pid, condition_id=None):
 
 def evaluate_cap_goal(pid):
     """
-    Сравнивает текущее состояние с целью выздоровления (п.49 КП №204):
+    Сравнивает текущее состояние с целью выздоровления (КП №768):
       - температура < 38 °C;
       - SpO2 ≥ 95% при дыхании комнатным воздухом;
-      - нет тахипноэ (ЧД в пределах возрастной нормы).
+      - нет тахипноэ (ЧД в пределах нормы).
     Обновляет статус цели и путь пациента. Возвращает {status, ...}.
     """
     goals = fs.get_goals(pid)
@@ -148,9 +93,59 @@ def _cap_not_achieved_reason(afebrile, oxygenated, not_tachypneic):
 
 
 def schedule_cap_followup(pid, days=3, practitioner_id=None):
-    """Контрольный визит для оценки эффективности АБТ через 48–72 ч (п.15)."""
+    """Контрольный визит для оценки эффективности АБТ через 48-72 ч (п.15)."""
     from datetime import date, timedelta
     when = (date.today() + timedelta(days=days)).isoformat()
     return fs.add_encounter(pid, practitioner_id=practitioner_id,
                             status="planned", cls="followup", start=when,
-                            complaint="Контроль эффективности АБТ через 48–72 ч (КП №204)")
+                            complaint="Контроль эффективности АБТ через 48-72 ч (КП N204)")
+
+
+def admit_inpatient(pid, practitioner_id=None):
+    """Открывает стационарный приём (п.26) и ставит путь пациента в 'inpatient'."""
+    eid = fs.add_encounter(pid, practitioner_id=practitioner_id,
+                           status="in-progress", cls="inpatient",
+                           start=None, complaint="Госпитализация по ВП (КП N204, п.26)")
+    fs.set_pathway(pid, "inpatient", "Стационарное лечение ВП")
+    return eid
+
+
+def discharge_inpatient(pid, practitioner_id=None):
+    """
+    Выписка из стационара (п.49): закрывает активный стационарный приём,
+    переводит цель в achieved (если критерии выполнены), планирует повторную
+    R-графию ОГК через 4-6 нед. Возвращает {discharged, reason}.
+    """
+    import protocol_cap as pcap
+    dc = pcap.discharge_criteria(pid)
+    if not dc["met"]:
+        return {"discharged": False, "reason": "Критерии выписки не выполнены: " + "; ".join(dc["missing"])}
+
+    # Закрываем стационарные приёмы
+    for e in fs.get_encounters(pid):
+        if e.get("class") == "inpatient" and e.get("status") == "in-progress":
+            fs.finish_encounter(e["id"])
+
+    # Цель выздоровления - achieved
+    for g in fs.get_goals(pid):
+        if g.get("target_metric") == "cap_recovery" and g.get("status") != "achieved":
+            fs.set_goal_status(g["id"], "achieved")
+
+    # Повторная R-графия через 4-6 нед (п.12.3, п.49)
+    schedule_repeat_cxr(pid, practitioner_id=practitioner_id)
+
+    fs.set_pathway(pid, "controlled", "Выписка / амбулаторный контроль")
+    return {"discharged": True, "reason": "Выписан. Запланирована контрольная R-графия через 4-6 нед."}
+
+
+def schedule_repeat_cxr(pid, days=35, practitioner_id=None):
+    """Плановый контрольный визит с повторной R-графией ОГК через 4-6 нед (п.12.3)."""
+    from datetime import date, timedelta
+    when = (date.today() + timedelta(days=days)).isoformat()
+    eid = fs.add_encounter(pid, practitioner_id=practitioner_id,
+                           status="planned", cls="followup", start=when,
+                           complaint="Контрольная R-графия ОГК через 4-6 нед (КП N204, п.12.3)")
+    fs.add_service_request(pid, code="CXR_REPEAT",
+                           display="Повторная рентгенография ОГК (через 4-6 нед)",
+                           practitioner_id=practitioner_id, occurrence_date=when)
+    return eid

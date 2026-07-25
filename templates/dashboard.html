@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Контроль АГ — Дашборд</title>
+<title>Внебольничная пневмония — Дашборд</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -19,7 +19,6 @@
   .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--coral-deep);font-weight:600;margin-bottom:6px;}
   .lead{font-family:"Spectral",serif;font-style:italic;font-size:16px;color:var(--soft);margin:8px 0 24px;padding-left:14px;border-left:3px solid var(--coral);}
 
-  /* Метрика */
   .metric-bar{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:28px;}
   .metric-cell{flex:1;padding:18px 20px;border-right:1px solid var(--line);}
   .metric-cell:last-child{border-right:none;}
@@ -29,11 +28,9 @@
   .metric-cell .v.red{color:var(--coral-deep);}
   .metric-cell .sub{font-size:12px;color:var(--faint);margin-top:2px;}
 
-  /* Прогресс-бар */
   .progress{height:8px;background:var(--red-bg);border-radius:4px;overflow:hidden;margin:8px 0 28px;}
   .progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width .6s ease;}
 
-  /* Таблица */
   h2{font-family:"Spectral",serif;font-size:18px;font-weight:600;margin:24px 0 12px;}
   table{width:100%;border-collapse:collapse;}
   th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 12px;border-bottom:2px solid var(--line);}
@@ -45,8 +42,6 @@
   .badge.green{background:var(--green-bg);color:var(--green);}
   .badge.red{background:var(--red-bg);color:var(--coral-deep);}
   .badge.grey{background:var(--tint);color:var(--faint);}
-  .bp-val{font-family:"Spectral",serif;font-size:15px;font-weight:500;}
-  .bp-val.high{color:var(--coral-deep);}
   .arch-note{margin-top:32px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
   .arch-note b{color:var(--ink);}
   .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
@@ -56,40 +51,43 @@
   .action-link{font-size:13px;color:var(--coral-deep);font-weight:600;text-decoration:none;}
   .action-link:hover{text-decoration:underline;}
   .empty-state{padding:24px;background:var(--tint);border-radius:10px;color:var(--soft);font-size:14px;line-height:1.6;}
+  .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px;}
+  .filters input[type="search"], .filters select{
+    font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);
+    border-radius:8px;background:#fff;color:var(--ink);}
+  .filters input[type="search"]{min-width:200px;}
+  .filters .lbl{font-size:11px;color:var(--faint);font-weight:600;}
+  .filters .cnt{margin-left:auto;font-size:12px;color:var(--faint);}
+  @media(max-width:768px){ .metric-bar{flex-direction:column;} .metric-cell{border-right:none;border-bottom:1px solid var(--line);} }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="kicker">Демо · Контроль артериальной гипертензии</div>
+  <div class="kicker">Демо · Внебольничная пневмония (взрослые) · КП МЗ РБ №768</div>
   <h1>Дашборд качества</h1>
-  <p class="lead">Пациенты с артериальной гипертензией. Метрика и подсказки считаются одним движком правил — single source of truth.</p>
+  <p class="lead">Пациенты с внебольничной пневмонией.</p>
 
   <!-- Метрика -->
   <div class="metric-bar">
     <div class="metric-cell">
       <div class="k">Всего пациентов</div>
       <div class="v">{{ measure.total }}</div>
-      <div class="sub">с активной АГ</div>
+      <div class="sub">с активной ВП</div>
     </div>
     <div class="metric-cell">
-      <div class="k">Контролируется</div>
-      <div class="v green">{{ measure.controlled }}</div>
-      <div class="sub">АД &lt; 140/90</div>
+      <div class="k">Соответствует</div>
+      <div class="v green">{{ measure.compliant }}</div>
+      <div class="sub">нет warning-отклонений</div>
     </div>
     <div class="metric-cell">
-      <div class="k">Не контролируется</div>
-      <div class="v red">{{ measure.uncontrolled }}</div>
-      <div class="sub">АД ≥ 140/90</div>
+      <div class="k">Есть отклонения</div>
+      <div class="v red">{{ measure.with_warnings }}</div>
+      <div class="sub">warning-уровень</div>
     </div>
     <div class="metric-cell">
-      <div class="k">Доля контроля</div>
+      <div class="k">Доля соответствия</div>
       <div class="v">{{ measure.rate }}%</div>
       <div class="sub">целевая ≥ 70%</div>
-    </div>
-    <div class="metric-cell">
-      <div class="k">Передержка</div>
-      <div class="v red">{{ measure.overdue }}</div>
-      <div class="sub">нет АД &gt; 90 дней</div>
     </div>
   </div>
 
@@ -101,17 +99,44 @@
   <div style="display:flex;gap:10px;align-items:center;margin:0 0 16px;">
     <a href="{{ url_for('new_patient') }}" class="action-btn">+ Добавить пациента</a>
     <a href="{{ url_for('export_csv') }}" class="action-link">↓ Экспорт в CSV</a>
-    {% if patients|length == 0 %}
+    {% if demo_mode and patients|length == 0 %}
     <form method="POST" action="{{ url_for('seed_route') }}" style="margin:0;">
       <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font-family:inherit;">
-        ⟳ Заполнить демо-данными (10 пациентов)
+        ⟳ Заполнить демо-данными (4 пациента с ВП)
       </button>
     </form>
     {% endif %}
   </div>
 
+  <!-- Поиск и фильтры -->
+  {% if patients|length > 0 or q or f_sev or f_set or f_com %}
+  <form method="GET" action="{{ url_for('dashboard') }}" class="filters">
+    <input type="search" name="q" value="{{ q }}" placeholder="Поиск по фамилии или ID…">
+    <select name="severity">
+      <option value="">Тяжесть: любая</option>
+      <option value="severe" {% if f_sev=='severe' %}selected{% endif %}>тяжёлая</option>
+      <option value="mild" {% if f_sev=='mild' %}selected{% endif %}>нетяжёлая</option>
+    </select>
+    <select name="setting">
+      <option value="">Условия: любые</option>
+      <option value="inpatient" {% if f_set=='inpatient' %}selected{% endif %}>стационар</option>
+      <option value="ambulatory" {% if f_set=='ambulatory' %}selected{% endif %}>амбулаторно</option>
+    </select>
+    <select name="compliant">
+      <option value="">Протокол: все</option>
+      <option value="no" {% if f_com=='no' %}selected{% endif %}>есть отклонения</option>
+      <option value="yes" {% if f_com=='yes' %}selected{% endif %}>соответствует</option>
+    </select>
+    <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;">Применить</button>
+    {% if q or f_sev or f_set or f_com %}
+      <a href="{{ url_for('dashboard') }}" class="action-link" style="font-weight:500;">сбросить</a>
+    {% endif %}
+    <span class="cnt">Показано: {{ patients|length }} из {{ total }}</span>
+  </form>
+  {% endif %}
+
   <!-- Таблица пациентов -->
-  <h2>Пациенты</h2>
+  <h2>Пациенты <span style="font-size:12px;color:var(--faint);font-weight:400;font-family:inherit;">— отсортированы по клиническому приоритету</span></h2>
   {% if patients|length == 0 %}
     <div class="empty-state">
       Список пациентов пуст. Добавьте первого пациента кнопкой выше
@@ -124,10 +149,9 @@
         <th>ФИО</th>
         <th>Возраст</th>
         <th>Пол</th>
-        <th>Последнее АД</th>
-        <th>Дата</th>
-        <th>Статус</th>
-        <th>Флаги</th>
+        <th>Тяжесть</th>
+        <th>Условия</th>
+        <th>Соответствие</th>
         <th>Этап пути</th>
       </tr>
     </thead>
@@ -137,19 +161,20 @@
         <td><a href="{{ url_for('patient_detail', pid=p.id) }}">{{ p.name }}</a></td>
         <td>{{ p.age }}</td>
         <td>{{ "М" if p.gender == "male" else "Ж" }}</td>
-        <td class="bp-val {{ '' if p.controlled else 'high' }}">{{ p.bp }}</td>
-        <td>{{ p.bp_date }}</td>
         <td>
-          {% if p.controlled %}
-            <span class="badge green">Контролируется</span>
-          {% else %}
-            <span class="badge red">Не контролируется</span>
-          {% endif %}
+          {% if p.severity == 'severe' %}<span class="badge red">тяжёлая</span>
+          {% elif p.severity == 'mild' %}<span class="badge grey">нетяжёлая</span>
+          {% else %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
         </td>
         <td>
-          {% if p.overdue %}<span class="badge red" title="Нет измерения АД > 90 дней">⏱ Передержка</span>{% endif %}
-          {% if p.diabetes %}<span class="badge grey" title="Сопутствующий диабет — целевое АД < 130/80">СД</span>{% endif %}
-          {% if not p.overdue and not p.diabetes %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
+          {% if p.setting == 'inpatient' %}<span class="badge red">стационар</span>
+          {% elif p.setting == 'outpatient' %}<span class="badge grey">амбулаторно</span>
+          {% else %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
+        </td>
+        <td>
+          {% if p.compliant is none %}<span style="color:var(--faint);font-size:12px;">—</span>
+          {% elif p.compliant %}<span class="badge green">соответствует</span>
+          {% else %}<span class="badge red">есть отклонения</span>{% endif %}
         </td>
         <td><span class="badge grey">{{ p.state_label }}</span></td>
       </tr>
@@ -158,14 +183,6 @@
   </table>
   {% endif %}
 
-  <div class="arch-note">
-    <b>Как это работает.</b> Данные хранятся в <code>fhir_store.py</code> (Слой 0, имитация FHIR).
-    Правила — в <code>rules_engine.py</code> (Слой 3, имитация CQL): <code>has_hypertension()</code>,
-    <code>last_bp()</code>, <code>uncontrolled_bp()</code> — те же три правила из конспекта.
-    Метрика <code>quality_measure_controlled()</code> использует <code>uncontrolled_bp()</code> —
-    <b>тот же код, что и подсказка</b>. CDS-карточки — в <code>cds_service.py</code> (Слой 5).
-    Кликни на пациента → увидишь CDS-карточки, которые врач получил бы при открытии карты.
-  </div>
 </div>
 </body>
 </html>

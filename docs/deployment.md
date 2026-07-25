@@ -1,113 +1,94 @@
-# Деплой на PythonAnywhere (бесплатно, 15 минут)
+# Деплой на Render (бесплатно, ~10 минут)
 
-## Что получите
+Приложение хостится на Render, данные — в Supabase Postgres.
+По итогу — публичная ссылка `https://clinic-os-xxxx.onrender.com` с HTTPS,
+дашбордом, картами пациентов и CDS-подсказками. 0 ₽.
 
-Рабочий сайт по адресу `https://твоё-имя.pythonanywhere.com` с HTTPS,
-дашбордом качества, картами пациентов и CDS-подсказками. 0 ₽.
+## Что уже подготовлено в репозитории
 
-## Шаг 1. Регистрация
+- `requirements.txt` — зависимости + `gunicorn` (продакшн-WSGI).
+- `Procfile` — команда старта: `gunicorn app:app -b 0.0.0.0:$PORT --workers 2`.
+- `render.yaml` — Blueprint (Render сам создаст сервис по нему).
+- Приложение читает `DATABASE_URL` и `PORT` из окружения.
+- Схема БД создаётся автоматически при старте (`fs.init_db()`).
 
-1. Открой https://www.pythonanywhere.com/registration/register/beginner/
-2. Зарегистрируйся (бесплатный тариф "Beginner").
-3. Придумай username — он станет частью URL: `username.pythonanywhere.com`.
+## Шаг 1. Залить репозиторий на GitHub
 
-## Шаг 2. Загрузка кода
-
-### Вариант А: через Git (рекомендуется)
-
-1. Залей репозиторий на GitHub (приватный — бесплатно).
-2. На PythonAnywhere открой **Dashboard → Files**.
-3. Открой **Consoles → Bash**.
-4. Выполни:
 ```bash
-git clone https://github.com/твой-логин/hypertension-cds-demo.git ~/hypertension-cds-demo
+git add -A
+git commit -m "Supabase backend + Render deploy config"
+git push origin master
 ```
 
-### Вариант Б: через загрузку файлов
+`.env` в `.gitignore` — он НЕ уйдёт на GitHub. Секрет задаётся в панели Render.
 
-1. На PythonAnywhere открой **Dashboard → Files**.
-2. Загрузи все файлы проекта в папку `~/hypertension-cds-demo/`.
+## Шаг 2. Регистрация на Render
 
-## Шаг 3. Установка зависимостей
+1. Открой https://render.com/ → **Get Started**.
+2. Зарегистрируйся через GitHub (так проще подключить репо).
 
-В **Consoles → Bash** выполни:
+## Шаг 3. Создать Web Service
+
+1. **New +** → **Blueprint** (если в корне репо есть `render.yaml`) — Render сам
+   предложит создать сервис из `render.yaml`. Либо **New + → Web Service** вручную.
+2. Выбери репозиторий `clinic-os`.
+3. Если вручную (без Blueprint), укажи:
+   - **Runtime:** Python 3
+   - **Build Command:** `pip install -r requirements.txt`
+   - **Start Command:** `gunicorn app:app -b 0.0.0.0:${PORT:-5000} --workers 2 --access-logfile -`
+   - **Instance Type:** Free
+4. **Create Web Service.**
+
+## Шаг 4. Задать DATABASE_URL (секрет)
+
+1. В созданном сервисе открой **Environment**.
+2. **Add Environment Variable:**
+   - **Key:** `DATABASE_URL`
+   - **Value:** (вставь строку подключения из Supabase — та же, что в локальном `.env`,
+     формат `postgresql://...supabase.co:6543/...`)
+3. **Save Changes.** Render пересоберёт и запустит сервис.
+
+> Строка подключения Supabase: **Project Settings → Database → Connection string → URI**.
+> Используй pooler-адрес (порт 6543), не прямой (5432).
+
+## Шаг 5. Заселить демо-данные (один раз)
+
+На Render Free нет SSH-консоли, поэтому засеваем локально — данные в Supabase
+общие, Render их увидит сразу:
+
 ```bash
-cd ~/hypertension-cds-demo
-pip3 install --user -r requirements.txt
+# локально, с DATABASE_URL из .env
+DATABASE_URL=... PYTHONPATH=. python3 tools/seed_ten.py
+DATABASE_URL=... PYTHONPATH=. python3 tools/warm_cache.py
 ```
 
-## Шаг 4. Создание веб-приложения
+## Шаг 6. Проверка
 
-1. Открой **Dashboard → Web**.
-2. Нажми **Add a new web app**.
-3. Выбери **Manual configuration** (в самом низу).
-4. Выбери **Python 3.10** (или новее, что доступно).
-5. Нажми **Next**.
+Открой ссылку из Render (вверху сервиса, вида `https://clinic-os-xxxx.onrender.com`).
+Должен появиться дашборд с 10 пациентами. Первые запросы могут быть медленнее
+(прогрев), дальше — быстро благодаря кэшу.
 
-## Шаг 5. Настройка WSGI
+## Ограничения бесплатного тарифа Render
 
-1. На странице **Web** найди секцию **Code** → **WSGI configuration file**.
-2. Открой файл (ссылка вида `/var/www/твойлогин_pythonanywhere_com_wsgi.py`).
-3. **Удали всё содержимое** и вставь:
-```python
-import sys
-import os
+- Сервис «засыпает» через 15 мин без обращений. Первый запрос после сна —
+  ~30–50 с (холодный старт). `db.py` автоматически переподключается к Supabase
+  после сна (retry-логика).
+- 750 часов инстансов/мес (хватит на 1 постоянный сервис).
+- 512 МБ RAM (2 воркера gunicorn помещаются).
 
-project_home = '/home/твойлогин/hypertension-cds-demo'
-if project_home not in sys.path:
-    sys.path.insert(0, project_home)
-
-from wsgi import application
-```
-4. Замени `твойлогин` на свой username.
-5. Сохрани (кнопка вверху справа).
-
-## Шаг 6. Настройка путей
-
-На странице **Web** в секции **Code**:
-- **Source code:** `/home/твойлогин/hypertension-cds-demo`
-- **Working directory:** `/home/твойлогин/hypertension-cds-demo`
-
-## Шаг 7. Перезапуск
-
-На странице **Web** нажми зелёную кнопку **Reload**.
-
-## Шаг 8. Проверка
-
-Открой `https://твойлогин.pythonanywhere.com` в браузере.
-Должен появиться дашборд с 10 тестовыми пациентами.
-
-## Бэкап данных
-
-SQLite-файл `clinic.db` лежит в папке проекта. На бесплатном тарифе
-он **постоянный** (не сбрасывается). Но для надёжности — настрой копирование:
-
-В **Consoles → Bash** создай скрипт `~/backup.sh`:
-```bash
-#!/bin/bash
-cp ~/hypertension-cds-demo/clinic.db ~/bp_backup_$(date +%Y%m%d).db
-# Храним последние 7 бэкапов
-ls -t ~/bp_backup_*.db | tail -n +8 | xargs rm -f
-```
-
-Добавь в **Dashboard → Tasks** (бесплатно — 1 задача в день):
-- Команда: `bash ~/backup.sh`
-- Частота: раз в день.
-
-## Ограничения бесплатного тарифа
-
-- 100 CPU-секунд в день (хватит на ~50–100 визитов).
-- 512 МБ диска (хватит на тысячи пациентов).
-- Нельзя ходить во внешние интернеты из кода (нам не нужно).
-- Один веб-приложение.
-
-Если упрёшься в лимиты — платный тариф от $5/мес, но для MVP бесплатного достаточно.
+Если хождения будут частые и холодный старт мешает — платный тариф от $7/мес
+(Startter: не спит). Для демо free достаточно.
 
 ## Если что-то не работает
 
-1. Открой **Dashboard → Web** → **Error log** (ссылка вверху страницы).
-2. Последние ошибки — там.
-3. Частые проблемы:
-   - **ImportError** — не выполнен `pip3 install --user -r requirements.txt`.
-   - **500 Internal Server Error** — ошибка в WSGI-файле, проверь путь к проекту.
-   - **Template not found** — неправильно указан Source code в Web.
+1. В сервисе Render открой **Logs** (вкладка).
+2. Частые проблемы:
+   - **Application failed to bind $PORT** — проверь Start Command (должен биндить `0.0.0.0:$PORT`).
+   - **500 / OperationalError** — не задан `DATABASE_URL` или неверный формат.
+   - **Медленно** — после первого открытия карты пациента оценка кэшируется
+     (`cap_cache`), дашборд становится быстрым. Если совсем пусто — выполни
+     `tools/warm_cache.py` (Шаг 5).
+3. Локально можно отладить тот же запуск:
+   ```bash
+   DATABASE_URL=... PORT=5574 FLASK_DEBUG=0 gunicorn app:app -b 0.0.0.0:5574 --workers 2
+   ```

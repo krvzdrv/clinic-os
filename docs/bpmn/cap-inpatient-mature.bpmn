@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_cap_inpatient" targetNamespace="http://clinic-os/processes/cap_inpatient">
+  <bpmn:process id="cap_inpatient" name="Стационарное лечение ВП (взрослые, КП МЗ РБ №768)" isExecutable="false">
+    <bpmn:laneSet id="LaneSet_in">
+      <bpmn:lane id="Lane_intake_in" name="Intake">
+        <bpmn:flowNodeRef>Task_Admit</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_clinician_in" name="Clinician">
+        <bpmn:flowNodeRef>Task_AdmissionDiagnostics</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SelectRegimen</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PrescribeIvAbt</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PrescribeSymptomaticInpatient</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_StepDown</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_PostDischargeFollowup</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_cds_in" name="CDS">
+        <bpmn:flowNodeRef>Task_AssessSeverityIcu</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Icu</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_ReassessInpatient</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_AbtEffect_in</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_EvaluateDischarge</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Gateway_Discharge</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_system_in" name="System">
+        <bpmn:flowNodeRef>Task_Discharge</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="Start_HospDecision" name="Start: hospitalization_decision"></bpmn:startEvent>
+    <bpmn:task id="Task_Admit" name="Task_Admit — encounter inpatient"></bpmn:task>
+    <bpmn:task id="Task_AdmissionDiagnostics" name="Task_AdmissionDiagnostics — ОАК, СРБ, ПКТ, ОАМ, ЭКГ, посевы, CXR (п.28-29)"></bpmn:task>
+    <bpmn:task id="Task_AssessSeverityIcu" name="Task_AssessSeverityIcu — показания к ОРИТ (п.27)"></bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_Icu" name="Gateway_Icu (п.27)"></bpmn:exclusiveGateway>
+    <bpmn:task id="Task_SelectRegimen" name="Task_SelectRegimen — режим АБТ в/в (п.31,34,36-39)"></bpmn:task>
+    <bpmn:task id="Task_PrescribeIvAbt" name="Task_PrescribeIvAbt — АБТ в/в"></bpmn:task>
+    <bpmn:task id="Task_PrescribeSymptomaticInpatient" name="Task_PrescribeSymptomaticInpatient — О2, бронходилат., ГКС, осельтам. (п.40-42)"></bpmn:task>
+    <bpmn:task id="Task_ReassessInpatient" name="Task_ReassessInpatient — оценка эффективности АБТ"></bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_AbtEffect_in" name="Gateway_AbtEffect — 48-72 ч (п.15, п.30)"></bpmn:exclusiveGateway>
+    <bpmn:task id="Task_StepDown" name="Task_StepDown — в/в → per os (п.43)"></bpmn:task>
+    <bpmn:task id="Task_EvaluateDischarge" name="Task_EvaluateDischarge — критерии (п.49)"></bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_Discharge" name="Gateway_Discharge — met?"></bpmn:exclusiveGateway>
+    <bpmn:task id="Task_Discharge" name="Task_Discharge — finished, achieved, recovered, CXR_REPEAT"></bpmn:task>
+    <bpmn:task id="Task_PostDischargeFollowup" name="Task_PostDischargeFollowup — контроль 4-6 нед"></bpmn:task>
+    <bpmn:endEvent id="End_HandoffOutpatient" name="End → handoff cap_outpatient: оценка исхода"></bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_i1" sourceRef="Start_HospDecision" targetRef="Task_Admit"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i2" sourceRef="Task_Admit" targetRef="Task_AdmissionDiagnostics"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i3" sourceRef="Task_AdmissionDiagnostics" targetRef="Task_AssessSeverityIcu"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i4" sourceRef="Task_AssessSeverityIcu" targetRef="Gateway_Icu"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i5" name="показания" sourceRef="Gateway_Icu" targetRef="Task_SelectRegimen"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i6" name="нет показаний" sourceRef="Gateway_Icu" targetRef="Task_SelectRegimen"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i7" sourceRef="Task_SelectRegimen" targetRef="Task_PrescribeIvAbt"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i8" sourceRef="Task_Admit" targetRef="Task_PrescribeSymptomaticInpatient"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i9" sourceRef="Task_PrescribeIvAbt" targetRef="Task_ReassessInpatient"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i10" sourceRef="Task_ReassessInpatient" targetRef="Gateway_AbtEffect_in"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i11" name="нет эффекта" sourceRef="Gateway_AbtEffect_in" targetRef="Task_SelectRegimen"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i12" name="эффект" sourceRef="Gateway_AbtEffect_in" targetRef="Task_StepDown"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i13" sourceRef="Task_StepDown" targetRef="Task_EvaluateDischarge"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i14" sourceRef="Task_EvaluateDischarge" targetRef="Gateway_Discharge"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i15" name="не met" sourceRef="Gateway_Discharge" targetRef="Task_StepDown"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i16" name="met" sourceRef="Gateway_Discharge" targetRef="Task_Discharge"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i17" sourceRef="Task_Discharge" targetRef="Task_PostDischargeFollowup"></bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_i18" sourceRef="Task_PostDischargeFollowup" targetRef="End_HandoffOutpatient"></bpmn:sequenceFlow>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_in">
+    <bpmndi:BPMNPlane id="BPMNPlane_in" bpmnElement="cap_inpatient">
+      <bpmndi:BPMNShape id="Shape_Lane_intake_in" bpmnElement="Lane_intake_in" isHorizontal="true"><dc:Bounds x="160" y="80" width="1000" height="120"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_clinician_in" bpmnElement="Lane_clinician_in" isHorizontal="true"><dc:Bounds x="160" y="200" width="1000" height="160"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_cds_in" bpmnElement="Lane_cds_in" isHorizontal="true"><dc:Bounds x="160" y="360" width="1000" height="160"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_system_in" bpmnElement="Lane_system_in" isHorizontal="true"><dc:Bounds x="160" y="520" width="1000" height="120"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Start_in" bpmnElement="Start_HospDecision"><dc:Bounds x="180" y="120" width="36" height="36"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Admit" bpmnElement="Task_Admit"><dc:Bounds x="240" y="112" width="100" height="52"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_AdmitDx" bpmnElement="Task_AdmissionDiagnostics"><dc:Bounds x="360" y="232" width="140" height="52"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SevIcu" bpmnElement="Task_AssessSeverityIcu"><dc:Bounds x="520" y="392" width="120" height="52"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_GwIcu" bpmnElement="Gateway_Icu" isMarkerVisible="true"><dc:Bounds x="660" y="400" width="50" height="50"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SelReg" bpmnElement="Task_SelectRegimen"><dc:Bounds x="740" y="232" width="140" height="52"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_IvAbt" bpmnElement="Task_PrescribeIvAbt"><dc:Bounds x="740" y="232" width="0" height="0"/><bpmndi:BPMNLabel/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_i1" bpmnElement="Flow_i1"><di:waypoint x="216" y="138"/><di:waypoint x="240" y="138"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_i2" bpmnElement="Flow_i2"><di:waypoint x="340" y="138"/><di:waypoint x="360" y="258"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_i3" bpmnElement="Flow_i3"><di:waypoint x="500" y="258"/><di:waypoint x="520" y="418"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_i4" bpmnElement="Flow_i4"><di:waypoint x="640" y="418"/><di:waypoint x="660" y="425"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

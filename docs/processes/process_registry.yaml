@@ -1,0 +1,1396 @@
+registry_version: 1
+updated_at: "2026-07-24"
+
+# Cross-process handoffs (SSOT). Артефакт + триггер передачи между процессами.
+process_handoffs:
+  - from: cap_outpatient
+    to: cap_inpatient
+    artifact: hospitalization_decision
+    trigger_ru: "На этапе decide_hospitalization выявлены показания к госпитализации (КП №768) — передача в стационарный процесс (admit)."
+  - from: cap_inpatient
+    to: cap_outpatient
+    artifact: discharge_summary
+    trigger_ru: "Пациент выписан (discharge, критерии КП №768 выполнены) — контрольный визит и оценка исхода возвращаются в амбулаторный процесс (reassess_48_72h / followup_and_outcome)."
+
+# Канон lanes (функции, не должности). Должности (врач-терапевт, медсестра, лаборант…)
+# НЕ пишем в lane — только функцию. Один человек может выполнять несколько функций.
+lane_canon:
+  intake: "Приём/регистрация обращения"
+  clinician: "Врач: осмотр, диагноз, назначение, оценка"
+  nursing: "Измерения, забор материала, выдача препаратов"
+  laboratory: "Лабораторные исследования (ОАК, СРБ, ПКТ, посевы)"
+  radiology: "Лучевая диагностика (R-графия, КТ, УЗИ)"
+  pharmacy: "Выписка и проверка лекарств (drug_service)"
+  cds: "Система CDS/регламент: автоматические подсказки и проверки (protocol_cap)"
+  patient: "Действия/сигналы со стороны пациента"
+  system: "Автоматические переходы пути (pathway) и системные политики"
+
+processes:
+  - id: cap_outpatient
+    name: "Амбулаторное лечение внебольничной пневмонии (взрослые, КП МЗ РБ №768)"
+    scope: "Амбулаторный блок: обращение/анамнез → осмотр/измерения → установка диагноза ВП (МКБ-10) → сверка с протоколом (тяжесть, показания к госпитализации) → обследование по показаниям (ОАК, СРБ, пульсоксиметрия, R-графия) → лечение (АБТ per os + симптоматика) → план/цель → оценка эффективности через 48–72 ч → контрольный визит → исход → повторная R-графия. Стационарный блок — отдельный процесс cap_inpatient."
+    trigger_ru: "Пациент обратился амбулаторно с респираторной жалобой; заподозрена/диагностирована внебольничная пневмония (encounter class='ambulatory')."
+    outcome_ru: "Терминальный статус: goal.status='achieved' (выздоровление, pathway='recovered', condition.clinical_status='resolved') ИЛИ handoff в cap_inpatient (показания к госпитализации)."
+    handoff_to: cap_inpatient
+    canonical_order_ru:
+      - "1. Анамнез (расспрос, постановление МЗ РБ №127 от 21.12.2015 п.8.1): жалобы с детализацией; анамнез настоящего заболевания, анамнез жизни, наследственный, аллергологический, перенесённых заболеваний; факторы риска, социально-бытовые условия. Свободной формой + структурированные факторы риска."
+      - "2. Осмотр (общий, п.8.2–8.3): оценка сознания/телосложения; антропометрия, температура тела, артериальное давление (АД систола/диастола), пульс (ЧСС), частота дыхания (ЧД), SpO2; пальпация/перкуссия/аускультация (локальные знаки). По этим данным — оценка общего состояния и тяжести → режим амбулаторно/стационар."
+      - "3. Диагноз — установка диагноза ВП с МКБ-10 кодом (condition, active). Подтверждается данными анамнеза или объективного осмотра."
+      - "4. Сверка с протоколом — класс тяжести (нетяжёлая/тяжёлая) и показания к госпитализации по установленному диагнозу и данным осмотра (КП №768)."
+      - "5. Обследование (при необходимости) — заказ обязательных исследований (ОАК, СРБ, пульсоксиметрия; R-графия по показаниям) и фиксация результатов."
+      - "6. Лечение — выбор АБТ первой линии per os (КП №768) с проверкой лекарства (drug_service) + симптоматическая терапия."
+      - "7. План/цель — care_plan + цель «клиническое выздоровление»."
+      - "8. Оценка эффективности АБТ через 48–72 ч (КП №768)."
+      - "9. Контрольный визит и исход."
+      - "10. Повторная R-графия (по показаниям) и закрытие эпизода."
+    legal_basis_ru:
+      - "Постановление МЗ РБ №127 от 21.12.2015 «О порядке проведения медицинских осмотров» (Инструкция, п.8) — порядок расспроса, общего осмотра, пальпации/перкуссии/аускультации, клинико-лабораторных и инструментальных исследований."
+      - "КП МЗ РБ №768 от 05.07.2012 — диагностика и лечение внебольничной пневмонии у взрослого населения."
+    reader_intro_ru: |
+      Один эпизод ВП у взрослого в амбулаторных условиях — одна «дорожка» от жалобы до выздоровления или передачи в стационар.
+      Канонический порядок приёма (см. canonical_order_ru): Анамнез → Осмотр → Диагноз → сверка с протоколом (тяжесть/госпитализация) → Обследование (если надо) → Лечение. Формы карты пациента (templates/patient.html) построены строго в этом порядке — шаги приёма нумеруются 1..5 соответственно.
+      Этот раздел описывает шаги так, чтобы человек или агент не смешивали диагноз, измерения и назначения и не угадывали тяжесть: смотрите entry_conditions / exit_conditions и ссылки на таблицы.
+      Картинка для людей: docs/bpmn/cap-outpatient-mature.bpmn. Правила статусов: docs/processes/STATUS_SEMANTICS.md.
+      Решение о госпитализации (шаг decide_hospitalization) — это gateway: при наличии причин (КП №768) — handoff в процесс cap_inpatient (admit), амбулаторный эпизод закрывается.
+      Оценка эффективности АБТ через 48–72 ч (шаг reassess_48_72h): при сохранении лихорадки — смена АБТ или госпитализация (КП №768).
+      Регламент (protocol_cap.evaluate_cap) — независимая проверка всей картины; его вердикт — основа и для CDS-карточек, и для метрики качества.
+    bpmn_files:
+      - docs/bpmn/cap-outpatient-mature.bpmn
+    business_owner: "Терапевтическая служба"
+    data_owner: "Data Engineering"
+    entities:
+      - patient
+      - encounter
+      - condition_
+      - observation
+      - service_request
+      - diagnostic_report
+      - medication_request
+      - allergy_intolerance
+      - clinical_flag
+      - care_plan
+      - goal
+      - pathway
+    links:
+      - docs/processes/PROCESS_REGISTRY.md
+      - docs/processes/STATUS_SEMANTICS.md
+      - docs/processes/BPMN_PRACTICES.md
+      - protocol_cap.py
+      - rules_engine.py
+
+    steps:
+      - id: intake_complaint
+        bpmn_task_id: Task_Intake
+        lane: intake
+        intent_ru: "Приём обращения: регистрация пациента и жалобы. Это ещё не диагноз и не назначение."
+        entry_conditions:
+          - "Создан encounter с class='ambulatory' и status in ('planned','in-progress')"
+          - "Заполнено encounter.complaint"
+        exit_conditions:
+          - "encounter.status='in-progress'"
+        signals:
+          now_state:
+            type: "encounter_status"
+            source: "encounter.status"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Обращение зарегистрировано, но приём не начат."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Начать осмотр в день обращения."
+        inputs:
+          - "Обращение пациента/родителя (сообщение/звонок/очная явка)"
+        outputs:
+          - "encounter создан, жалоба зафиксирована"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - encounter
+            - patient
+          keys:
+            - "encounter.patient_id = patient.id"
+          columns:
+            - encounter.class
+            - encounter.status
+            - encounter.start
+            - encounter.complaint
+          notes_ru:
+            - "Не интерпретировать регистрацию как диагноз (см. STATUS_SEMANTICS)."
+        golden_checks_sql:
+          - name: "open_ambulatory_encounters"
+            sql: |
+              select p.id as patient_id, p.family, e.start, e.complaint
+              from encounter e
+              join patient p on p.id = e.patient_id
+              where e.class = 'ambulatory' and e.status = 'in-progress'
+              order by e.start asc;
+
+      - id: vitals_and_exam
+        bpmn_task_id: Task_VitalsExam
+        lane: nursing
+        intent_ru: "Общий осмотр (постановление МЗ РБ №127 п.8.2–8.3): термометрия, артериальное давление (АД систола/диастола), пульс (ЧСС), частота дыхания (ЧД), SpO2; пальпация/перкуссия/аускультация — локальные знаки (clinical_flag)."
+        entry_conditions:
+          - "encounter.status='in-progress'"
+        exit_conditions:
+          - "Есть observation с code in ('8310-5','59408-5','9279-1','8867-4','8480-6','8462-4') или clinical_flag категории exam"
+        signals:
+          now_state:
+            type: "vitals_coverage"
+            source: "observation.code (TEMP/SPO2/RR/HR)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Приём идёт, но обязательные измерения не записаны."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Записать t, SpO2, ЧД, ЧСС при первом осмотре (КП №768)."
+        inputs:
+          - "Пациент на приёме"
+        outputs:
+          - "observation (TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE)"
+          - "clinical_flag (категория exam: local_signs, bronchial_obstruction, cyanosis, …)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - observation
+            - clinical_flag
+          keys:
+            - "observation.encounter_id = encounter.id"
+          columns:
+            - observation.code
+            - observation.value_numeric
+            - observation.interpretation
+            - clinical_flag.key
+            - clinical_flag.category
+          notes_ru:
+            - "Пульсоксиметрия при каждом осмотре (КП №768). SpO2 < 90 — тяжёлая ВП."
+        golden_checks_sql:
+          - name: "encounters_without_spo2"
+            sql: |
+              select e.patient_id, e.start
+              from encounter e
+              where e.class = 'ambulatory' and e.status = 'in-progress'
+                and not exists (
+                  select 1 from observation o
+                  where o.patient_id = e.patient_id and o.code = '59408-5'
+                );
+
+      - id: set_diagnosis
+        bpmn_task_id: Task_SetDiagnosis
+        lane: clinician
+        intent_ru: "Установка диагноза ВП: condition_ с МКБ-кодом из PNEUMONIA_CODES, clinical_status='active'. Ставится по клинической картине после осмотра, до сверки с протоколом. Диагноз должен подтверждаться жалобами/анамнезом или объективными данными осмотра."
+        entry_conditions:
+          - "Есть анамнез (жалобы/анамнез) ИЛИ объективный осмотр (vitals/exam) — диагноз подтверждается данными"
+        exit_conditions:
+          - "condition_.clinical_status='active' и condition_.code in PNEUMONIA_CODES"
+        signals:
+          now_state:
+            type: "diagnosis"
+            source: "condition_.code"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 2
+            meaning_ru: "ВП подозревается, диагноз не установлен."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Установить диагноз ВП с МКБ-кодом."
+        inputs:
+          - "Осмотр (vitals_and_exam)"
+        outputs:
+          - "condition_ (active, pneumonia ICD)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - condition_
+          keys:
+            - "condition_.encounter_id = encounter.id"
+          columns:
+            - condition_.code
+            - condition_.clinical_status
+            - condition_.verification_status
+            - condition_.onset_date
+          notes_ru:
+            - "rules_engine.has_pneumonia() проверяет именно этот набор кодов."
+            - "Канонический порядок: анамнез → осмотр → диагноз → сверка с протоколом → обследование → лечение."
+        golden_checks_sql:
+          - name: "active_pneumonia_diagnoses"
+            sql: |
+              select p.family, c.code, c.display, c.onset_date
+              from condition_ c
+              join patient p on p.id = c.patient_id
+              where c.clinical_status = 'active'
+                and c.code in ('J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1')
+              order by c.onset_date desc;
+
+      - id: assess_severity
+        bpmn_task_id: Task_AssessSeverity
+        lane: cds
+        intent_ru: "Класс тяжести (нетяжёлая/тяжёлая) по SpO2, ДН, осложнениям, экстренным признакам (КП №768). Вычисляется регламентом по установленному диагнозу и данным осмотра."
+        entry_conditions:
+          - "Есть observation SpO2 или clinical_flag осложнения/экстренный признак"
+        exit_conditions:
+          - "protocol_cap.classify_severity(pid) in ('moderate','severe')"
+        signals:
+          now_state:
+            type: "severity"
+            source: "protocol_cap.classify_severity(pid)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Тяжесть не определена — нет SpO2/осмотра."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Определить тяжесть до назначения АБТ (КП №768)."
+        inputs:
+          - "observation (SpO2, RR, HR, temp)"
+          - "clinical_flag (complication, emergency)"
+        outputs:
+          - "severity: 'moderate' | 'severe'"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - observation
+            - clinical_flag
+          keys: []
+          columns:
+            - observation.code
+            - observation.value_numeric
+            - clinical_flag.key
+          notes_ru:
+            - "Severe: SpO2 < 90, либо осложнение (плеврит/деструкция), либо экстренный признак (шок/сознание/судороги)."
+        golden_checks_sql:
+          - name: "severe_without_cxr"
+            sql: |
+              select o.patient_id, o.value_numeric as spo2
+              from observation o
+              where o.code = '59408-5' and o.value_numeric < 90
+              order by o.date desc;
+
+      - id: decide_hospitalization
+        bpmn_task_id: Gateway_Hospitalization
+        lane: clinician
+        intent_ru: "Gateway: решение о госпитализации (КП №768). При наличии причин — handoff в cap_inpatient; иначе — продолжение амбулаторно."
+        entry_conditions:
+          - "severity определена"
+        exit_conditions:
+          - "Если protocol_cap.hospitalization_reasons(pid) непуст → handoff cap_inpatient (admit)"
+          - "Иначе → шаг order_diagnostics (амбулаторный путь)"
+        signals:
+          now_state:
+            type: "hospitalization_indications"
+            source: "protocol_cap.hospitalization_reasons(pid)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Есть показания к госпитализации, но admit не выполнен."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Госпитализировать в день выявления показаний (КП №768)."
+        inputs:
+          - "severity, vitals, clinical_flag (соц. факторы, экстренные признаки)"
+        outputs:
+          - "Решение: амбулаторно | госпитализация"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - clinical_flag
+            - observation
+            - condition_
+          keys: []
+          columns:
+            - clinical_flag.key
+            - observation.value_numeric
+          notes_ru:
+            - "Причины: возраст <1 года, ДН II+, тахипноэ/тахикардия, тяжёлый фон, соц. факторы, экстренные признаки, нет эффекта АБТ 72ч."
+        golden_checks_sql:
+          - name: "outpatient_with_hosp_indications"
+            sql: |
+              select p.id, p.family
+              from patient p
+              where exists (
+                select 1 from condition_ c
+                where c.patient_id = p.id and c.clinical_status = 'active'
+                  and c.code in ('J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1')
+              );
+
+      - id: order_diagnostics
+        bpmn_task_id: Task_OrderDiagnostics
+        lane: clinician
+        intent_ru: "Заказ обязательных исследований: ОАК, СРБ, пульсоксиметрия; R-графия ОГК по показаниям (КП №768)."
+        entry_conditions:
+          - "decide_hospitalization = амбулаторно"
+        exit_conditions:
+          - "Есть service_request с code in ('CBC','CRP','PULSEOX','CXR')"
+        signals:
+          now_state:
+            type: "ordered_studies"
+            source: "service_request.code"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 2
+            meaning_ru: "Диагноз подозревается, обязательные исследования не заказаны."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Заказать ОАК, СРБ, пульсоксиметрию при первом осмотре (КП №768)."
+        inputs:
+          - "severity, клиническая картина"
+        outputs:
+          - "service_request (CBC, CRP, PULSEOX, CXR)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - service_request
+          keys:
+            - "service_request.encounter_id = encounter.id"
+          columns:
+            - service_request.code
+            - service_request.status
+            - service_request.occurrence_date
+          notes_ru:
+            - "R-графия обязательна при тяжёлой ВП и при локальных/асимметричных знаках (КП №768)."
+        golden_checks_sql:
+          - name: "pneumonia_without_cbc_or_crp"
+            sql: |
+              select p.id, p.family
+              from patient p
+              where exists (
+                select 1 from condition_ c
+                where c.patient_id = p.id and c.clinical_status = 'active'
+                  and c.code in ('J12.9','J13','J14','J15.9','J18.0','J18.1','J18.9')
+              )
+              and not exists (
+                select 1 from service_request s
+                where s.patient_id = p.id and s.code in ('CBC','CRP')
+              );
+
+      - id: record_results
+        bpmn_task_id: Task_RecordResults
+        lane: laboratory
+        intent_ru: "Результаты исследований: observation (WBC, CRP), diagnostic_report (CXR)."
+        entry_conditions:
+          - "Есть service_request со status='active'"
+        exit_conditions:
+          - "observation (WBC_CODE/CRP_CODE) или diagnostic_report (CXR) присутствуют"
+        signals:
+          now_state:
+            type: "results_coverage"
+            source: "observation.code / diagnostic_report.code"
+          stuck_definition:
+            age_from: "service_request.occurrence_date"
+            stuck_after_days: 2
+            meaning_ru: "Заказано, но результат не записан."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Записать результат в течение 2 дней."
+        inputs:
+          - "service_request"
+        outputs:
+          - "observation (WBC_CODE, CRP_CODE)"
+          - "diagnostic_report (CXR)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - observation
+            - diagnostic_report
+            - service_request
+          keys:
+            - "observation.encounter_id = encounter.id"
+          columns:
+            - observation.value_numeric
+            - observation.interpretation
+            - diagnostic_report.conclusion
+          notes_ru:
+            - "СРБ — критерий эффективности АБТ (КП №768): оцениваем динамику (rules_engine.crp_decreased)."
+        golden_checks_sql:
+          - name: "ordered_without_result"
+            sql: |
+              select s.patient_id, s.code, s.occurrence_date
+              from service_request s
+              where s.status = 'active'
+                and not exists (
+                  select 1 from observation o where o.patient_id = s.patient_id
+                    and o.code in ('6690-2','30522-7')
+                )
+              order by s.occurrence_date asc;
+
+      - id: select_and_prescribe_abt
+        bpmn_task_id: Task_PrescribeAbt
+        lane: clinician
+        intent_ru: "Выбор и назначение АБТ первой линии per os (КП №768): амоксициллин / амокс-клавуланат / макролид (при IgE-аллергии) / цефуроксим (при не-IgE)."
+        entry_conditions:
+          - "condition_ active ВП"
+          - "setting='outpatient'"
+        exit_conditions:
+          - "medication_request.status='active', code начинается с J01, route='oral'"
+        signals:
+          now_state:
+            type: "abt"
+            source: "medication_request.code (J01*)"
+          stuck_definition:
+            age_from: "condition_.recorded_date"
+            stuck_after_days: 1
+            meaning_ru: "Диагноз ВП стоит, АБТ не назначена."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Назначить АБТ первой линии в день диагноза (КП №768)."
+        inputs:
+          - "severity, возраст, аллергии (allergy_intolerance), факторы риска (clinical_flag)"
+        outputs:
+          - "medication_request (J01*, route='oral', period_start/period_end)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+            - allergy_intolerance
+            - clinical_flag
+          keys:
+            - "medication_request.encounter_id = encounter.id"
+          columns:
+            - medication_request.code
+            - medication_request.route
+            - medication_request.period_start
+            - medication_request.period_end
+            - allergy_intolerance.reaction_type
+          notes_ru:
+            - "Ожидаемая первая линия — protocol_cap.expected_antibiotic(pid). Проверка группы — protocol_cap._evaluate_abt."
+            - "Маршрут per os в амбулаторных условиях (КП №768). Парентеральные препараты (PARENTERAL_ONLY) — только стационар."
+        golden_checks_sql:
+          - name: "pneumonia_without_active_abt"
+            sql: |
+              select p.id, p.family
+              from patient p
+              where exists (
+                select 1 from condition_ c
+                where c.patient_id = p.id and c.clinical_status = 'active'
+                  and c.code in ('J12.9','J13','J14','J15.9','J18.0','J18.1','J18.9')
+              )
+              and not exists (
+                select 1 from medication_request m
+                where m.patient_id = p.id and m.status = 'active' and m.code like 'J01%'
+              );
+
+      - id: prescribe_symptomatic
+        bpmn_task_id: Task_PrescribeSymptomatic
+        lane: clinician
+        intent_ru: "Симптоматическая терапия по показаниям (п.40–42): муколитики, бронходилататоры (при бронхообструкции), ГКС (при тяжёлой ВП), осельтамивир (при гриппе)."
+        entry_conditions:
+          - "condition_ active ВП"
+        exit_conditions:
+          - "Симптоматика назначена строго по показаниям (clinical_flag)"
+        signals:
+          now_state:
+            type: "symptomatic"
+            source: "medication_request.code (R05CB/R03AC/R03AK/H02AB/J05AH)"
+          stuck_definition:
+            age_from: "condition_.recorded_date"
+            stuck_after_days: 3
+            meaning_ru: "Есть показания (бронхообструкция/грипп), препарат не назначен."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Назначить симптоматику по показаниям (п.40–42)."
+        inputs:
+          - "clinical_flag (bronchial_obstruction, influenza_suspicion, complication, emergency)"
+        outputs:
+          - "medication_request (R05CB/R03AC/R03AK/H02AB/J05AH)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+            - clinical_flag
+          keys: []
+          columns:
+            - medication_request.code
+            - clinical_flag.key
+          notes_ru:
+            - "protocol_cap._evaluate_symptomatic проверяет: бронходилататор без бронхообструкции = warning; ГКС без показаний = warning."
+        golden_checks_sql:
+          - name: "bronchodilator_without_obstruction"
+            sql: |
+              select m.patient_id, m.code, m.display
+              from medication_request m
+              where m.status = 'active' and (m.code like 'R03AC%' or m.code like 'R03AK%')
+                and not exists (
+                  select 1 from clinical_flag f
+                  where f.patient_id = m.patient_id and f.key = 'bronchial_obstruction'
+                );
+
+      - id: create_careplan
+        bpmn_task_id: Task_CreateCarePlan
+        lane: clinician
+        intent_ru: "Создание плана лечения и цели «клиническое выздоровление» (care_plan + goal)."
+        entry_conditions:
+          - "condition_ active ВП"
+        exit_conditions:
+          - "care_plan.status='active' и goal.status='in-progress'"
+          - "pathway.state='treatment'"
+        signals:
+          now_state:
+            type: "careplan"
+            source: "care_plan.status / goal.status"
+          stuck_definition:
+            age_from: "condition_.recorded_date"
+            stuck_after_days: 2
+            meaning_ru: "Диагноз стоит, план/цель не созданы."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Создать план и цель ВП (care_plan_service.create_cap_plan)."
+        inputs:
+          - "condition_"
+        outputs:
+          - "care_plan (active)"
+          - "goal (in-progress, «выздоровление»)"
+          - "pathway → 'treatment'"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - care_plan
+            - goal
+            - pathway
+          keys:
+            - "care_plan.condition_id = condition_.id"
+            - "goal.care_plan_id = care_plan.id"
+          columns:
+            - care_plan.status
+            - goal.status
+            - pathway.state
+          notes_ru:
+            - "care_plan_service.create_cap_plan(pid) — создатель плана/цели."
+        golden_checks_sql:
+          - name: "pneumonia_without_careplan"
+            sql: |
+              select p.id, p.family
+              from patient p
+              where exists (
+                select 1 from condition_ c
+                where c.patient_id = p.id and c.clinical_status = 'active'
+                  and c.code in ('J12.9','J13','J14','J15.9','J18.0','J18.1','J18.9')
+              )
+              and not exists (
+                select 1 from care_plan cp where cp.patient_id = p.id and cp.status = 'active'
+              );
+
+      - id: reassess_48_72h
+        bpmn_task_id: Task_Reassess
+        lane: cds
+        intent_ru: "Оценка эффективности АБТ через 48–72 ч (КП №768): лихорадка <38, снижение СРБ. При отсутствии эффекта — смена АБТ или госпитализация."
+        entry_conditions:
+          - "Прошло ≥3 дней от medication_request.date первого J01*"
+        exit_conditions:
+          - "Есть observation (TEMP/SPO2) с date > даты начала АБТ"
+        signals:
+          now_state:
+            type: "abt_effect"
+            source: "rules_engine.has_fever(pid) / rules_engine.crp_decreased(pid)"
+          stuck_definition:
+            age_from: "medication_request.date (первый J01*)"
+            stuck_after_days: 3
+            meaning_ru: "Прошло ≥72ч, контрольной записи (t/SpO2) нет."
+          sla_targets:
+            - key: within_3d
+              days: 3
+              recommended_action_ru: "Оценить эффективность АБТ через 48–72 ч (КП №768)."
+        inputs:
+          - "medication_request (J01*), observation (temp, CRP, SpO2)"
+        outputs:
+          - "Контрольная observation (temp, SpO2)"
+          - "Решение: эффект → followup | нет эффекта → смена АБТ / handoff cap_inpatient"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+            - observation
+          keys: []
+          columns:
+            - medication_request.date
+            - observation.date
+            - observation.value_numeric
+          notes_ru:
+            - "protocol_cap._evaluate_followup формирует gap 'no_reassessment' / 'abt_no_effect' / 'crp_not_decreasing'."
+            - "Сохранение лихорадки ≥72ч — показание к госпитализации (КП №768)."
+        golden_checks_sql:
+          - name: "abt_3d_no_reassessment"
+            sql: |
+              select m.patient_id, m.code, m.date
+              from medication_request m
+              where m.status = 'active' and m.code like 'J01%'
+                and m.date <= date('now','-3 days')
+                and not exists (
+                  select 1 from observation o
+                  where o.patient_id = m.patient_id
+                    and o.code in ('8310-5','59408-5')
+                    and o.date > m.date
+                );
+
+      - id: followup_and_outcome
+        bpmn_task_id: Task_Followup
+        lane: clinician
+        intent_ru: "Контрольный визит и оценка достижения цели: нормотермия, SpO2≥95, нормальный ЧД (КП №768)."
+        entry_conditions:
+          - "reassess_48_72h выполнен (есть контрольная запись)"
+        exit_conditions:
+          - "goal.status in ('achieved','not-achieved')"
+        signals:
+          now_state:
+            type: "goal_status"
+            source: "goal.status"
+          stuck_definition:
+            age_from: "medication_request.date (первый J01*)"
+            stuck_after_days: 14
+            meaning_ru: "Курс идёт, цель не оценена."
+          sla_targets:
+            - key: within_14d
+              days: 14
+              recommended_action_ru: "Оценить цель ВП (care_plan_service.evaluate_cap_goal)."
+        inputs:
+          - "observation (temp, SpO2, RR), goal"
+        outputs:
+          - "goal.status='achieved' (выздоровление) | 'not-achieved' (цикл коррекции)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - goal
+            - observation
+            - pathway
+          keys:
+            - "goal.care_plan_id = care_plan.id"
+          columns:
+            - goal.status
+            - goal.achievement_date
+            - pathway.state
+          notes_ru:
+            - "care_plan_service.evaluate_cap_goal(pid) сравнивает последние наблюдения с критериями выписки (КП №768)."
+            - "not-achieved → цикл коррекции: смена АБТ / госпитализация, цель переоткрывается."
+        golden_checks_sql:
+          - name: "achieved_outcomes"
+            sql: |
+              select p.family, g.description, g.achievement_date
+              from goal g
+              join patient p on p.id = g.patient_id
+              where g.status = 'achieved'
+              order by g.achievement_date desc;
+
+      - id: schedule_repeat_cxr
+        bpmn_task_id: Task_ScheduleRepeatCxr
+        lane: clinician
+        intent_ru: "Планирование повторной R-графии ОГК через 4–6 нед (КП №768)."
+        entry_conditions:
+          - "goal.status='achieved'"
+        exit_conditions:
+          - "service_request с code='CXR_REPEAT' (или diagnostic_report)"
+        signals:
+          now_state:
+            type: "repeat_cxr"
+            source: "service_request.code='CXR_REPEAT'"
+          stuck_definition:
+            age_from: "goal.achievement_date"
+            stuck_after_days: 42
+            meaning_ru: "Выздоровление есть, повторная R-графия не запланирована."
+          sla_targets:
+            - key: within_6w
+              days: 42
+              recommended_action_ru: "Запланировать контрольную R-графию через 4–6 нед (КП №768)."
+        inputs:
+          - "goal (achieved)"
+        outputs:
+          - "service_request (CXR_REPEAT)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - service_request
+          keys: []
+          columns:
+            - service_request.code
+            - service_request.occurrence_date
+          notes_ru:
+            - "care_plan_service.schedule_repeat_cxr(pid) — планировщик."
+        golden_checks_sql:
+          - name: "recovered_without_repeat_cxr"
+            sql: |
+              select p.id, p.family, g.achievement_date
+              from goal g
+              join patient p on p.id = g.patient_id
+              where g.status = 'achieved'
+                and not exists (
+                  select 1 from service_request s
+                  where s.patient_id = p.id and s.code = 'CXR_REPEAT'
+                );
+
+      - id: close_episode
+        bpmn_task_id: Task_CloseEpisode
+        lane: system
+        intent_ru: "Закрытие эпизода: pathway → 'recovered', condition.clinical_status → 'resolved', encounter → 'finished'."
+        entry_conditions:
+          - "goal.status='achieved'"
+          - "service_request CXR_REPEAT запланирована"
+        exit_conditions:
+          - "pathway.state='recovered'"
+          - "encounter.status='finished'"
+        signals:
+          now_state:
+            type: "pathway_state"
+            source: "pathway.state"
+          stuck_definition:
+            age_from: "goal.achievement_date"
+            stuck_after_days: 3
+            meaning_ru: "Цель достигнута, эпизод не закрыт."
+          sla_targets:
+            - key: within_3d
+              days: 3
+              recommended_action_ru: "Закрыть эпизод ВП."
+        inputs:
+          - "goal (achieved), CXR_REPEAT"
+        outputs:
+          - "pathway.state='recovered'"
+          - "condition_.clinical_status='resolved'"
+          - "encounter.status='finished'"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - pathway
+            - condition_
+            - encounter
+          keys: []
+          columns:
+            - pathway.state
+            - condition_.clinical_status
+            - encounter.status
+          notes_ru:
+            - "Терминальный статус амбулаторного эпизода. См. STATUS_SEMANTICS."
+        golden_checks_sql:
+          - name: "open_episodes_after_recovery"
+            sql: |
+              select p.id, p.family, pw.state
+              from pathway pw
+              join patient p on p.id = pw.patient_id
+              where pw.state = 'recovered'
+                and exists (
+                  select 1 from encounter e
+                  where e.patient_id = p.id and e.status = 'in-progress'
+                );
+
+  - id: cap_inpatient
+    name: "Стационарное лечение внебольничной пневмонии (взрослые, КП МЗ РБ №768)"
+    scope: "Стационарный блок: госпитализация → обязательные исследования (ОАК, СРБ, ПКТ, ОАМ, ЭКГ, посевы, R-графия) → оценка тяжести/ОРИТ → выбор режима АБТ в/в → назначение в/в АБТ + симптоматика → оценка эффективности 48–72 ч → step-down в/в→per os → критерии выписки → выписка → контроль после выписки. Амбулаторный блок — отдельный процесс cap_outpatient."
+    trigger_ru: "Получен handoff hospitalization_decision из cap_outpatient (показания КП №768) ИЛИ прямая госпитализация тяжёлой ВП (encounter class='inpatient')."
+    outcome_ru: "Терминальный статус: выписка (encounter.status='finished', goal.status='achieved', pathway='recovered') с запланированной повторной R-графией. После — handoff в cap_outpatient (контроль исхода)."
+    handoff_to: cap_outpatient
+    reader_intro_ru: |
+      Стационарный эпизод тяжёлой ВП — от госпитализации до выписки и контроля.
+      Картинка для людей: docs/bpmn/cap-inpatient-mature.bpmn. Правила статусов: docs/processes/STATUS_SEMANTICS.md.
+      Старт АБТ — внутривенно (КП №768). Режим (primary + addons) — protocol_cap.expected_inpatient_regimen: цефалоспорин III (цефтриаксон), при MRSA — линезолид/ванкомицин, при аспирации — карбапенем + метронидазол, при гриппе — осельтамивир, при атипичной этиологии — макролид-аддон, респираторные фторхинолоны — резерв.
+      ОРИТ (шаг transfer_icu): ≥1 «большой» критерий (шок, ОПН, ИВЛ) или ≥2 «малых» критерия тяжёлого течения (КП №768).
+      Step-down: при клиническом ответе — переход в/в → per os. Выписка (КП №768): нормотермия, нормальный ЧД, SpO2 ≥ 95, толерантность per os.
+      Регламент (protocol_cap.evaluate_cap) — независимая проверка; его вердикт — основа и для CDS-карточек, и для метрики качества.
+    bpmn_files:
+      - docs/bpmn/cap-inpatient-mature.bpmn
+    business_owner: "Терапевтическая стационарная служба"
+    data_owner: "Data Engineering"
+    entities:
+      - patient
+      - encounter
+      - condition_
+      - observation
+      - service_request
+      - diagnostic_report
+      - medication_request
+      - allergy_intolerance
+      - clinical_flag
+      - care_plan
+      - goal
+      - pathway
+    links:
+      - docs/processes/PROCESS_REGISTRY.md
+      - docs/processes/STATUS_SEMANTICS.md
+      - docs/processes/BPMN_PRACTICES.md
+      - protocol_cap.py
+      - rules_engine.py
+
+    steps:
+      - id: admit
+        bpmn_task_id: Task_Admit
+        lane: intake
+        intent_ru: "Госпитализация: создаётся encounter class='inpatient', status='in-progress'; pathway → 'inpatient'."
+        entry_conditions:
+          - "handoff hospitalization_decision из cap_outpatient ИЛИ прямая госпитализация тяжёлой ВП"
+        exit_conditions:
+          - "encounter.class='inpatient' и status='in-progress'"
+          - "pathway.state='inpatient'"
+        signals:
+          now_state:
+            type: "inpatient_encounter"
+            source: "encounter.class='inpatient'"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Решение о госпитализации есть, admit не выполнен."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Госпитализировать в день выявления показаний (КП №768)."
+        inputs:
+          - "hospitalization_decision (protocol_cap.hospitalization_reasons)"
+        outputs:
+          - "encounter (inpatient, in-progress)"
+          - "pathway → 'inpatient'"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - encounter
+            - pathway
+          keys:
+            - "encounter.patient_id = patient.id"
+          columns:
+            - encounter.class
+            - encounter.status
+            - encounter.start
+            - pathway.state
+          notes_ru:
+            - "care_plan_service.admit_inpatient(pid) — создатель стационарного encounter."
+        golden_checks_sql:
+          - name: "active_inpatient_encounters"
+            sql: |
+              select p.family, e.start, pw.state
+              from encounter e
+              join patient p on p.id = e.patient_id
+              join pathway pw on pw.patient_id = p.id
+              where e.class = 'inpatient' and e.status = 'in-progress'
+              order by e.start asc;
+
+      - id: admission_diagnostics
+        bpmn_task_id: Task_AdmissionDiagnostics
+        lane: clinician
+        intent_ru: "Заказ обязательных стационарных исследований (п.28–29): ОАК, СРБ, ПКТ, ОАМ, ЭКГ, посевы (гемокультура/мокрота), R-графия ОГК."
+        entry_conditions:
+          - "encounter.class='inpatient' и status='in-progress'"
+        exit_conditions:
+          - "service_request с code in ('CBC','CRP','PCT','URINE','ECG','BLOOD_CULT','SPUTUM_CULT','CXR')"
+        signals:
+          now_state:
+            type: "ordered_studies"
+            source: "service_request.code"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Госпитализация есть, обязательные исследования не заказаны."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Заказать исследования в день поступления (п.28–29)."
+        inputs:
+          - "encounter (inpatient)"
+        outputs:
+          - "service_request (CBC, CRP, PCT, URINE, ECG, BLOOD_CULT, SPUTUM_CULT, CXR)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - service_request
+          keys:
+            - "service_request.encounter_id = encounter.id"
+          columns:
+            - service_request.code
+            - service_request.status
+          notes_ru:
+            - "Посевы — до старта АБТ при тяжёлом течении (п.29)."
+        golden_checks_sql:
+          - name: "inpatient_without_cxr"
+            sql: |
+              select e.patient_id, e.start
+              from encounter e
+              where e.class = 'inpatient' and e.status = 'in-progress'
+                and not exists (
+                  select 1 from service_request s
+                  where s.patient_id = e.patient_id and s.code = 'CXR'
+                );
+
+      - id: assess_severity_icu
+        bpmn_task_id: Task_AssessSeverityIcu
+        lane: cds
+        intent_ru: "Оценка показаний к ОРИТ (КП №768): ≥1 «большой» критерий (шок, ОПН, ИВЛ) или ≥2 «малых» критерия тяжёлого течения."
+        entry_conditions:
+          - "encounter inpatient in-progress"
+        exit_conditions:
+          - "protocol_cap.icu_criteria(pid) вычислен (список причин)"
+        signals:
+          now_state:
+            type: "icu_indications"
+            source: "protocol_cap.icu_criteria(pid)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Есть показания к ОРИТ, перевод не выполнен."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Перевести в ОРИТ при наличии показаний (КП №768)."
+        inputs:
+          - "observation (SpO2), clinical_flag (shock, consciousness_disorder, seizures)"
+        outputs:
+          - "icu_criteria: список причин"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - observation
+            - clinical_flag
+          keys: []
+          columns:
+            - observation.value_numeric
+            - clinical_flag.key
+          notes_ru:
+            - "SpO2 < 90 — тяжёлая ВП, показание к ОРИТ (КП №768)."
+        golden_checks_sql:
+          - name: "icu_candidates"
+            sql: |
+              select o.patient_id, o.value_numeric as spo2
+              from observation o
+              where o.code = '59408-5' and o.value_numeric < 90
+              order by o.date desc;
+
+      - id: transfer_icu
+        bpmn_task_id: Gateway_Icu
+        lane: system
+        intent_ru: "Gateway: перевод в ОРИТ при наличии показаний (КП №768)."
+        entry_conditions:
+          - "protocol_cap.icu_criteria(pid) непуст"
+        exit_conditions:
+          - "pathway.state='icu' (или эквивалентный маркер) ИЛИ показаний нет → шаг select_inpatient_regimen"
+        signals:
+          now_state:
+            type: "icu_state"
+            source: "pathway.state"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Показания к ОРИТ есть, перевод задерживается."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Немедленный перевод в ОРИТ (КП №768)."
+        inputs:
+          - "icu_criteria"
+        outputs:
+          - "pathway.state='icu' (при переводе)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - pathway
+          keys: []
+          columns:
+            - pathway.state
+          notes_ru:
+            - "В демо-модели перевод в ОРИТ = pathway.state='icu'. Реальная МИС — отдельный учёт."
+        golden_checks_sql:
+          - name: "icu_indications_not_transferred"
+            sql: |
+              select p.id, pw.state
+              from pathway pw
+              join patient p on p.id = pw.patient_id
+              where pw.state in ('inpatient','treatment')
+                and exists (
+                  select 1 from clinical_flag f
+                  where f.patient_id = p.id and f.key in ('shock','consciousness_disorder','seizures')
+                );
+
+      - id: select_inpatient_regimen
+        bpmn_task_id: Task_SelectRegimen
+        lane: cds
+        intent_ru: "Выбор режима АБТ в/в (КП №768): primary + addons по тяжести, MRSA, аспирации, осложнению, гриппу, атипичной этиологии."
+        entry_conditions:
+          - "encounter inpatient in-progress"
+          - "transfer_icu разрешён (переведён или показаний нет)"
+        exit_conditions:
+          - "protocol_cap.expected_inpatient_regimen(pid) вычислен (primary + addons)"
+        signals:
+          now_state:
+            type: "expected_regimen"
+            source: "protocol_cap.expected_inpatient_regimen(pid)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Регимент не определён — не хватает данных осмотра/флагов."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Определить регламент АБТ до старта (КП №768)."
+        inputs:
+          - "severity, clinical_flag (aspiration_suspicion, mrsa_suspicion, influenza_suspicion), condition_ (atypical)"
+        outputs:
+          - "expected_regimen: {primary, addons, route='iv'}"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - clinical_flag
+            - condition_
+          keys: []
+          columns:
+            - clinical_flag.key
+            - condition_.code
+          notes_ru:
+            - "Primary: цефалоспорин III (п.34) | амокс/клавуланат (аспирация, п.38) | карбапенем (аспирация+тяжёлый фон, п.38)."
+            - "Addons: ванкомицин (MRSA, п.36), макролид (осложнение/атипичная, п.33/39), осельтамивир (грипп, п.42)."
+        golden_checks_sql:
+          - name: "mrsa_without_vancomycin"
+            sql: |
+              select p.id
+              from patient p
+              where exists (
+                select 1 from clinical_flag f
+                where f.patient_id = p.id and f.key = 'mrsa_suspicion'
+              )
+                and not exists (
+                  select 1 from medication_request m
+                  where m.patient_id = p.id and m.code like 'J01XA%'
+                );
+
+      - id: prescribe_iv_abt
+        bpmn_task_id: Task_PrescribeIvAbt
+        lane: clinician
+        intent_ru: "Назначение АБТ внутривенно (КП №768): medication_request, route='iv', code в группе primary."
+        entry_conditions:
+          - "expected_regimen определён"
+        exit_conditions:
+          - "medication_request.status='active', route in ('iv','im'), code в группе primary"
+        signals:
+          now_state:
+            type: "abt"
+            source: "medication_request.code (J01*, route='iv')"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Регимент выбран, в/в АБТ не назначена."
+          sla_targets:
+            - key: same_day
+              days: 0
+              recommended_action_ru: "Старт АБТ в/в в день поступления (КП №768)."
+        inputs:
+          - "expected_regimen"
+        outputs:
+          - "medication_request (J01*, route='iv', period_start/period_end)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+          keys:
+            - "medication_request.encounter_id = encounter.id"
+          columns:
+            - medication_request.code
+            - medication_request.route
+            - medication_request.period_start
+            - medication_request.period_end
+          notes_ru:
+            - "protocol_cap._evaluate_abt (стационар): проверка группы, маршрута в/в, аддонов, длительности курса."
+        golden_checks_sql:
+          - name: "inpatient_without_iv_abt"
+            sql: |
+              select e.patient_id
+              from encounter e
+              where e.class = 'inpatient' and e.status = 'in-progress'
+                and not exists (
+                  select 1 from medication_request m
+                  where m.patient_id = e.patient_id and m.status = 'active'
+                    and m.code like 'J01%' and m.route in ('iv','im')
+                );
+
+      - id: prescribe_symptomatic_inpatient
+        bpmn_task_id: Task_PrescribeSymptomaticInpatient
+        lane: clinician
+        intent_ru: "Симптоматическая/сопутствующая терапия в стационаре (п.40–42): О2, бронходилататоры, ГКС, муколитики, осельтамивир — по показаниям."
+        entry_conditions:
+          - "encounter inpatient in-progress"
+        exit_conditions:
+          - "Симптоматика назначена строго по показаниям (clinical_flag)"
+        signals:
+          now_state:
+            type: "symptomatic"
+            source: "medication_request.code (R05CB/R03AC/R03AK/R03DA/H02AB/J05AH)"
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 2
+            meaning_ru: "Есть показания, препарат не назначен."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Назначить симптоматику по показаниям (п.40–42)."
+        inputs:
+          - "clinical_flag (bronchial_obstruction, influenza_suspicion, complication, emergency)"
+        outputs:
+          - "medication_request (R05CB/R03AC/R03AK/R03DA/H02AB/J05AH)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+            - clinical_flag
+          keys: []
+          columns:
+            - medication_request.code
+            - clinical_flag.key
+          notes_ru:
+            - "protocol_cap._evaluate_symptomatic: бронходилататор без бронхообструкции = warning; ГКС без показаний = warning."
+        golden_checks_sql:
+          - name: "steroid_without_indication"
+            sql: |
+              select m.patient_id, m.code
+              from medication_request m
+              where m.status = 'active' and m.code like 'H02AB%'
+                and not exists (
+                  select 1 from clinical_flag f
+                  where f.patient_id = m.patient_id
+                    and f.key in ('bronchial_obstruction','pleurisy','lung_destruction','shock','consciousness_disorder','seizures')
+                );
+
+      - id: reassess_48_72h_inpatient
+        bpmn_task_id: Task_ReassessInpatient
+        lane: cds
+        intent_ru: "Оценка эффективности АБТ через 48–72 ч в стационаре (КП №768): лихорадка, снижение СРБ. При отсутствии эффекта — эскалация/смена режима."
+        entry_conditions:
+          - "Прошло ≥3 дней от даты первого в/в J01*"
+        exit_conditions:
+          - "Есть observation (TEMP/SPO2) с date > даты начала АБТ"
+        signals:
+          now_state:
+            type: "abt_effect"
+            source: "rules_engine.has_fever(pid) / rules_engine.crp_decreased(pid)"
+          stuck_definition:
+            age_from: "medication_request.date (первый в/в J01*)"
+            stuck_after_days: 3
+            meaning_ru: "Прошло ≥72ч, контрольной записи нет."
+          sla_targets:
+            - key: within_3d
+              days: 3
+              recommended_action_ru: "Оценить эффективность АБТ через 48–72 ч (КП №768)."
+        inputs:
+          - "medication_request (J01* iv), observation (temp, CRP, SpO2)"
+        outputs:
+          - "Контрольная observation"
+          - "Решение: эффект → step_down | нет эффекта → эскалация (вернуться к select_inpatient_regimen)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+            - observation
+          keys: []
+          columns:
+            - medication_request.date
+            - observation.date
+            - observation.value_numeric
+          notes_ru:
+            - "protocol_cap._evaluate_followup: gap 'abt_no_effect' / 'crp_not_decreasing' при отсутствии эффекта."
+        golden_checks_sql:
+          - name: "iv_abt_3d_no_reassessment"
+            sql: |
+              select m.patient_id, m.code, m.date
+              from medication_request m
+              where m.status = 'active' and m.code like 'J01%' and m.route in ('iv','im')
+                and m.date <= date('now','-3 days')
+                and not exists (
+                  select 1 from observation o
+                  where o.patient_id = m.patient_id
+                    and o.code in ('8310-5','59408-5')
+                    and o.date > m.date
+                );
+
+      - id: step_down
+        bpmn_task_id: Task_StepDown
+        lane: clinician
+        intent_ru: "Ступенчатая терапия (КП №768): при клиническом ответе — переход в/в → per os."
+        entry_conditions:
+          - "reassess_48_72h_inpatient: эффект есть (нет лихорадки)"
+        exit_conditions:
+          - "Есть medication_request route='oral' с date > даты первого в/в J01*"
+        signals:
+          now_state:
+            type: "step_down"
+            source: "protocol_cap._step_down_done(pid)"
+          stuck_definition:
+            age_from: "даты первого в/в J01*"
+            stuck_after_days: 5
+            meaning_ru: "Клинический ответ есть, переход в/в → per os не выполнен."
+          sla_targets:
+            - key: within_5d
+              days: 5
+              recommended_action_ru: "Перейти на пероральный приём (КП №768)."
+        inputs:
+          - "medication_request (iv), observation (temp)"
+        outputs:
+          - "medication_request (J01*, route='oral', date > iv-даты)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - medication_request
+          keys: []
+          columns:
+            - medication_request.route
+            - medication_request.date
+          notes_ru:
+            - "protocol_cap._step_down_done(pid) — проверка факта step-down."
+        golden_checks_sql:
+          - name: "iv_only_no_stepdown"
+            sql: |
+              select m.patient_id, min(m.date) as first_iv
+              from medication_request m
+              where m.status = 'active' and m.code like 'J01%' and m.route in ('iv','im')
+              group by m.patient_id
+              having not exists (
+                select 1 from medication_request m2
+                where m2.patient_id = m.patient_id and m2.route = 'oral'
+                  and m2.date > min(m.date)
+              );
+
+      - id: evaluate_discharge
+        bpmn_task_id: Task_EvaluateDischarge
+        lane: cds
+        intent_ru: "Оценка критериев выписки (КП №768): нормотермия, нормальный ЧД, SpO2 ≥ 95, толерантность per os."
+        entry_conditions:
+          - "step_down выполнен"
+        exit_conditions:
+          - "protocol_cap.discharge_criteria(pid).met = true"
+        signals:
+          now_state:
+            type: "discharge_criteria"
+            source: "protocol_cap.discharge_criteria(pid)"
+          stuck_definition:
+            age_from: "даты step-down"
+            stuck_after_days: 7
+            meaning_ru: "Step-down выполнен, критерии выписки не достигнуты."
+          sla_targets:
+            - key: within_7d
+              days: 7
+              recommended_action_ru: "Добиться критериев выписки (КП №768)."
+        inputs:
+          - "observation (temp, SpO2, RR)"
+        outputs:
+          - "discharge_criteria: {met, missing}"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - observation
+          keys: []
+          columns:
+            - observation.code
+            - observation.value_numeric
+          notes_ru:
+            - "discharge_criteria.met = True когда: t < 38, ЧД в норме, SpO2 ≥ 95."
+        golden_checks_sql:
+          - name: "inpatient_discharge_ready"
+            sql: |
+              select o.patient_id, o.value_numeric as spo2
+              from observation o
+              where o.code = '59408-5' and o.value_numeric >= 95
+              order by o.date desc;
+
+      - id: discharge
+        bpmn_task_id: Task_Discharge
+        lane: system
+        intent_ru: "Выписка (КП №768): encounter → 'finished', goal → 'achieved', pathway → 'recovered', планирование повторной R-графии."
+        entry_conditions:
+          - "discharge_criteria.met = true"
+        exit_conditions:
+          - "encounter.status='finished'"
+          - "goal.status='achieved'"
+          - "pathway.state='recovered'"
+          - "service_request CXR_REPEAT запланирована"
+        signals:
+          now_state:
+            type: "pathway_state"
+            source: "pathway.state"
+          stuck_definition:
+            age_from: "даты выполнения критериев"
+            stuck_after_days: 2
+            meaning_ru: "Критерии выписки есть, выписка не оформлена."
+          sla_targets:
+            - key: within_2d
+              days: 2
+              recommended_action_ru: "Оформить выписку (КП №768)."
+        inputs:
+          - "discharge_criteria (met)"
+        outputs:
+          - "encounter (finished), goal (achieved), pathway ('recovered')"
+          - "service_request (CXR_REPEAT)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - encounter
+            - goal
+            - pathway
+            - service_request
+          keys: []
+          columns:
+            - encounter.status
+            - goal.status
+            - pathway.state
+            - service_request.code
+          notes_ru:
+            - "care_plan_service.discharge_inpatient(pid) — оформитель выписки + планировщик CXR_REPEAT."
+        golden_checks_sql:
+          - name: "discharged_with_repeat_cxr"
+            sql: |
+              select p.family, g.achievement_date
+              from goal g
+              join patient p on p.id = g.patient_id
+              where g.status = 'achieved'
+                and exists (
+                  select 1 from service_request s
+                  where s.patient_id = p.id and s.code = 'CXR_REPEAT'
+                );
+
+      - id: post_discharge_followup
+        bpmn_task_id: Task_PostDischargeFollowup
+        lane: clinician
+        intent_ru: "Контроль после выписки: контрольный визит + повторная R-графия через 4–6 нед; handoff в cap_outpatient (оценка исхода)."
+        entry_conditions:
+          - "discharge выполнен (pathway='recovered')"
+        exit_conditions:
+          - "Есть контрольный encounter (class='followup') ИЛИ diagnostic_report CXR_REPEAT"
+        signals:
+          now_state:
+            type: "followup"
+            source: "encounter.class='followup' / diagnostic_report.code='CXR_REPEAT'"
+          stuck_definition:
+            age_from: "goal.achievement_date"
+            stuck_after_days: 42
+            meaning_ru: "Выписан, контрольный визит/R-графия не выполнены."
+          sla_targets:
+            - key: within_6w
+              days: 42
+              recommended_action_ru: "Контроль и повторная R-графия через 4–6 нед (КП №768)."
+        inputs:
+          - "discharge_summary"
+        outputs:
+          - "encounter (followup) и/или diagnostic_report (CXR_REPEAT)"
+          - "handoff → cap_outpatient (followup_and_outcome)"
+        data_mapping:
+          contract_views: []
+          raw_tables:
+            - encounter
+            - diagnostic_report
+          keys: []
+          columns:
+            - encounter.class
+            - diagnostic_report.code
+          notes_ru:
+            - "После контроля исхода эпизод закрывается. См. STATUS_SEMANTICS."
+        golden_checks_sql:
+          - name: "discharged_without_followup"
+            sql: |
+              select p.id, p.family, g.achievement_date
+              from goal g
+              join patient p on p.id = g.patient_id
+              where g.status = 'achieved'
+                and not exists (
+                  select 1 from encounter e
+                  where e.patient_id = p.id and e.class = 'followup'
+                )
+                and not exists (
+                  select 1 from diagnostic_report r
+                  where r.patient_id = p.id and r.code = 'CXR_REPEAT'
+                );

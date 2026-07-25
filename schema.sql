@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS condition_ (
 );
 
 -- ===== Измерения и анализы (числовые) =====
--- Один ресурс на любой числовой показатель: АД-систола, пульс, глюкоза, HbA1c...
+-- Один ресурс на любой числовой показатель: температура, SpO2, ЧД, ЧСС, лейкоциты, СРБ...
 -- Разные анализы различаются по code (LOINC), а не по отдельным таблицам.
 
 CREATE TABLE IF NOT EXISTS observation (
@@ -111,9 +111,11 @@ CREATE TABLE IF NOT EXISTS medication_request (
     status        TEXT,   -- active / stopped
     dose          TEXT,
     frequency     TEXT,
+    route         TEXT,   -- oral / iv / im / inh (ингаляционно)
     period_start  TEXT,
     period_end    TEXT,
-    date          TEXT
+    date          TEXT,
+    dose_per_day  NUMERIC  -- суточная доза в мг (для сверки с протоколом)
 );
 
 -- ===== Справочник лекарств (кэш из openFDA) =====
@@ -129,16 +131,64 @@ CREATE TABLE IF NOT EXISTS medication_knowledge (
     fetched_at        TEXT
 );
 
+-- ===== Каталог препаратов (взрослые, КП МЗ РБ №768) =====
+-- Справочник для формы назначения: ATC → название, маршрут, фиксированная доза.
+-- Выбор «какую АБТ» — НЕ здесь: SSOT = docs/protocols/cap_abt_rules.yaml.
+-- protocol_ref / note — подписи для UI, не машинный регламент.
+
+CREATE TABLE IF NOT EXISTS drug_catalog (
+    atc_code           TEXT PRIMARY KEY,
+    name               TEXT,    -- русское название
+    generic_name       TEXT,    -- из openFDA (англ.), опционально
+    group_name         TEXT,    -- ATC-группа (рус.)
+    dosage_form        TEXT,    -- из openFDA
+    form               TEXT,    -- oral / iv / im / inh / both
+    route_options      TEXT,    -- CSV допустимых маршрутов: oral,iv
+    indications        TEXT,
+    contraindications  TEXT,
+    interactions       TEXT,
+    pregnancy          TEXT,
+    dosage_text        TEXT,    -- текст инструкции (openFDA), опционально
+    dose_note          TEXT,    -- взрослая доза по протоколу (фиксированная, не мг/кг)
+    frequency          TEXT,    -- кратность (для формы)
+    max_daily_mg       REAL,     -- макс. суточная доза (мг), для сверки
+    default_dose       TEXT,    -- короткая строка дозы для формы
+    default_frequency  TEXT,    -- кратность для формы
+    protocol_ref       TEXT,    -- ссылка на протокол (подпись)
+    note               TEXT,    -- краткая пометка для UI
+    category           TEXT,    -- antibiotic_outpatient/antibiotic_inpatient/symptomatic/antiviral
+    verify_flag        INTEGER DEFAULT 0
+);
+
 -- ===== Аллергии =====
 
 CREATE TABLE IF NOT EXISTS allergy_intolerance (
-    id          TEXT PRIMARY KEY,
-    patient_id  TEXT,
-    code        TEXT,
-    display     TEXT,
-    criticality TEXT,
+    id             TEXT PRIMARY KEY,
+    patient_id     TEXT,
+    code           TEXT,
+    display        TEXT,
+    criticality    TEXT,
+    reaction_type  TEXT,   -- ige / non-ige / unknown (тип реакции на β-лактамы)
+    recorded_date  TEXT
+);
+
+-- ===== Структурированный анамнез/осмотр/факторы риска =====
+-- Универсальный «флаг» пациента: булевы/категориальные признаки, которых
+-- нет в числовых observation: социальные факторы риска, локальные знаки при
+-- осмотре, бронхообструкция, подозрение на аспирацию/грипп/MRSA, осложнения,
+-- статус вакцинации. Ключи — фиксированные строки (см. CLINICAL_FLAGS в rules_engine).
+
+CREATE TABLE IF NOT EXISTS clinical_flag (
+    id            TEXT PRIMARY KEY,
+    patient_id    TEXT,
+    encounter_id  TEXT,
+    key           TEXT,   -- что за флаг (напр. "hospitalized_3mo", "local_signs", "bronchial_obstruction")
+    value         TEXT,   -- "true"/"false" или категория
+    category      TEXT,   -- social_risk / exam / complication / context / vaccination
     recorded_date TEXT
 );
+
+CREATE INDEX IF NOT EXISTS idx_clinflag_patient ON clinical_flag (patient_id, key);
 
 -- ===== План лечения + цель =====
 
@@ -172,6 +222,17 @@ CREATE TABLE IF NOT EXISTS pathway (
     patient_id  TEXT PRIMARY KEY,
     state       TEXT,
     label       TEXT
+);
+
+-- ===== Кэш оценки по протоколу ВП (чтобы дашборд не делал N+1 CAP-расчётов) =====
+
+CREATE TABLE IF NOT EXISTS cap_cache (
+    patient_id  TEXT PRIMARY KEY,
+    applicable  INTEGER,   -- 0/1
+    severity    TEXT,      -- moderate / severe / NULL
+    setting     TEXT,      -- outpatient / inpatient / NULL
+    compliant   INTEGER,   -- 0/1
+    computed_at TEXT
 );
 
 -- ===== Индексы =====

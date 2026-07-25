@@ -26,6 +26,8 @@
   .btn{display:inline-block;padding:7px 14px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;border:none;cursor:pointer;}
   .btn:hover{background:var(--coral-deep);color:#fff;}
   .btn.ghost{background:#fff;color:var(--coral-deep);border:1px solid var(--coral);}
+  .btn.danger{background:#fff;color:#c0392b;border:1px solid #c0392b;}
+  .btn.danger:hover{background:#c0392b;color:#fff;}
   h2{font-family:"Spectral",serif;font-size:16px;font-weight:600;margin:20px 0 8px;display:flex;align-items:center;gap:8px;}
   h2::before{content:"";width:14px;height:2px;background:var(--coral);border-radius:2px;}
   .info-row{display:flex;gap:24px;margin-bottom:4px;}
@@ -50,17 +52,22 @@
   table{width:100%;border-collapse:collapse;margin-top:8px;}
   th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:6px 10px;border-bottom:2px solid var(--line);}
   td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;}
-  .mini-form{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0;}
+  .mini-form{margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:0;position:relative;z-index:1;}
+  .mini-form[open]{z-index:5;background:#fff;box-shadow:0 6px 18px -8px rgba(0,0,0,.18);}
   .mini-form summary{cursor:pointer;padding:10px 14px;font-size:13px;font-weight:600;color:var(--coral-deep);list-style:none;}
   .mini-form summary::-webkit-details-marker{display:none;}
   .mini-form[open] summary{border-bottom:1px solid var(--line);}
+  .mini-form-head{padding:10px 14px;font-size:13px;font-weight:600;color:var(--coral-deep);border-bottom:1px solid var(--line);}
   .mini-form form{padding:12px 14px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
   .mini-form .field{display:flex;flex-direction:column;gap:4px;}
-  .mini-form label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;}
-  .mini-form input,.mini-form select,.mini-form textarea{padding:8px 10px;font-size:14px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;}
-  .mini-form textarea{min-width:280px;}
-  .btn-small{padding:7px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:7px;cursor:pointer;}
+  .mini-form label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;height:15px;line-height:15px;}
+  .mini-form input,.mini-form select,.mini-form textarea{height:36px;padding:0 10px;font-size:14px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
+  .mini-form select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
+  .mini-form textarea{min-width:280px;resize:vertical;padding-top:7px;line-height:1.3;}
+  .btn-small{height:36px;padding:0 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:7px;cursor:pointer;}
   .btn-small:hover{background:var(--coral-deep);}
+  .mini-form .form-actions{width:100%;display:flex;justify-content:flex-end;margin-top:2px;}
   .gap{padding:8px 12px;border-radius:8px;margin:6px 0;font-size:13px;line-height:1.5;}
   .gap.warning{background:var(--red-bg);border-left:3px solid var(--coral);}
   .gap.info{background:var(--tint);border-left:3px solid var(--faint);}
@@ -70,6 +77,114 @@
   .step{display:inline-block;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--tint);color:var(--faint);}
   .step.active{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
   .arrow{color:var(--faint);font-size:14px;margin:0 4px;}
+  .section-nav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:6px;
+    background:rgba(250,249,245,.92);backdrop-filter:blur(6px);
+    padding:8px 0;margin:0 -4px 14px;border-bottom:1px solid var(--line);}
+  .section-nav a{font-size:12px;font-weight:600;color:var(--coral-deep);background:#fff;
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px;text-decoration:none;white-space:nowrap;}
+  .section-nav a:hover{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
+  h2[id]{scroll-margin-top:48px;}
+  .enc-card{border:1px solid var(--line);border-radius:12px;background:#fff;margin:12px 0;overflow:hidden;}
+  .enc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--tint);border-bottom:1px solid var(--line);}
+  .enc-head .enc-date{font-family:"Spectral",serif;font-weight:600;font-size:15px;}
+  .enc-head .enc-complaint{font-size:13px;color:var(--soft);flex:1;min-width:160px;}
+  .enc-body{padding:6px 14px 12px;}
+  .enc-sub{margin-top:10px;}
+  .enc-sub h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:6px 0 4px;}
+  .enc-sub table{margin-top:2px;}
+  .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:12px 0;padding:6px 14px 12px;}
+  .unassigned h3{font-size:13px;color:var(--coral-deep);margin:8px 0 4px;}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;}
+  .inline-add{margin-top:14px;border-top:1px dashed var(--line);border-radius:0;padding-top:6px;}
+  .inline-add summary{padding-left:0;}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px;
+    position:sticky;top:0;z-index:50;background:rgba(250,249,245,.94);backdrop-filter:blur(6px);padding:10px 0 0;}
+  .tab{font-family:inherit;font-size:13px;font-weight:600;color:var(--soft);background:#fff;
+    border:1px solid var(--line);border-radius:10px 10px 0 0;padding:9px 16px;cursor:pointer;white-space:nowrap;border-bottom:none;margin-bottom:-1px;}
+  .tab:hover{color:var(--coral-deep);}
+  .tab.active{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
+  .panel{display:none;}
+  .panel.active{display:block;animation:fade .12s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+  .flow{display:flex;flex-direction:column;gap:0;}
+  .fstep{border:1px solid var(--line);border-radius:10px;background:#fff;margin:8px 0;overflow:hidden;}
+  .fstep.active{border-color:var(--coral);box-shadow:0 4px 14px -8px rgba(217,119,87,.4);}
+  .fstep.done{background:#fff;}
+  .fstep.locked{opacity:.6;}
+  .fstep-h{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;}
+  .fstep-h .num{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--faint);flex:none;}
+  .fstep.done .num{background:var(--green);border-color:var(--green);color:#fff;}
+  .fstep.active .num{background:var(--coral);border-color:var(--coral-deep);color:#fff;}
+  .fstep-h .ttl{font-family:"Spectral",serif;font-size:14px;font-weight:600;color:var(--ink);flex:1;}
+  .fstep.locked .ttl{color:var(--faint);}
+  .fstep-h .summary{font-size:12px;color:var(--soft);flex:2;line-height:1.4;}
+  .fstep-h .summary .none{color:var(--faint);font-style:italic;}
+  .fstep-h .chev{color:var(--faint);font-size:13px;transition:transform .15s;}
+  .fstep[open] .fstep-h .chev{transform:rotate(90deg);}
+  .fstep-b{padding:0 14px 12px;border-top:1px dashed var(--line);}
+  .fstep[open] .fstep-b{display:block;}
+  .fstep:not([open]) .fstep-b{display:none;}
+  .narr{font-size:13px;color:var(--ink);line-height:1.55;margin:8px 0;}
+  .narr .v{font-weight:600;}
+  .narr .flag-up{color:#c0392b;font-weight:600;}
+  .narr .flag-ok{color:var(--green);}
+  .next-hint{font-size:12px;color:var(--coral-deep);font-weight:600;margin:6px 0 2px;}
+  .mini-btn{font-size:11px;font-weight:600;color:var(--coral-deep);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:5px;}
+  .mini-btn:hover{background:var(--tint);}
+  .fform{margin-top:8px;}
+  .fform form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+  .fform .field{display:flex;flex-direction:column;gap:4px;}
+  .fform label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;height:14px;line-height:14px;}
+  .fform input,.fform select,.fform textarea{height:36px;padding:0 10px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
+  .fform select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
+  .fform textarea{min-width:240px;height:36px;resize:vertical;padding-top:7px;line-height:1.3;}
+  .fform .btn-small{height:36px;padding:0 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;}
+  .fform .btn-small:hover{background:var(--coral-deep);}
+  .fform .form-actions{width:100%;display:flex;justify-content:flex-end;margin-top:2px;}
+  .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
+  .fform .note b{color:var(--ink);}
+  .fform .note .ref{color:var(--faint);}
+  .fform .hint{font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;white-space:pre-line;width:100%;}
+  .fform .hint b{color:var(--ink);}
+  /* Группа «поле + единица измерения сбоку»: число вводит врач, единица — статичная подпись */
+  .fform .input-group{display:flex;align-items:stretch;height:36px;}
+  .fform .input-group input{border-radius:6px 0 0 6px;border-right:none;}
+  .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 10px;font-size:13px;color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 6px 6px 0;white-space:nowrap;min-width:34px;justify-content:center;}
+  .fform .input-group input:invalid+.unit-suffix{border-color:var(--coral-deep);}
+  .diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;}
+  .diag-sub{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:#fcfaf8;}
+  .diag-sub h4{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--coral-deep);font-weight:700;margin:2px 0 6px;}
+  .diag-sub .dlist{font-size:12px;color:var(--ink);line-height:1.5;margin-bottom:6px;}
+  .diag-sub .dlist .it{display:block;padding:2px 0;border-bottom:1px dotted var(--line);}
+  .diag-sub .dlist .it:last-child{border-bottom:none;}
+  .diag-sub .dlist .st{font-size:10px;font-weight:700;}
+  .diag-sub .dlist .st.done{color:var(--green);}
+  .diag-sub .dlist .st.ord{color:var(--coral-deep);}
+  .diag-sub .dlist .res{color:var(--soft);}
+  .diag-sub .none{color:var(--faint);font-style:italic;font-size:11px;}
+  @media(max-width:760px){.diag-grid{grid-template-columns:1fr;}}
+
+  /* Removable chips — список уже добавленных значений с крестиком */
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);
+        border-radius:999px;padding:4px 4px 4px 10px;font-size:12px;color:var(--ink);line-height:1.3;}
+  .chip .chip-x{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;
+        border-radius:50%;border:none;background:var(--tint);color:var(--faint);font-size:13px;
+        line-height:1;cursor:pointer;padding:0;flex:none;}
+  .chip .chip-x:hover{background:var(--coral);color:#fff;}
+  .chip .chip-sub{color:var(--faint);font-size:11px;}
+  .anam-note{background:var(--tint);border-left:3px solid var(--coral);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;position:relative;}
+  .anam-note .chip-x{position:absolute;top:6px;right:6px;}
+  .sub-h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;margin:10px 0 6px;}
+  .diag-support{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;margin-bottom:10px;font-size:12px;}
+  .diag-support.ok{background:var(--green-bg);}
+  .diag-support.warn{background:var(--red-bg);}
+  .diag-support .ds-h{font-weight:600;color:var(--soft);}
+  .diag-support .ds-i{color:var(--soft);}
+  .diag-support.ok .ds-i{color:var(--green);}
+  .diag-support.warn .ds-i{color:var(--coral-deep);}
+  .diag-support .ds-msg{color:var(--coral-deep);font-weight:600;width:100%;}
 </style>
 </head>
 <body>
@@ -85,66 +200,259 @@
     </div>
   {% endif %}
   <div class="actions">
-    <a href="{{ url_for('record_bp', pid=patient.id) }}" class="btn">+ Записать АД</a>
     <a href="{{ url_for('new_patient') }}" class="btn ghost">Новый пациент</a>
     <a href="{{ url_for('export_csv') }}" class="btn ghost">↓ CSV</a>
+    <form method="POST" action="{{ url_for('delete_patient_route', pid=patient.id) }}"
+          style="display:inline;"
+          onsubmit="return confirm('Удалить пациента «{{ patient.family }} {{ patient.given }}» и все его данные? Действие необратимо.');">
+      <button class="btn danger" type="submit">🗑 Удалить карту</button>
+    </form>
   </div>
   <div class="rule"></div>
 
-  <!-- CDS-подсказки -->
-  <h2>CDS-подсказки</h2>
-  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">Хук <code>patient-view</code> — что врач увидел бы при открытии карты.</p>
-  {% if cards %}
-    {% for c in cards %}
-    <div class="card {{ c.indicator }}">
-      <div class="card-type">{{ c.type }}</div>
-      <div class="card-summary">{{ c.summary }}</div>
-      <div class="card-detail">{{ c.detail }}</div>
-      <div class="card-source">{{ c.source.label }}</div>
-    </div>
-    {% endfor %}
-  {% else %}
-    <div class="no-cards">✓ Подсказок нет — АД контролируется, отклонений от протокола не найдено.</div>
-  {% endif %}
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-panel="panel-encounters" type="button">Приёмы</button>
+    <button class="tab" data-panel="panel-assessment" type="button">Оценка по протоколу</button>
+    <button class="tab" data-panel="panel-plan" type="button">План ведения</button>
+    <button class="tab" data-panel="panel-problems" type="button">Проблемный лист</button>
+    <button class="tab" data-panel="panel-allergy" type="button">Аллергии</button>
+    <button class="tab" data-panel="panel-pathway" type="button">Маршрут пациента</button>
+  </nav>
 
-  <!-- Регламент (независимая проверка) -->
-  {% if protocol.applicable %}
-  <h2>Соответствие регламенту АГ</h2>
-  <div class="info-row"><span class="k">Целевое АД</span><span class="v">≤ {{ protocol.target.systolic }}/{{ protocol.target.diastolic }}</span></div>
-  <div class="info-row"><span class="k">Достигнуто</span><span class="v">
-    {% if protocol.at_target is none %}<span class="badge grey">нет данных</span>
-    {% elif protocol.at_target %}<span class="badge green">да</span>
-    {% else %}<span class="badge red">нет</span>{% endif %}
-  </span></div>
-  <div class="info-row"><span class="k">Итог</span><span class="v">
-    {% if protocol.compliant %}<span class="badge green">соответствует</span>
-    {% else %}<span class="badge red">есть отклонения</span>{% endif %}
-  </span></div>
-  {% for g in protocol.gaps %}
-    <div class="gap {{ g.severity }}">
-      <b>{{ g.message }}</b>
-      <div class="rec">→ {{ g.recommendation }}</div>
-    </div>
-  {% endfor %}
-  <div class="rule"></div>
-  {% endif %}
+  {% macro obs_form(pid, eid, chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Показатель</label>
+        <select name="code" id="obs-code-{{ eid }}">{% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Значение</label>
+        <div class="input-group">
+          <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ eid }}" placeholder="значение" required>
+          <span class="unit-suffix" id="obs-unit-{{ eid }}"></span>
+        </div>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="date" value="{{ today }}"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+    </form>
+    <div class="note" id="obs-note-{{ eid }}"></div>
+  </div>
+  {% endmacro %}
 
-  <!-- Регламент внебольничной пневмонии (КП МЗ РБ №204) -->
+  {# Лабораторный показатель (числовой результат): WBC, СРБ, ПКТ, PaO2 — это обследование, не осмотр. #}
+  {% macro lab_obs_form(pid, eid, chip_target='', orders=None) %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Анализ</label>
+        <select name="code" id="labobs-code-{{ eid }}">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>К заказу</label>
+        <select name="service_request_id">
+          <option value="">— без заказа —</option>
+          {% for s in orders or [] if study_category(s.code)=='lab' %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Значение</label>
+        <div class="input-group">
+          <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required>
+          <span class="unit-suffix" id="labobs-unit-{{ eid }}"></span>
+        </div>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="date" value="{{ today }}"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить результат</button></div>
+    </form>
+    <div class="note" id="labobs-note-{{ eid }}"></div>
+  </div>
+  {% endmacro %}
+
+  {# Общее состояние — клиническая оценка врача при осмотре (5 уровней).
+     По нему (наряду с тяжестью ВП) решается амбулаторно/стационар/ОРИТ. #}
+  {% macro gc_form(pid, eid, chip_target='', current='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-replace="1">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Общее состояние</label>
+        <select name="key">
+          {% for k in general_condition_order %}
+          <option value="{{ k }}" {{ 'selected' if current==k else '' }}>{{ general_condition_display(k) }}{{ ' — показание к госпитализации' if general_condition_needs_inpatient(k) else '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">{{ 'Изменить' if current else 'Оценить' }}</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {% macro sr_form(pid, eid, cat='all', chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_service_request_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Исследование</label>
+        <select name="code">{% for c in study_options if cat=='all' or study_category(c)==cat %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="occurrence_date" value="{{ today }}"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Заказать</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {% macro rep_form(pid, eid, cat='all', chip_target='', orders=None) %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_report_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Тип</label>
+        <select name="code">{% for c in study_options if cat=='all' or study_category(c)==cat %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</select>
+      </div>
+      <div class="field"><label>К заказу</label>
+        <select name="service_request_id">
+          <option value="">— без заказа —</option>
+          {% for s in orders or [] %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Дата</label><input type="date" name="date" value="{{ today }}"></div>
+      <div class="field"><label>Заключение</label><textarea name="conclusion" placeholder="Очаговая инфильтрация S9 справа…"></textarea></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {% macro cond_form(pid, eid, chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Диагноз (МКБ-10)</label>
+        <select name="code" required>
+          <option value="">— выберите диагноз —</option>
+          <optgroup label="Внебольничная пневмония">
+            {% for c, d in icd10.items() if c in ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
+            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Фоновые / ко-морбидность (влияют на выбор АБТ и госпитализацию)">
+            {% for c, d in icd10.items() if c in ['E10','E11','N18','J44','J45','J46','J84'] %}
+            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Пневмония неуточненная" required></div>
+      <div class="field"><label>Дата</label><input type="date" name="onset_date" value="{{ today }}"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Поставить диагноз</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {% macro med_form(pid, eid, chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_medication_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-med="1">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <input type="hidden" name="display" id="med-name-{{ eid }}">
+      <input type="hidden" name="confirm" id="med-confirm-{{ eid }}" value="">
+      <div class="field"><label>Препарат (из каталога)</label>
+        <select name="code" id="med-code-{{ eid }}">
+          <option value="">— выберите —</option>
+          {% for d in drug_catalog %}
+          <option value="{{ d.atc_code }}" data-name="{{ d.name }}" data-dose="{{ d.default_dose }}" data-freq="{{ d.default_frequency }}" data-routes="{{ d.route_options }}" data-ind="{{ d.indications }}" data-contra="{{ d.contraindications }}" data-dosenote="{{ d.dose_note or '' }}" data-note="{{ d.note or '' }}">{{ d.name }} · {{ d.group_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Доза</label><input type="text" name="dose" id="med-dose-{{ eid }}" placeholder="500 мг"></div>
+      <div class="field"><label>Доза в сутки, мг</label><input type="number" inputmode="decimal" name="dose_per_day" id="med-dpd-{{ eid }}" placeholder="1500" min="0" step="1"></div>
+      <div class="field"><label>Кратность</label><input type="text" name="frequency" id="med-freq-{{ eid }}" placeholder="3 раза в день"></div>
+      <div class="field"><label>Маршрут</label>
+        <select name="route" id="med-route-{{ eid }}"><option value="oral">per os</option><option value="iv">в/в</option><option value="im">в/м</option><option value="inh">ингаляционно</option></select>
+      </div>
+      <div class="field"><label>Дата начала</label><input type="date" name="med_date" value="{{ today }}"></div>
+      <div class="field"><label>Дата окончания</label><input type="date" name="period_end"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Назначить</button></div>
+    </form>
+    <div class="hint" id="med-hint-{{ eid }}"></div>
+    <div class="cds-confirm" id="med-confirm-box-{{ eid }}" style="display:none;"></div>
+  </div>
+  {% endmacro %}
+
+  {% macro flag_form(pid, eid, chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Признак</label>
+        <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'social_risk' %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {# Анамнез в свободной форме: текстовая запись, не оценивается протоколом. #}
+  {% macro anam_form(pid, eid, chip_target='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label>Анамнез (свободной формой)</label>
+        <textarea name="text" rows="3" placeholder="Жалобы, анамнез заболевания и жизни — произвольным текстом"></textarea>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить запись</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
+  {# Шаг направляемого потока. state: done/active/locked. summary — короткий текст-нарратив. Тело — через caller. #}
+  {% macro fstep(num, title, state, summary) %}
+  <details class="fstep {{ state }}" {{ 'open' if state == 'active' else '' }}>
+    <summary class="fstep-h">
+      <span class="num">{{ num }}</span>
+      <span class="ttl">{{ title }}</span>
+      <span class="summary">{{ summary|safe }}</span>
+      <span class="chev">▶</span>
+    </summary>
+    <div class="fstep-b">{{ caller() }}</div>
+  </details>
+  {% endmacro %}
+
+  <section class="panel" id="panel-assessment">
+  <!-- Оценка по протоколу внебольничной пневмонии (КП МЗ РБ №768, взрослые) -->
   {% if cap.applicable %}
-  <h2>Регламент ВП — КП №204 (дети)</h2>
-  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">{{ cap.protocol }}</p>
+  <h2 id="sec-assessment">Оценка по протоколу ВП (КП №768)</h2>
+  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">{{ cap.protocol }}. Здесь — сводка тяжести, условий лечения, ожидаемой терапии и замечания, где ведение отличается от протокола. Замечания с рекомендациями — ниже.</p>
+  {% if cap.compliant %}
+    <div class="no-cards">✓ Отклонений от протокола ВП не найдено — ведение соответствует.</div>
+  {% endif %}
+  <div class="info-row"><span class="k">Условия</span><span class="v">
+    {% if cap.setting == 'inpatient' %}<span class="badge red">стационар</span>
+    {% else %}<span class="badge grey">амбулаторно</span>{% endif %}
+  </span></div>
   <div class="info-row"><span class="k">Тяжесть</span><span class="v">
     {% if cap.severity == 'severe' %}<span class="badge red">тяжёлая</span>
-    {% else %}<span class="badge grey">средняя</span>{% endif %}
+    {% else %}<span class="badge grey">нетяжёлая</span>{% endif %}
+  </span></div>
+  <div class="info-row"><span class="k">Общее состояние</span><span class="v">
+    {% if general_condition %}<span class="badge {{ 'red' if general_condition_needs_inpatient(general_condition) else 'green' }}">{{ general_condition_display(general_condition) }}</span>
+    {% else %}<span class="none">не оценено</span>{% endif %}
   </span></div>
   <div class="info-row"><span class="k">Госпитализация</span><span class="v">
     {% if cap.hospitalization %}<span class="badge red">показана</span>
     {% else %}<span class="badge green">нет показаний</span>{% endif %}
   </span></div>
-  <div class="info-row"><span class="k">АБТ первой линии</span><span class="v">
-    {{ cap.expected_atb.name }} · {{ cap.expected_atb.atc_code }}<br>
-    <span style="font-size:12px;color:var(--soft);">{{ cap.expected_atb.rationale }} ({{ cap.expected_atb.ref }})</span>
+  {% if cap.icu %}
+  <div class="info-row"><span class="k">ОРИТ</span><span class="v"><span class="badge red">показан</span></span></div>
+  {% endif %}
+  <div class="info-row"><span class="k">Ожидаемая АБТ</span><span class="v">
+    {% if cap.setting == 'inpatient' %}
+      {{ cap.expected_regimen.primary.name }} · {{ cap.expected_regimen.primary.atc_code }} (в/в)<br>
+      <span style="font-size:12px;color:var(--soft);">{{ cap.expected_regimen.primary.reason }}</span>
+      {% for a in cap.expected_regimen.addons %}
+        <br>+ {{ a.name }} · {{ a.atc_code }} — <span style="font-size:12px;color:var(--soft);">{{ a.reason }}</span>
+      {% endfor %}
+    {% else %}
+      {{ cap.expected_regimen.name }} · {{ cap.expected_regimen.atc_code }}<br>
+      <span style="font-size:12px;color:var(--soft);">{{ cap.expected_regimen.rationale }} ({{ cap.expected_regimen.ref }})</span>
+    {% endif %}
   </span></div>
+  {% if cap.discharge %}
+  <div class="info-row"><span class="k">Выписка</span><span class="v">
+    {% if cap.discharge.met %}<span class="badge green">критерии выполнены</span>
+    {% else %}<span class="badge red">не готов</span>{% endif %}
+  </span></div>
+  {% endif %}
   <div class="info-row"><span class="k">Итог</span><span class="v">
     {% if cap.compliant %}<span class="badge green">соответствует</span>
     {% else %}<span class="badge red">есть отклонения</span>{% endif %}
@@ -159,6 +467,12 @@
     <form method="POST" action="{{ url_for('create_cap_plan_route', pid=patient.id) }}" style="display:inline;">
       <button class="btn">+ План ВП + цель «выздоровление»</button>
     </form>
+    <form method="POST" action="{{ url_for('cap_admit_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn">🏥 Госпитализировать</button>
+    </form>
+    <form method="POST" action="{{ url_for('cap_discharge_route', pid=patient.id) }}" style="display:inline;">
+      <button class="btn ghost">Выписать (п.49)</button>
+    </form>
     <form method="POST" action="{{ url_for('cap_followup_route', pid=patient.id) }}" style="display:inline;">
       <button class="btn ghost">Контроль АБТ через 48–72 ч</button>
     </form>
@@ -168,9 +482,11 @@
   </div>
   <div class="rule"></div>
   {% endif %}
+  </section>
 
+  <section class="panel" id="panel-plan">
   <!-- План лечения и цель -->
-  <h2>План лечения и цель</h2>
+  <h2 id="sec-plan">План лечения и цель</h2>
   {% if care_plans %}
     {% for g in goals %}
       <div class="info-row"><span class="k">Цель</span><span class="v">{{ g.description }}</span></div>
@@ -181,19 +497,19 @@
       </span></div>
     {% endfor %}
     <form method="POST" action="{{ url_for('evaluate_goal_route', pid=patient.id) }}" style="display:inline;">
-      <button class="btn">⟳ Оценить достижение цели (по последнему АД)</button>
+      <button class="btn">⟳ Оценить достижение цели ВП</button>
     </form>
     <details class="mini-form" style="margin-top:10px;">
-      <summary>+ Запланировать контрольный визит</summary>
+      <summary>+ Запланировать контрольный визит (оценка АБТ)</summary>
       <form method="POST" action="{{ url_for('schedule_followup_route', pid=patient.id) }}">
-        <div class="field"><label>Через (дней)</label><input type="number" name="days" value="14"></div>
-        <button class="btn-small" type="submit">Запланировать</button>
+        <div class="field"><label>Через (дней)</label><input type="number" name="days" value="3"></div>
+        <div class="form-actions"><button class="btn-small" type="submit">Запланировать</button></div>
       </form>
     </details>
   {% else %}
-    <div class="empty">План не создан. Создайте — поставится цель по АД (с учётом ко-морбидностей).</div>
+    <div class="empty">План не создан. Создайте — поставится цель «клиническое выздоровление» по протоколу ВП.</div>
     <form method="POST" action="{{ url_for('create_careplan_route', pid=patient.id) }}" style="margin-top:8px;">
-      <button class="btn">+ Создать план и цель</button>
+      <button class="btn">+ Создать план и цель ВП</button>
     </form>
   {% endif %}
   {% if followups %}
@@ -202,144 +518,292 @@
     </div>
   {% endif %}
   <div class="rule"></div>
+  </section>
 
-  <!-- Приёмы -->
-  <h2>Приёмы (Encounters)</h2>
-  {% if encounters %}
-  <table>
-    <thead><tr><th>Дата</th><th>Тип</th><th>Статус</th><th>Жалоба</th></tr></thead>
-    <tbody>
-      {% for e in encounters %}
-      <tr><td>{{ e.start }}</td><td>{{ e.class }}</td><td>{{ e.status }}</td><td>{{ e.complaint or '—' }}</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<div class="empty">Приёмов пока нет.</div>{% endif %}
-  <details class="mini-form">
-    <summary>+ Новый приём (жалоба)</summary>
+  <section class="panel active" id="panel-encounters">
+  <!-- Лента приёмов (encounter feed) -->
+  <h2 id="sec-encounters">Лента приёмов</h2>
+  <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">Каждый приём — отдельная карточка с жалобой, осмотром, измерениями, заказами, заключениями и назначениями. Новые записи добавляются в выбранный приём через формы ниже.</p>
+  {% if encounters_data %}
+  <div class="mini-form" style="margin-bottom:10px;display:block;">
+    <div class="mini-form-head">Открыть новый приём</div>
     <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
-      <div class="field"><label>Тип</label><select name="class"><option value="ambulatory">амбулаторный</option><option value="followup">контрольный</option></select></div>
-      <div class="field"><label>Дата</label><input type="date" name="start"></div>
-      <div class="field"><label>Жалоба</label><input type="text" name="complaint" placeholder="Скачки давления, сердцебиение"></div>
-      <button class="btn-small" type="submit">Открыть приём</button>
+      <div class="field"><label>Тип</label><select name="class"><option value="ambulatory">амбулаторный</option><option value="inpatient">стационарный</option><option value="followup">контрольный</option></select></div>
+      <div class="field"><label>Дата</label><input type="date" name="start" value="{{ today }}"></div>
+      <div class="field"><label>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Открыть приём</button></div>
     </form>
-  </details>
-  <div class="rule"></div>
-
-  <!-- Измерения и анализы -->
-  <h2>Измерения и анализы</h2>
-  {% if observations %}
-  <table>
-    <thead><tr><th>Дата</th><th>Показатель</th><th>Значение</th><th>Норма</th><th>Флаг</th></tr></thead>
-    <tbody>
-      {% for o in observations %}
-      <tr>
-        <td>{{ o.date }}</td><td>{{ o.display }}</td>
-        <td>{{ o.value_numeric }} {{ o.value_unit or '' }}</td>
-        <td>{{ o.ref_low }}–{{ o.ref_high }}</td>
-        <td>{% if o.interpretation == 'high' %}<span class="badge red">↑</span>{% elif o.interpretation == 'low' %}<span class="badge red">↓</span>{% else %}<span class="badge green">норма</span>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<div class="empty">Измерений пока нет.</div>{% endif %}
-  <details class="mini-form">
-    <summary>+ Записать показатель</summary>
-    <form method="POST" action="{{ url_for('add_observation_route', pid=patient.id) }}">
-      <div class="field"><label>Показатель</label>
-        <select name="code">
-          {% for c in loinc_options %}<option value="{{ c }}">{{ loinc_display(c) }}</option>{% endfor %}
-        </select>
+  </div>
+  {% for ed in encounters_data %}
+    {% set e = ed.encounter %}
+    <div class="enc-card">
+      <div class="enc-head">
+        <span class="enc-date">{{ e.start }}</span>
+        {% if e.class == 'inpatient' %}<span class="pill badge red">стационарный</span>{% elif e.class == 'followup' %}<span class="pill badge grey">контрольный</span>{% else %}<span class="pill badge grey">амбулаторный</span>{% endif %}
+        {% if e.status == 'finished' %}<span class="badge green">закрыт</span>{% else %}<span class="badge grey">{{ {'in-progress':'активен','planned':'запланирован','onleave':'приостановлен','cancelled':'отменён'}.get(e.status, e.status) }}</span>{% endif %}
+        <span class="enc-complaint">{{ e.complaint or '—' }}</span>
+        {% if e.status != 'finished' %}
+        <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=e.id) }}" style="display:inline;">
+          <button class="btn-small" type="submit">Закрыть приём</button>
+        </form>
+        {% endif %}
       </div>
-      <div class="field"><label>Значение</label><input type="number" step="0.1" name="value_numeric" required></div>
-      <div class="field"><label>Дата</label><input type="date" name="date"></div>
-      <button class="btn-small" type="submit">Сохранить</button>
-    </form>
-  </details>
-  <div class="rule"></div>
+      <div class="enc-body">
+        {% set anam_notes = [] %}
+        {% set anam_risk = [] %}
+        {% for f in ed.flag %}{% if f.category == 'anamnesis' %}{% set _ = anam_notes.append(f) %}{% elif f.category == 'social_risk' %}{% set _ = anam_risk.append(f) %}{% endif %}{% endfor %}
+        {% set exam_flags = [] %}
+        {% for f in ed.flag if f.category == 'exam' %}{% set _ = exam_flags.append(f) %}{% endfor %}
+        {% set gc_flag = None %}
+        {% set gc_flag_id = None %}
+        {% for f in ed.flag if f.category == 'general_condition' %}{% set gc_flag = f.key %}{% set gc_flag_id = f.id %}{% endfor %}
+        {# Разделяем наблюдения: витальные (осмотр) и лабораторные (обследование). #}
+        {% set exam_obs = [] %}
+        {% set lab_obs = [] %}
+        {% for o in ed.obs %}{% if is_lab_loinc(o.code) %}{% set _ = lab_obs.append(o) %}{% else %}{% set _ = exam_obs.append(o) %}{% endif %}{% endfor %}
+        {% set anam_done = anam_notes|length > 0 or anam_risk|length > 0 %}
+        {% set exam_done = exam_obs|length > 0 or exam_flags|length > 0 or gc_flag %}
+        {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 %}
+        {% set cond_done = ed.cond|length > 0 %}
+        {% set med_done = ed.med|length > 0 %}
+        {# Активный шаг = первый незаполненный по порядку приёма:
+           анамнез → осмотр → диагноз → обследование → лечение. #}
+        {% set active_key = 'med' %}
+        {% if not anam_done %}{% set active_key = 'anam' %}
+        {% elif not exam_done %}{% set active_key = 'exam' %}
+        {% elif not cond_done %}{% set active_key = 'cond' %}
+        {% elif not diag_done %}{% set active_key = 'diag' %}
+        {% elif not med_done %}{% set active_key = 'med' %}
+        {% endif %}
+        {% set st_anam = 'done' if anam_done else ('active' if active_key=='anam' else 'locked') %}
+        {% set st_exam = 'done' if exam_done else ('active' if active_key=='exam' else 'locked') %}
+        {% set st_diag = 'done' if diag_done else ('active' if active_key=='diag' else 'locked') %}
+        {% set st_cond = 'done' if cond_done else ('active' if active_key=='cond' else 'locked') %}
+        {% set st_med = 'done' if med_done else ('active' if active_key=='med' else 'locked') %}
 
-  <!-- Заказы исследований -->
-  <h2>Заказы исследований</h2>
-  {% if service_requests %}
-  <table>
-    <thead><tr><th>Дата</th><th>Исследование</th><th>Статус</th></tr></thead>
-    <tbody>
-      {% for s in service_requests %}
-      <tr><td>{{ s.occurrence_date }}</td><td>{{ s.display }}</td>
-        <td>{% if s.status == 'completed' %}<span class="badge green">выполнено</span>{% else %}<span class="badge grey">{{ s.status }}</span>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<div class="empty">Заказов пока нет.</div>{% endif %}
-  <details class="mini-form">
-    <summary>+ Заказать исследование</summary>
-    <form method="POST" action="{{ url_for('add_service_request_route', pid=patient.id) }}">
-      <div class="field"><label>Исследование</label>
-        <select name="code">
-          {% for c in study_options %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}
-        </select>
+        {% set anam_sum %}{% if anam_notes %}записей: {{ anam_notes|length }}{% endif %}{% if anam_notes and anam_risk %} · {% endif %}{% set _seen = [] %}{% for f in anam_risk %}{% if f.key not in _seen %}{% set _ = _seen.append(f.key) %}{{ flag_options[f.key][0] if f.key in flag_options else f.key }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}{% endset %}
+        {% set obs_sum %}{% set _oseen = [] %}{% for o in exam_obs %}{% if o.code not in _oseen %}{% set _ = _oseen.append(o.code) %}{{ o.display }} {{ o.value_numeric }}{{ o.value_unit or '' }}{% if o.interpretation=='high' %}<span class="flag-up">↑</span>{% elif o.interpretation=='low' %}<span class="flag-up">↓</span>{% endif %}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}{% if exam_flags %}{% if exam_obs %}, {% endif %}{% set _fseen = [] %}{% for f in exam_flags %}{% if f.key not in _fseen %}{% set _ = _fseen.append(f.key) %}{{ flag_options[f.key][0] if f.key in flag_options else f.key }}{% if not loop.last %}, {% endif %}{% endif %}{% endfor %}{% endif %}{% endset %}
+        {% set cond_sum %}{% for c in ed.cond %}{{ c.code }} {{ c.display }}{% if not loop.last %}; {% endif %}{% endfor %}{% endset %}
+        {% set med_sum %}{% for m in ed.med %}{{ m.display }}{% if m.dose %}: {{ m.dose }}{% endif %}{% if m.route %}, {{ m.route }}{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}{% endset %}
+
+        {# Диагностика: сводка по лаб. и инструментальным #}
+        {% set lab_sr = [] %}{% set lab_rep = [] %}{% set ins_sr = [] %}{% set ins_rep = [] %}
+        {% for s in ed.sr %}{% if study_category(s.code)=='lab' %}{% set _ = lab_sr.append(s) %}{% else %}{% set _ = ins_sr.append(s) %}{% endif %}{% endfor %}
+        {% for r in ed.rep %}{% if study_category(r.code)=='lab' %}{% set _ = lab_rep.append(r) %}{% else %}{% set _ = ins_rep.append(r) %}{% endif %}{% endfor %}
+        {% set diag_sum %}лаб.: {{ lab_sr|length + lab_rep|length }} · инструмент.: {{ ins_sr|length + ins_rep|length }}{% endset %}
+
+        <div class="flow">
+          {% call fstep(1, 'Анамнез', st_anam,
+               anam_sum.strip() if anam_done else '<span class="none">жалобы, анамнез заболевания и жизни — свободной формой; факторы риска</span>') %}
+            {# Свободнотекстовые записи анамнеза (не оцениваются протоколом) #}
+            <div class="chips" id="chips-anam-{{ e.id }}">
+              {% for f in anam_notes %}
+              <div class="anam-note">{{ f.key }}
+                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить запись анамнеза">×</button>
+                </form>
+              </div>
+              {% endfor %}
+            </div>
+            {{ anam_form(patient.id, e.id, 'chips-anam-' ~ e.id) }}
+            {# Факторы риска — структурированные, оцениваются протоколом #}
+            {% if anam_risk %}
+            <div class="sub-h">Факторы риска</div>
+            <div class="chips" id="chips-risk-{{ e.id }}">
+              {% for f in anam_risk %}
+              <span class="chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                </form>
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chips" id="chips-risk-{{ e.id }}"></div>
+            {% endif %}
+            {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) }}
+          {% endcall %}
+          {% call fstep(2, 'Осмотр', st_exam,
+               obs_sum.strip() if exam_done else '<span class="none">объективный статус: общее состояние, t, АД, ЧСС, ЧД, SpO2, локальные знаки — для оценки тяжести (постановление МЗ РБ №127 п.8.2–8.3)</span>') %}
+            {# Общее состояние — клиническая оценка, определяет амбулаторно/стационар #}
+            <div class="chips" id="chips-gc-{{ e.id }}">
+              {% if gc_flag %}
+              <span class="chip"><b>Общее состояние:</b>
+                <span class="badge {{ 'red' if general_condition_needs_inpatient(gc_flag) else 'green' }}">{{ general_condition_display(gc_flag) }}</span>
+                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=gc_flag_id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Изменить" aria-label="Изменить оценку общего состояния">×</button>
+                </form>
+              </span>
+              {% endif %}
+            </div>
+            {{ gc_form(patient.id, e.id, 'chips-gc-' ~ e.id, gc_flag) }}
+            {% if exam_obs or exam_flags %}
+            <div class="chips" id="chips-obs-{{ e.id }}">
+              {% for o in exam_obs %}
+              <span class="chip">{{ o.display }} {{ o.value_numeric }}{{ o.value_unit or '' }}{% if o.interpretation=='high' %}<span class="flag-up">↑</span>{% elif o.interpretation=='low' %}<span class="flag-up">↓</span>{% endif %}
+                <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                </form>
+              </span>
+              {% endfor %}
+              {% for f in exam_flags %}
+              <span class="chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                </form>
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chips" id="chips-obs-{{ e.id }}"></div>
+            {% endif %}
+            {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
+          {% endcall %}
+          {% call fstep(3, 'Диагноз', st_cond,
+               cond_sum.strip() if cond_done else '<span class="none">МКБ-10, обоснование, тяжесть — подтверждается анамнезом или объективным осмотром</span>') %}
+            {# Подтверждение диагноза: жалобами/анамнезом или объективными данными осмотра #}
+            {% set diag_anam = anam_done %}
+            {% set diag_exam = exam_done %}
+            <div class="diag-support {{ 'ok' if (diag_anam or diag_exam) else 'warn' }}">
+              <span class="ds-h">Подтверждение диагноза:</span>
+              <span class="ds-i">{{ '✓' if diag_anam else '✗' }} анамнез/жалобы</span>
+              <span class="ds-i">{{ '✓' if diag_exam else '✗' }} объективный осмотр</span>
+              {% if not diag_anam and not diag_exam %}
+              <span class="ds-msg">Нет данных для подтверждения диагноза — заполните анамнез или осмотр.</span>
+              {% endif %}
+            </div>
+            {% if ed.cond %}
+            <div class="chips" id="chips-cond-{{ e.id }}">
+              {% for c in ed.cond %}
+              <span class="chip">{{ c.code }} {{ c.display }}
+                <form method="POST" action="{{ url_for('delete_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                </form>
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chips" id="chips-cond-{{ e.id }}"></div>
+            {% endif %}
+            {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
+          {% endcall %}
+          {% call fstep(4, 'Обследование', st_diag,
+               diag_sum if diag_done else '<span class="none">лабораторные и инструментальные исследования — назначаются по протоколу после установки диагноза</span>') %}
+            <div class="diag-grid">
+              <div class="diag-sub">
+                <h4>Лабораторные исследования</h4>
+                <div class="dlist" id="dlist-lab-{{ e.id }}">
+                  {% if not lab_sr and not lab_rep and not lab_obs %}<span class="none">не назначены</span>{% endif %}
+                  {% for s in lab_sr %}<span class="it"><span class="st ord">заказ</span> {{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}
+                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                  </span>{% endfor %}
+                  {% for r in lab_rep %}<span class="it"><span class="st done">рез-т</span> {{ study_display(r.code) }}{% if r.conclusion %}: <span class="res">{{ r.conclusion }}</span>{% endif %}
+                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                  </span>{% endfor %}
+                  {% for o in lab_obs %}<span class="it"><span class="st done">анализ</span> {{ o.display }} {{ o.value_numeric }}{{ o.value_unit or '' }}{% if o.interpretation=='high' %}<span class="flag-up">↑</span>{% elif o.interpretation=='low' %}<span class="flag-up">↓</span>{% endif %}
+                    <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                  </span>{% endfor %}
+                </div>
+                {{ sr_form(patient.id, e.id, 'lab', 'dlist-lab-' ~ e.id) }}
+                {{ rep_form(patient.id, e.id, 'lab', 'dlist-lab-' ~ e.id, lab_sr) }}
+                {{ lab_obs_form(patient.id, e.id, 'dlist-lab-' ~ e.id, lab_sr) }}
+              </div>
+              <div class="diag-sub">
+                <h4>Инструментальные исследования</h4>
+                <div class="dlist" id="dlist-ins-{{ e.id }}">
+                  {% if not ins_sr and not ins_rep %}<span class="none">не назначены</span>{% endif %}
+                  {% for s in ins_sr %}<span class="it"><span class="st ord">заказ</span> {{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}
+                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                  </span>{% endfor %}
+                  {% for r in ins_rep %}<span class="it"><span class="st done">рез-т</span> {{ study_display(r.code) }}{% if r.conclusion %}: <span class="res">{{ r.conclusion }}</span>{% endif %}
+                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                  </span>{% endfor %}
+                </div>
+                {{ sr_form(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id) }}
+                {{ rep_form(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id, ins_sr) }}
+              </div>
+            </div>
+          {% endcall %}
+          {% call fstep(5, 'Лечение', st_med,
+               med_sum.strip() if med_done else '<span class="none">медикаментозные назначения, режим</span>') %}
+            {% if ed.med %}
+            <div class="chips" id="chips-med-{{ e.id }}">
+              {% for m in ed.med %}
+              <span class="chip">{{ m.display }}{% if m.dose %}: {{ m.dose }}{% endif %}{% if m.route %} <span class="chip-sub">{{ m.route }}</span>{% endif %}
+                <form method="POST" action="{{ url_for('stop_medication_route', pid=patient.id, mid=m.id) }}" style="display:inline;">
+                  <button class="chip-x" type="submit" title="Отменить" aria-label="Отменить">×</button>
+                </form>
+              </span>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chips" id="chips-med-{{ e.id }}"></div>
+            {% endif %}
+            {{ med_form(patient.id, e.id, 'chips-med-' ~ e.id) }}
+          {% endcall %}
+        </div>
       </div>
-      <div class="field"><label>Дата</label><input type="date" name="occurrence_date"></div>
-      <button class="btn-small" type="submit">Заказать</button>
+    </div>
+  {% endfor %}
+  {% else %}
+  <div class="mini-form" style="margin-bottom:10px;display:block;">
+    <div class="mini-form-head">Открыть новый приём</div>
+    <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
+      <div class="field"><label>Тип</label><select name="class"><option value="ambulatory">амбулаторный</option><option value="inpatient">стационарный</option><option value="followup">контрольный</option></select></div>
+      <div class="field"><label>Дата</label><input type="date" name="start" value="{{ today }}"></div>
+      <div class="field"><label>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Открыть приём</button></div>
     </form>
-  </details>
-  <div class="rule"></div>
+  </div>
+  <div class="empty">Приёмов пока нет — откройте новый приём выше.</div>
+  {% endif %}
 
-  <!-- Заключения (ЭКГ/УЗИ/холтер) -->
-  <h2>Заключения исследований</h2>
-  {% if reports %}
-  <table>
-    <thead><tr><th>Дата</th><th>Тип</th><th>Заключение</th></tr></thead>
-    <tbody>
-      {% for r in reports %}<tr><td>{{ r.date }}</td><td>{{ r.display }}</td><td>{{ r.conclusion or '—' }}</td></tr>{% endfor %}
-    </tbody>
-  </table>
-  {% else %}<div class="empty">Заключений пока нет.</div>{% endif %}
-  <details class="mini-form">
-    <summary>+ Записать заключение</summary>
-    <form method="POST" action="{{ url_for('add_report_route', pid=patient.id) }}">
-      <div class="field"><label>Тип</label>
-        <select name="code">{% for c in study_options %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</select>
-      </div>
-      <div class="field"><label>Дата</label><input type="date" name="date"></div>
-      <div class="field"><label>Заключение</label><textarea name="conclusion" placeholder="Ритм синусовый, ЧСС 72…"></textarea></div>
-      <button class="btn-small" type="submit">Сохранить</button>
-    </form>
-  </details>
-  <div class="rule"></div>
+  {% if has_unassigned %}
+  <div class="unassigned">
+    <h3>Записи без привязки к приёму</h3>
+    <p style="font-size:12px;color:var(--faint);margin-bottom:8px;">Эти записи созданы без указания приёма. В новом макете их следует привязывать к конкретному визиту через формы ниже (поле «Приём»).</p>
+    {% if unassigned.obs %}
+    <div class="enc-sub"><h3>Измерения</h3>
+      <table><thead><tr><th>Дата</th><th>Показатель</th><th>Значение</th><th>Норма</th><th>Флаг</th></tr></thead><tbody>
+      {% for o in unassigned.obs %}<tr><td>{{ o.date }}</td><td>{{ o.display }}</td><td>{{ o.value_numeric }} {{ o.value_unit or '' }}</td><td>{{ o.ref_low }}–{{ o.ref_high }}</td><td>{% if o.interpretation == 'high' %}<span class="badge red">↑</span>{% elif o.interpretation == 'low' %}<span class="badge red">↓</span>{% else %}<span class="badge green">норма</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+    {% if unassigned.sr %}
+    <div class="enc-sub"><h3>Заказы</h3>
+      <table><thead><tr><th>Дата</th><th>Исследование</th><th>Статус</th></tr></thead><tbody>
+      {% for s in unassigned.sr %}<tr><td>{{ s.occurrence_date }}</td><td>{{ s.display }}</td><td>{% if s.status == 'completed' %}<span class="badge green">выполнено</span>{% else %}<span class="badge grey">{{ s.status }}</span>{% endif %}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+    {% if unassigned.rep %}
+    <div class="enc-sub"><h3>Заключения</h3>
+      <table><thead><tr><th>Дата</th><th>Тип</th><th>Заключение</th></tr></thead><tbody>
+      {% for r in unassigned.rep %}<tr><td>{{ r.date }}</td><td>{{ r.display }}</td><td>{{ r.conclusion or '—' }}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+    {% if unassigned.med %}
+    <div class="enc-sub"><h3>Препараты</h3>
+      <table><thead><tr><th>Препарат</th><th>ATC</th><th>Доза</th><th>Маршрут</th><th>Назначен</th><th></th></tr></thead><tbody>
+      {% for m in unassigned.med %}<tr><td>{{ m.display }}</td><td>{{ m.code }}</td><td>{{ m.dose or '—' }}</td><td>{{ m.route or '—' }}</td><td>{{ m.date }}</td><td><form method="POST" action="{{ url_for('stop_medication_route', pid=patient.id, mid=m.id) }}"><button class="btn-small" type="submit">отменить</button></form></td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+    {% if unassigned.flag %}
+    <div class="enc-sub"><h3>Признаки</h3>
+      <table><thead><tr><th>Признак</th><th>Категория</th><th>Дата</th><th></th></tr></thead><tbody>
+      {% for f in unassigned.flag %}{% set fl = flag_options[f.key][0] if f.key in flag_options else f.key %}<tr><td>{{ fl }}</td><td>{{ flag_category_display(f.category) }}</td><td>{{ f.recorded_date }}</td><td><form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}"><button class="btn-small" type="submit">убрать</button></form></td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+  </section>
 
-  <!-- Препараты -->
-  <h2>Препараты</h2>
-  {% if meds %}
-  <table>
-    <thead><tr><th>Препарат</th><th>ATC</th><th>Доза</th><th>Назначен</th><th></th></tr></thead>
-    <tbody>
-      {% for m in meds %}
-      <tr><td>{{ m.display }}</td><td>{{ m.code }}</td><td>{{ m.dose or '—' }}</td><td>{{ m.date }}</td>
-        <td><form method="POST" action="{{ url_for('stop_medication_route', pid=patient.id, mid=m.id) }}"><button class="btn-small" type="submit">отменить</button></form></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}<div class="empty">Препаратов пока нет.</div>{% endif %}
-  <details class="mini-form">
-    <summary>+ Назначить препарат (с проверкой по карточке)</summary>
-    <form method="POST" action="{{ url_for('add_medication_route', pid=patient.id) }}">
-      <div class="field"><label>ATC-код</label><input type="text" name="code" placeholder="C09AA01" required></div>
-      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Эналаприл 10 мг" required></div>
-      <div class="field"><label>Доза</label><input type="text" name="dose" placeholder="10 мг"></div>
-      <div class="field"><label>Кратность</label><input type="text" name="frequency" placeholder="2 раза в день"></div>
-      <div class="field"><label>Дата начала</label><input type="date" name="med_date"></div>
-      <div class="field"><label>Дата окончания</label><input type="date" name="period_end" placeholder="длительность курса"></div>
-      <button class="btn-small" type="submit">Назначить</button>
-    </form>
-    <div style="font-size:12px;color:var(--faint);padding:0 14px 12px;">Проверка показаний/противопоказаний/взаимодействий сработает при следующем открытии карты (в CDS-подсказках и регламенте).</div>
-  </details>
-  <div class="rule"></div>
-
-  <!-- Диагнозы -->
-  <h2>Диагнозы</h2>
+  <section class="panel" id="panel-problems">
+  <!-- Проблемный лист (диагнозы) — постоянный раздел -->
+  <h2 id="sec-problems">Проблемный лист (диагнозы)</h2>
   {% if conditions %}
   <table>
     <thead><tr><th>Код</th><th>Название</th><th>Статус</th><th>С</th></tr></thead>
@@ -351,33 +815,63 @@
   <details class="mini-form">
     <summary>+ Добавить диагноз</summary>
     <form method="POST" action="{{ url_for('add_condition_route', pid=patient.id) }}">
-      <div class="field"><label>Код МКБ-10</label><input type="text" name="code" placeholder="I10" required></div>
-      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Гипертензивная болезнь" required></div>
-      <div class="field"><label>Дата установки</label><input type="date" name="onset_date"></div>
-      <button class="btn-small" type="submit">Добавить</button>
+      <div class="field"><label>Диагноз (МКБ-10)</label>
+        <select name="code" required>
+          <option value="">— выберите диагноз —</option>
+          <optgroup label="Внебольничная пневмония">
+            {% for c, d in icd10.items() if c in ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
+            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
+          </optgroup>
+          <optgroup label="Фоновые / ко-морбидность">
+            {% for c, d in icd10.items() if c in ['E10','E11','N18','J44','J45','J46','J84'] %}
+            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
+          </optgroup>
+        </select>
+      </div>
+      <div class="field"><label>Название</label><input type="text" name="display" placeholder="Пневмония неуточненная" required></div>
+      <div class="field"><label>Дата установки</label><input type="date" name="onset_date" value="{{ today }}"></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
   </details>
   <div class="rule"></div>
+  </section>
 
+  <section class="panel" id="panel-allergy">
   <!-- Аллергии -->
-  <h2>Аллергии</h2>
+  <h2 id="sec-allergy">Аллергии</h2>
   {% if allergies %}
-  <table><thead><tr><th>Код</th><th>Описание</th><th>Критичность</th></tr></thead>
-    <tbody>{% for a in allergies %}<tr><td>{{ a.code }}</td><td>{{ a.display }}</td><td>{{ a.criticality }}</td></tr>{% endfor %}</tbody>
+  <table><thead><tr><th>Код</th><th>Описание</th><th>Критичность</th><th>Тип реакции</th></tr></thead>
+    <tbody>{% for a in allergies %}<tr><td>{{ a.code }}</td><td>{{ a.display }}</td><td>{{ a.criticality }}</td><td>{{ a.reaction_type or '—' }}</td></tr>{% endfor %}</tbody>
   </table>
   {% else %}<div class="empty">Аллергий не зафиксировано.</div>{% endif %}
   <details class="mini-form">
     <summary>+ Добавить аллергию</summary>
     <form method="POST" action="{{ url_for('add_allergy_route', pid=patient.id) }}">
-      <div class="field"><label>Код/группа</label><input type="text" name="code" placeholder="C09AA"></div>
-      <div class="field"><label>Описание</label><input type="text" name="display" placeholder="Ингибиторы АПФ" required></div>
-      <button class="btn-small" type="submit">Добавить</button>
+      <div class="field"><label>Группа аллергена</label>
+        <select name="code" required>
+          <option value="">— выберите —</option>
+          {% for code, label in allergen_groups.items() %}
+          <option value="{{ code }}" data-display="{{ label }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field"><label>Описание</label><input type="text" name="display" placeholder="Пенициллины" required></div>
+      <div class="field"><label>Тип реакции</label>
+        <select name="reaction_type">
+          <option value="unknown">неизвестно</option>
+          <option value="ige">IgE (анафилаксия/крапивница)</option>
+          <option value="non-ige">не-IgE (сыпь/другое)</option>
+        </select>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
   </details>
   <div class="rule"></div>
+  </section>
 
+  <section class="panel" id="panel-pathway">
   <!-- Путь пациента -->
-  <h2>Этап пути пациента</h2>
+  <h2 id="sec-pathway">Этап пути пациента</h2>
   <div>
     <span class="step {{ 'active' if pathway.state == 'screening' }}">Скрининг</span><span class="arrow">→</span>
     <span class="step {{ 'active' if pathway.state == 'treatment' }}">Терапия</span><span class="arrow">→</span>
@@ -386,6 +880,283 @@
     <span class="step {{ 'active' if pathway.state == 'adjustment' }}">Коррекция</span>
   </div>
   <p style="font-size:12px;color:var(--faint);margin-top:8px;">Текущий этап: <b>{{ pathway.label }}</b></p>
+  </section>
 </div>
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tabs .tab');
+  var panels=document.querySelectorAll('.panel');
+  function show(id){
+    panels.forEach(function(p){p.classList.toggle('active', p.id===id);});
+    tabs.forEach(function(t){t.classList.toggle('active', t.getAttribute('data-panel')===id);});
+    try{history.replaceState(null,'','#'+id);}catch(e){}
+    window.scrollTo(0,0);
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(){show(t.getAttribute('data-panel'));});});
+  var initial=(location.hash||'').replace('#','');
+  if(initial && document.getElementById(initial) && initial!=='panel-encounters'){show(initial);}
+
+  // Форма измерения: единица и референс для выбранного показателя — одной строкой под формой.
+  document.querySelectorAll('select[name="code"]').forEach(function(sel){
+    if(!sel.id) return;
+    var prefix='';
+    if(sel.id.indexOf('obs-code-')===0){ prefix='obs-'; }
+    else if(sel.id.indexOf('labobs-code-')===0){ prefix='labobs-'; }
+    else return;
+    var eid=sel.id.replace(prefix+'code-','');
+    function upd(){
+      var o=sel.options[sel.selectedIndex];
+      var note=document.getElementById(prefix+'note-'+eid);
+      var val=document.getElementById(prefix+'value-'+eid);
+      if(!note) return;
+      var u=o.getAttribute('data-unit')||'';
+      var lo=o.getAttribute('data-low'),hi=o.getAttribute('data-high');
+      var ref=(lo&&hi)?(lo+'–'+hi):(lo?('≥'+lo):(hi?('≤'+hi):''));
+      var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
+      var sane=(slo&&shi)?(slo+'–'+shi):'';
+      note.innerHTML = (ref ? '<span class="ref">Норма: '+ref+'</span>' : '') + (sane ? ((ref?' &nbsp;·&nbsp; ':'')+'<span class="ref">Допустимо: '+sane+'</span>') : '');
+      if(val){
+        var units={'bpm':'уд/мин','C':'°C','%':'%','/min':'/мин','10^9/L':'×10⁹/л','mg/L':'мг/л','ng/mL':'нг/мл','mmHg':'мм рт.ст.'};
+        var ru=units[u]||u;
+        // Единица измерения — статичная подпись сбоку от поля (врач вводит только число).
+        var suf=document.getElementById(prefix+'unit-'+eid);
+        if(suf){ suf.textContent = ru ? ru : ''; }
+        // Placeholder — только пример числа, без единицы.
+        var ph='значение';
+        if(o.value==='8310-5'){ ph='36.2 или 36,2'; }
+        else if(lo&&hi){
+          var mid=(parseFloat(lo)+parseFloat(hi))/2;
+          var ex=Math.round(mid*100)/100;
+          ph='например '+String(ex).replace('.',',');
+        }
+        val.placeholder=ph;
+      }
+    }
+    sel.addEventListener('change',upd); upd();
+  });
+
+  // Форма назначения: выбор из каталога → авто-подстановка названия/дозы/кратности,
+  // фильтрация маршрутов, подсказка со взрослой дозой (КП №768).
+  document.querySelectorAll('select[name="code"]').forEach(function(sel){
+    if(!sel.id || sel.id.indexOf('med-code-')!==0) return;
+    var eid=sel.id.replace('med-code-','');
+    var name=document.getElementById('med-name-'+eid);
+    var dose=document.getElementById('med-dose-'+eid);
+    var freq=document.getElementById('med-freq-'+eid);
+    var route=document.getElementById('med-route-'+eid);
+    var hint=document.getElementById('med-hint-'+eid);
+    function upd(){
+      var o=sel.options[sel.selectedIndex];
+      if(!o.value){ if(name)name.value=''; if(hint)hint.textContent=''; return; }
+      if(name) name.value=o.getAttribute('data-name')||'';
+      if(dose && !dose.value) dose.value=o.getAttribute('data-dose')||'';
+      if(freq && !freq.value) freq.value=o.getAttribute('data-freq')||'';
+      var routes=(o.getAttribute('data-routes')||'').split(',').filter(Boolean);
+      if(route && routes.length){
+        for(var i=0;i<route.options.length;i++){
+          route.options[i].hidden = routes.indexOf(route.options[i].value)===-1;
+        }
+        if(routes.indexOf(route.value)===-1) route.value=routes[0];
+      }
+      if(hint){
+        var lines=[];
+        if(o.getAttribute('data-note')) lines.push(o.getAttribute('data-note'));
+        if(o.getAttribute('data-dosenote')) lines.push('Доза (взрослые): '+o.getAttribute('data-dosenote'));
+        if(o.getAttribute('data-ind')) lines.push('Показания: '+o.getAttribute('data-ind'));
+        if(o.getAttribute('data-contra')) lines.push('Противопоказания: '+o.getAttribute('data-contra'));
+        hint.textContent=lines.join('\n');
+      }
+      // Живая CDS-проверка по состоянию пациента (аллергии, дубли, взаимодействия).
+      var cbox=document.getElementById('med-confirm-box-'+eid);
+      if(cbox) cbox.style.display='none';
+      var cf=document.getElementById('med-confirm-'+eid); if(cf) cf.value='';
+      if(o.value){
+        fetch(sel.closest('form').getAttribute('action').replace('/medication','/medication/check'),{
+          method:'POST', body:new FormData(sel.closest('form')),
+          headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},redirect:'error'
+        }).then(function(r){return r.json();}).then(function(d){
+          if(d && d.cds && d.cds.length){
+            var txt=d.cds.map(function(c){return (c.severity==='hard-stop'?'⛔ ':c.severity==='warning'?'⚠ ':'ℹ ')+c.message;}).join('\n');
+            if(hint) hint.textContent=(hint.textContent?hint.textContent+'\n':'')+txt;
+          }
+        }).catch(function(){});
+      }
+    }
+    sel.addEventListener('change',upd); upd();
+  });
+
+  // Диагноз: авто-подстановка названия по выбранному МКБ-10 коду.
+  document.querySelectorAll('select[name="code"]').forEach(function(sel){
+    if(!sel.querySelector('option[data-display]')) return;
+    var form=sel.closest('form');
+    if(!form) return;
+    var disp=form.querySelector('input[name="display"]');
+    if(!disp) return;
+    function upd(){
+      var o=sel.options[sel.selectedIndex];
+      if(o && o.getAttribute('data-display') && (!disp.value || disp.value===disp._lastAuto)){
+        disp.value=o.getAttribute('data-display'); disp._lastAuto=disp.value;
+      }
+    }
+    sel.addEventListener('change',upd);
+  });
+  // ---------- AJAX-сохранение без перезагрузки ----------
+  // Все формы с data-ajax="1" отправляются в фоне (fetch). Ответ содержит
+  // готовый HTML чипа, который вставляется в контейнер data-chip-target.
+  // Никакой перезагрузки страницы → сохранение мгновенное, дублей нет.
+  function _ajaxSubmit(form){
+    var btn=form.querySelector('button[type="submit"]');
+    var note=form.parentNode.querySelector('.note, .hint');
+    var targetSel=form.getAttribute('data-chip-target');
+    var target=targetSel?document.getElementById(targetSel):null;
+
+    // Валидация измерения по физиологическим пределам (только для /observation).
+    if(form.getAttribute('action').indexOf('/observation')!==-1){
+      var sel=form.querySelector('select[name="code"]');
+      var inp=form.querySelector('input[name="value_numeric"]');
+      if(sel&&inp&&inp.value){
+        var o=sel.options[sel.selectedIndex];
+        var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
+        if(slo&&shi){
+          var v=parseFloat(inp.value.replace(',','.'));
+          if(isNaN(v)||v<parseFloat(slo)||v>parseFloat(shi)){
+            if(note){ note.innerHTML='<span style="color:#c0392b">Недопустимое значение. Допустимо: '+slo+'–'+shi+' '+o.getAttribute('data-unit')+'</span>'; }
+            return;
+          }
+        }
+      }
+    }
+
+    if(btn){ btn.disabled=true; btn.style.opacity='0.6'; }
+    var fd=new FormData(form);
+    fetch(form.getAttribute('action'),{
+      method:'POST', body:fd,
+      headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
+      redirect:'error'
+    }).then(function(r){ return r.json(); }).then(function(data){
+      if(btn){ btn.disabled=false; btn.style.opacity=''; }
+      if(data && data.ok && data.chip_html){
+        if(target){
+          // убрать заглушку «не назначены» / «нет»
+          var ph=target.querySelector('.none'); if(ph) ph.remove();
+          if(form.getAttribute('data-replace')){
+            // Заменить содержимое цели (общее состояние — одно значение на приём).
+            target.innerHTML=data.chip_html;
+          } else {
+            target.insertAdjacentHTML('beforeend', data.chip_html);
+          }
+        }
+        // очистить поля ввода (кроме скрытых и select-ов оставляем выбор)
+        form.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(function(el){ el.value=''; });
+        if(note){ note.innerHTML=''; }
+        // если добавили заказ — обновим списки «К заказу» в формах результатов
+        if(data.code && data.category){
+          _refreshOrderSelects(form, data);
+        }
+      } else if(data && data.need_confirm){
+        // CDS hard-stop: показать замечания и потребовать осознанного подтверждения.
+        if(btn){ btn.disabled=false; btn.style.opacity=''; }
+        _showCdsConfirm(form, data.cds);
+      } else if(data && data.error){
+        if(note){ note.innerHTML='<span style="color:#c0392b">'+data.error+'</span>'; }
+      } else if(data && data.ok && data.cds && data.cds.length){
+        // Сохранено, но есть warning/info — покажем как подсказку.
+        if(note){ note.innerHTML='<span style="color:#b8860b">'+data.cds.map(function(c){return c.message;}).join(' · ')+'</span>'; }
+      }
+    }).catch(function(){
+      if(btn){ btn.disabled=false; btn.style.opacity=''; }
+      if(note){ note.innerHTML='<span style="color:#c0392b">Ошибка сети. Повторите.</span>'; }
+    });
+  }
+
+  // Диалог осознанного подтверждения CDS (hard-stop): список замечаний + кнопка.
+  function _showCdsConfirm(form, cds){
+    var eidInput=form.querySelector('input[name="encounter_id"]');
+    var eid=eidInput?eidInput.value:null;
+    var box=document.getElementById('med-confirm-box-'+eid);
+    if(!box) return;
+    var stops=cds.filter(function(c){return c.severity==='hard-stop';});
+    var warns=cds.filter(function(c){return c.severity!=='hard-stop';});
+    var html='<div style="border:1px solid #c0392b;background:#fdecea;padding:8px;border-radius:6px;margin-bottom:6px;">';
+    html+='<b style="color:#c0392b;">⛔ Требуется осознанное назначение</b>';
+    stops.forEach(function(c){ html+='<div style="color:#c0392b;font-size:13px;margin-top:4px;">• '+c.message+'</div>'; });
+    if(warns.length){ html+='<div style="font-size:12px;color:#b8860b;margin-top:4px;">'+warns.map(function(c){return c.message;}).join(' · ')+'</div>'; }
+    html+='</div>';
+    html+='<button class="btn-small" type="button" data-cds-confirm="1" style="background:#c0392b;">Назначить осознанно</button> ';
+    html+='<button class="btn-small" type="button" data-cds-cancel="1" style="background:var(--soft);">Отмена</button>';
+    box.innerHTML=html;
+    box.style.display='block';
+    box.querySelector('[data-cds-confirm]').onclick=function(){
+      var cf=document.getElementById('med-confirm-'+eid); if(cf) cf.value='1';
+      box.style.display='none';
+      _ajaxSubmit(form);  // повторная отправка с подтверждением
+    };
+    box.querySelector('[data-cds-cancel]').onclick=function(){
+      box.style.display='none';
+    };
+  }
+
+  // Обновить <select name="service_request_id"> в формах результатов при добавлении заказа.
+  function _refreshOrderSelects(form, data){
+    var eidInput=form.querySelector('input[name="encounter_id"]');
+    var eid=eidInput?eidInput.value:null;
+    if(!eid) return;
+    document.querySelectorAll('form[data-ajax="1"]').forEach(function(f){
+      var sel=f.querySelector('select[name="service_request_id"]');
+      if(!sel) return;
+      var feid=f.querySelector('input[name="encounter_id"]');
+      if(!feid||feid.value!==eid) return;
+      // только формы той же категории (lab/instr)
+      var repCodeSel=f.querySelector('select[name="code"]');
+      if(repCodeSel){
+        var first=repCodeSel.options[0];
+        if(first && first.value){
+          // не та категория — пропускаем по data-category формы? проще: проверим по списку
+        }
+      }
+      var exists=false;
+      for(var i=0;i<sel.options.length;i++){ if(sel.options[i].value===String(data.id)){ exists=true; break; } }
+      if(!exists){
+        var opt=document.createElement('option');
+        opt.value=data.id;
+        opt.textContent=data.display+((data.occurrence_date)?(' · '+data.occurrence_date):'');
+        sel.appendChild(opt);
+      }
+    });
+  }
+
+  // Перехват сабмита всех AJAX-форм.
+  document.querySelectorAll('form[data-ajax="1"]').forEach(function(f){
+    f.addEventListener('submit', function(e){
+      e.preventDefault();
+      _ajaxSubmit(f);
+    });
+  });
+
+  // AJAX-удаление чипов (кнопка × внутри чипа): убираем чип из DOM без перезагрузки.
+  // Безопасное удаление: подтверждение для необратимых действий (измерения,
+  // диагнозы, заказы/результаты, флаги). Отмена лечения — тоже с подтверждением.
+  document.addEventListener('submit', function(e){
+    var form=e.target;
+    if(form.querySelector('.chip-x') && form.getAttribute('data-ajax')!=='1' && !form.hasAttribute('data-noajax')){
+      var act=form.getAttribute('action')||'';
+      if(act.indexOf('/delete')===-1 && act.indexOf('/stop')===-1 && act.indexOf('/clear')===-1) return;
+      e.preventDefault();
+      var chip=form.closest('.chip, .it, .anam-note');
+      var label=chip?chip.textContent.replace(/\s+/g,' ').trim().replace(/\s*×\s*$/,''):'запись';
+      if(label.length>60) label=label.slice(0,60)+'…';
+      if(!window.confirm('Удалить запись?\n«'+label+'»\nЭто действие необратимо.')) return;
+      fetch(act,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},redirect:'error'})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data && data.ok){
+            if(chip) chip.remove();
+          }
+        }).catch(function(){});
+    }
+  }, true);
+
+})();
+</script>
 </body>
 </html>

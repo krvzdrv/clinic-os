@@ -5,10 +5,11 @@ openFDA — бесплатный REST API (https://api.fda.gov), без ключ
 Возвращает структурированные разделы инструкций: indications_and_usage,
 contraindications, drug_interactions, pregnancy.
 
-Скрипт пробегает список часто встречающихся кардио/эндо препаратов,
-забирает их инструкции из openFDA и кладёт в таблицу medication_knowledge.
-Дальше система работает с нашим кэшем — внешние вызовы на каждый запрос
-врача не нужны (латентность, лимиты, зависимость).
+Скрипт пробегает список антибактериальных и симптоматических препаратов
+протокола внебольничной пневмонии (КП МЗ РБ №768, взрослые), забирает их инструкции
+из openFDA и кладёт в таблицу medication_knowledge. Дальше система работает
+с нашим кэшем — внешние вызовы на каждый запрос врача не нужны (латентность,
+лимиты, зависимость).
 
 Запуск:  python3 load_drugs.py
 (нужен исходящий интернет; без ключа — 40 запросов/мин, для этого списка хватит)
@@ -22,20 +23,26 @@ import fhir_store as fs
 # (ATC-код, название для поиска в openFDA)
 # openFDA — американские данные, ищем по генерическому имени (англ.).
 _DRUGS = [
-    ("C09AA01", "enalapril"),
-    ("C09AA02", "ramipril"),
-    ("C09AA03", "lisinopril"),
-    ("C09CA01", "losartan"),
-    ("C09CA02", "valsartan"),
-    ("C07AB02", "bisoprolol"),
-    ("C07AB05", "metoprolol"),
-    ("C08CA01", "amlodipine"),
-    ("C08CA02", "felodipine"),
-    ("C03AA03", "hydrochlorothiazide"),
-    ("C03DA01", "spironolactone"),
-    ("C10AA01", "simvastatin"),
-    ("C10AA02", "atorvastatin"),
-    ("A10BA02", "metformin"),
+    ("J01CA04", "amoxicillin"),
+    ("J01CR02", "amoxicillin clavulanate"),
+    ("J01FA09", "clarithromycin"),
+    ("J01FA10", "azithromycin"),
+    ("J01DC02", "cefuroxime"),
+    ("J01DD04", "ceftriaxone"),
+    ("J01DD01", "cefotaxime"),
+    ("J01XA01", "vancomycin"),
+    ("J01XX08", "linezolid"),
+    ("J01AA02", "doxycycline"),
+    ("J01DH02", "meropenem"),
+    ("J01DH03", "ertapenem"),
+    ("J05AH02", "oseltamivir"),
+    ("R05CB01", "acetylcysteine"),
+    ("R05CB02", "ambroxol"),
+    ("R03AC02", "salbutamol"),
+    ("R03AK03", "fenoterol ipratropium"),
+    ("R03DA05", "aminophylline"),
+    ("H02AB06", "prednisolone"),
+    ("H02AB04", "methylprednisolone"),
 ]
 
 

@@ -8,8 +8,9 @@
 - дублирование (два препарата одной фармакологической группы).
 
 Источники знаний:
-1. Структурированные правила по ATC-группам (DRUG_RULES) — для часто встречающихся
-   кардио/эндо препаратов. Это «ядро» проверки, работает без внешних данных.
+1. Структурированные правила по ATC-группам (DRUG_RULES) — для антибактериальных
+   и симптоматических препаратов протокола ВП (КП МЗ РБ №768, взрослые). Это «ядро» проверки,
+   работает без внешних данных.
 2. Свободный текст из кэша medication_knowledge (загружается из openFDA) —
    дополнительная информация для отображения врачу, не для логики.
 
@@ -38,64 +39,7 @@ ALLERGY_CLASSES = {
 # contraindicated_if_allergy — классы аллергии (hard-stop).
 # caution_if_allergy — классы аллергии (warning).
 DRUG_RULES = {
-    # --- Сердечно-сосудистые (протокол АГ) ---
-    "C09AA": {
-        "contraindicated_in": ["pregnancy"],
-        "caution_in": ["ckd"],
-        "interacts_with": {"C03DA": "Риск гиперкалиемии (ингибитор АПФ + калийсберегающий диуретик)"},
-        "duplicate_group": "C09AA",
-        "indicated_for": ["I10", "I11", "I13"],
-    },
-    "C09CA": {
-        "contraindicated_in": ["pregnancy"],
-        "caution_in": ["ckd"],
-        "interacts_with": {"C03DA": "Риск гиперкалиемии (сартан + калийсберегающий диуретик)"},
-        "duplicate_group": "C09CA",
-        "indicated_for": ["I10", "I11", "I13"],
-    },
-    "C07AB": {
-        "contraindicated_in": ["asthma"],
-        "caution_in": [],
-        "interacts_with": {},
-        "duplicate_group": "C07AB",
-        "indicated_for": ["I10", "I48", "I50", "I25"],
-    },
-    "C08CA": {
-        "contraindicated_in": [],
-        "caution_in": [],
-        "interacts_with": {},
-        "duplicate_group": "C08CA",
-        "indicated_for": ["I10"],
-    },
-    "C03AA": {
-        "contraindicated_in": [],
-        "caution_in": ["ckd"],
-        "interacts_with": {},
-        "duplicate_group": "C03AA",
-        "indicated_for": ["I10"],
-    },
-    "C03DA": {
-        "contraindicated_in": [],
-        "caution_in": ["ckd"],
-        "interacts_with": {"C09AA": "Риск гиперкалиемии", "C09CA": "Риск гиперкалиемии"},
-        "duplicate_group": "C03DA",
-        "indicated_for": ["I50"],
-    },
-    "C10AA": {
-        "contraindicated_in": ["pregnancy"],
-        "caution_in": [],
-        "interacts_with": {},
-        "duplicate_group": "C10AA",
-        "indicated_for": ["E78", "I25"],
-    },
-    "A10BA": {
-        "contraindicated_in": [],
-        "caution_in": ["ckd"],
-        "interacts_with": {},
-        "duplicate_group": "A10BA",
-        "indicated_for": ["E11"],
-    },
-    # --- Антибактериальные (протокол ВП, КП МЗ РБ №204) ---
+    # --- Антибактериальные (протокол ВП, КП МЗ РБ №768) ---
     "J01CA": {  # амоксициллин — первая линия ВП без факторов риска
         "contraindicated_in": [],
         "caution_in": ["ckd"],
@@ -156,6 +100,57 @@ DRUG_RULES = {
         "interacts_with": {},
         "duplicate_group": "J01AA",
         "indicated_for": ["J12.9", "J18.9"],
+    },
+    # --- Стационарный блок ВП (п.31–39) ---
+    "J01DH": {  # карбапенемы — тяжёлая ВП, подозрение на грам(-)/резистентность
+        "contraindicated_in": [],
+        "caution_in": ["ckd"],
+        "interacts_with": {},
+        "duplicate_group": "J01DH",
+        "indicated_for": ["J12.9", "J13", "J14", "J15.9", "J18.0", "J18.1", "J18.9"],
+    },
+    # --- Симптоматическая/сопутствующая терапия ВП ---
+    "R05CB": {  # муколитики — кашель, продукция мокроты (п.40)
+        "contraindicated_in": [],
+        "caution_in": [],
+        "interacts_with": {},
+        "duplicate_group": "R05CB",
+        "indicated_for": ["J12.9", "J13", "J15.9", "J18.0", "J18.1", "J18.9", "J45"],
+    },
+    "R03AC": {  # β2-агонисты — бронхообструкция (п.41)
+        "contraindicated_in": [],
+        "caution_in": [],
+        "interacts_with": {},
+        "duplicate_group": "R03AC",
+        "indicated_for": ["J45", "J46"],
+    },
+    "R03AK": {  # комбинации β2 + антихолинергические — бронхообструкция
+        "contraindicated_in": [],
+        "caution_in": [],
+        "interacts_with": {},
+        "duplicate_group": "R03AC",
+        "indicated_for": ["J45", "J46"],
+    },
+    "R03DA": {  # аминофиллин — тяжёлая бронхообструкция (стационар)
+        "contraindicated_in": [],
+        "caution_in": [],
+        "interacts_with": {},
+        "duplicate_group": "R03DA",
+        "indicated_for": ["J45", "J46"],
+    },
+    "H02AB": {  # системные глюкокортикоиды — тяжёлая ВП с бронхообструкцией/сепсисом
+        "contraindicated_in": [],
+        "caution_in": ["diabetes"],
+        "interacts_with": {},
+        "duplicate_group": "H02AB",
+        "indicated_for": ["J45", "J46", "J12.9", "J18.9"],
+    },
+    "J05AH": {  # осельтамивир — подозрение на грипп (п.42)
+        "contraindicated_in": [],
+        "caution_in": [],
+        "interacts_with": {},
+        "duplicate_group": "J05AH",
+        "indicated_for": ["J10", "J11", "J12.9", "J18.9"],
     },
 }
 
