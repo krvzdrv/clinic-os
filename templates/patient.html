@@ -694,6 +694,10 @@
             {% for c, d in icd10.items() if c in ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
             <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
           </optgroup>
+          <optgroup label="Железодефицитная анемия">
+            {% for c, d in icd10.items() if c in ['D50','D50.0','D50.8','D50.9'] %}
+            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
+          </optgroup>
           <optgroup label="Фоновые / ко-морбидность (влияют на выбор АБТ и госпитализацию)">
             {% for c, d in icd10.items() if c in ['E10','E11','N18','J44','J45','J46','J84'] %}
             <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
@@ -1062,37 +1066,14 @@
           <h2 class="dx-title">Диагноз не установлен</h2>
         </div>
         <div class="dx-rail">
+          {% if not current_ed %}
+          <p class="attr-value"><span class="none">Диагноз ставится в рамках приёма — откройте «Новый приём» и укажите диагноз на вкладке «Диагноз».</span></p>
+          {% else %}
           {{ render_now_action(v, true) }}
+          {% endif %}
         </div>
       </article>
     {% endif %}
-    <details class="status-add">
-      <summary>+ Диагноз</summary>
-      <div class="fform">
-        <form method="POST" action="{{ url_for('add_condition_route', pid=patient.id) }}">
-          <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>МКБ-10</label>
-            <select name="code" required>
-              <option value="">—</option>
-              <optgroup label="ВП">
-                {% for code, d in icd10.items() if code in PN_CODES %}
-                <option value="{{ code }}" data-display="{{ d }}">{{ code }} — {{ d }}</option>{% endfor %}
-              </optgroup>
-              <optgroup label="ЖДА">
-                {% for code, d in icd10.items() if code in ['D50','D50.0','D50.8','D50.9'] %}
-                <option value="{{ code }}" data-display="{{ d }}">{{ code }} — {{ d }}</option>{% endfor %}
-              </optgroup>
-              <optgroup label="Фон">
-                {% for code, d in icd10.items() if code in ['E10','E11','N18','J44','J45','J46','J84'] %}
-                <option value="{{ code }}" data-display="{{ d }}">{{ code }} — {{ d }}</option>{% endfor %}
-              </optgroup>
-            </select>
-          </div>
-          <div class="field"><label><i class="ti ti-tag" aria-hidden="true"></i>Название</label><input type="text" name="display" required></div>
-          <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="onset_date" value="{{ today }}"></div>
-          <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
-        </form>
-      </div>
-    </details>
     {% if followups %}
     <div class="dx-follow">
       <p class="attr-label"><i class="ti ti-calendar" aria-hidden="true"></i>Контроль</p>
