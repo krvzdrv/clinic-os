@@ -144,11 +144,6 @@
   .more-card > summary::before{content:"▸ ";}
   .more-card[open] > summary::before{content:"▾ ";}
   .more-card h2{margin-top:14px;}
-  .episode-rail{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 4px;padding:0 0 8px;border-bottom:1px solid var(--border);}
-  .episode-rail a{font-size:12px;font-weight:500;color:var(--text-muted);background:transparent;border:none;border-radius:6px;padding:4px 8px;text-decoration:none;}
-  .episode-rail a:hover,.episode-rail a.on{background:var(--bg-accent);color:var(--text-accent);}
-  .episode-rail a.done{color:var(--text-success);}
-  .episode-rail a.att{color:var(--text-warning);font-weight:600;}
   .mchips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;}
   .mchip{display:inline-flex;align-items:baseline;gap:4px;padding:2px 7px;border-radius:6px;background:var(--tint);border:1px solid var(--line);font-size:11px;line-height:1.35;max-width:100%;}
   .mchip .mk{color:var(--faint);font-weight:600;letter-spacing:.01em;}
@@ -982,7 +977,7 @@
   {# Жалоба и анамнез — всегда видимые textarea (без плашек/add-panel). #}
   {% macro complaint_form(pid, eid, current='') %}
   <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}">
+    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1">
       <div class="field field-full"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label>
         <textarea name="complaint" rows="3" maxlength="300" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
       </div>
@@ -994,7 +989,7 @@
   {# Свободный анамнез: один текст на приём — сохранить заменяет прежние записи. #}
   {% macro anam_form(pid, eid, current='') %}
   <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}">
+    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="replace" value="1">
       <div class="field field-full"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез</label>
@@ -1588,22 +1583,17 @@
         {% elif med_done %}{% set bm.kind = 'neutral' %}{% set bm.text = (ed.med|length ~ ' назначение') if ed.med|length == 1 else (ed.med|length ~ ' назначений') %}
         {% endif %}
 
-        <nav class="episode-rail" aria-label="Шаги приёма">
-          <a href="#flow-complaint" class="{{ 'att' if st_complaint=='attention' else ('on' if st_complaint=='active' else ('done' if st_complaint=='done' else '')) }}">Жалоба</a>
-          <a href="#flow-anam" class="{{ 'att' if st_anam=='attention' else ('on' if st_anam=='active' else ('done' if st_anam=='done' else '')) }}">Анамнез</a>
-          <a href="#flow-exam" class="{{ 'att' if st_exam=='attention' else ('on' if st_exam=='active' else ('done' if st_exam=='done' else '')) }}">Осмотр</a>
-          <a href="#flow-cond" class="{{ 'att' if st_cond=='attention' else ('on' if st_cond=='active' else ('done' if st_cond=='done' else '')) }}">Диагноз</a>
-          <a href="#flow-diag" class="{{ 'att' if st_diag=='attention' else ('on' if st_diag=='active' else ('done' if st_diag=='done' else '')) }}">Обследование</a>
-          <a href="#flow-med" class="{{ 'att' if st_med=='attention' else ('on' if st_med=='active' else ('done' if st_med=='done' else '')) }}">Лечение</a>
-        </nav>
+        {# Только гармошки (fstep). Вкладки-rail убраны — дублировали шаги и путали.
+           Открыты: текущий/attention + уже заполненные (done), чтобы после сохранения
+           секция не схлопывалась. Пользовательские open + scroll — в sessionStorage. #}
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
-               open=st_complaint in ('active','attention')) %}
+               open=st_complaint in ('active','attention','done')) %}
             {{ complaint_form(patient.id, e.id, e.complaint or '') }}
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=st_anam in ('active','attention')) %}
+               open=st_anam in ('active','attention','done')) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {{ anam_form(patient.id, e.id, anam_text) }}
             <p class="section-label">Факторы риска</p>
@@ -1624,7 +1614,7 @@
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
-               open=st_exam in ('active','attention')) %}
+               open=st_exam in ('active','attention','done')) %}
             <div id="chips-gc-{{ e.id }}">
               {% if gc_flag %}
               <div class="attr-row">
@@ -1738,7 +1728,7 @@
             </div>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
-               open=st_cond in ('active','attention')) %}
+               open=st_cond in ('active','attention','done')) %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
             <div class="diag-support {{ 'ok' if (diag_anam or diag_exam) else 'warn' }}">
@@ -1763,7 +1753,7 @@
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
-               open=st_diag in ('active','attention')) %}
+               open=st_diag in ('active','attention','done')) %}
             <div class="diag-grid">
               <div class="diag-sub">
                 <h4>Лаборатория</h4>
@@ -1827,7 +1817,7 @@
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
-               open=st_med in ('active','attention')) %}
+               open=st_med in ('active','attention','done')) %}
             <div class="chips" id="chips-med-{{ e.id }}">
               {% for m in ed.med %}
               <span class="tag-chip">{{ m.display }}{% if m.dose %}: {{ m.dose }}{% endif %}{% if m.frequency %} · {{ m.frequency }}{% endif %}{% if m.route %} · {{ {'oral':'внутрь','iv':'в/в','im':'в/м','inh':'ингаляционно'}.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}
@@ -1983,16 +1973,39 @@
     });
   });
 
-  document.querySelectorAll('.episode-rail a[href^="#"]').forEach(function(a){
-    a.addEventListener('click', function(){
-      var id=a.getAttribute('href').slice(1);
-      var step=document.getElementById(id);
-      if(step){
-        if(step.tagName === 'DETAILS') step.open = true;
-        step.scrollIntoView({behavior:'smooth', block:'start'});
-      }
+  // Сохранить/восстановить открытые гармошки и scroll — иначе после AJAX-reload
+  // секция схлопывается и страница прыгает вверх.
+  var _fstepUiKey = 'clinic-os:fstep-ui:' + location.pathname + location.search;
+  function saveFstepUi(){
+    var open = [];
+    document.querySelectorAll('details.fstep[id]').forEach(function(d){
+      if(d.open) open.push(d.id);
     });
+    try {
+      sessionStorage.setItem(_fstepUiKey, JSON.stringify({open: open, y: window.scrollY || 0}));
+    } catch (err) {}
+  }
+  function restoreFstepUi(){
+    try {
+      var raw = sessionStorage.getItem(_fstepUiKey);
+      if(!raw) return;
+      var st = JSON.parse(raw);
+      if(st && Array.isArray(st.open)){
+        document.querySelectorAll('details.fstep[id]').forEach(function(d){
+          d.open = st.open.indexOf(d.id) !== -1;
+        });
+      }
+      if(st && typeof st.y === 'number'){
+        var y = st.y;
+        requestAnimationFrame(function(){ window.scrollTo(0, y); });
+      }
+    } catch (err) {}
+  }
+  restoreFstepUi();
+  document.querySelectorAll('details.fstep').forEach(function(d){
+    d.addEventListener('toggle', saveFstepUi);
   });
+  window.addEventListener('beforeunload', saveFstepUi);
 
   // Форма измерения: единица и референс для выбранного показателя — одной строкой под формой.
   document.querySelectorAll('select[name="code"]').forEach(function(sel){
@@ -2146,6 +2159,7 @@
     }).then(function(r){ return r.json(); }).then(function(data){
       if(btn){ btn.disabled=false; btn.style.opacity=''; }
       if(data && data.ok && data.reload){
+        saveFstepUi();
         location.reload();
         return;
       }
@@ -2171,6 +2185,7 @@
         }
         // Форма в #now-action меняет вердикт — без reload экран врёт.
         if(form.closest('#now-action')){
+          saveFstepUi();
           location.reload();
           return;
         }
@@ -2333,6 +2348,7 @@
             // Удаление влияет на протокол и summary-badge секций — сервер отдаёт
             // reload:true; без reload бейдж «Обследование» залипает («N в норме»).
             if(data.reload){
+              saveFstepUi();
               location.reload();
               return;
             }

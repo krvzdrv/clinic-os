@@ -587,6 +587,8 @@ def update_encounter_complaint_route(pid, eid):
     if not enc or enc.get("patient_id") != pid:
         return "Приём не найден", 404
     fs.update_encounter_complaint(eid, request.form.get("complaint", "").strip() or None)
+    if _wants_json():
+        return _json_after_clinical(pid, reload_ui=True)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid, e=eid))
 
