@@ -96,17 +96,29 @@
   .panel{display:none;}
   .panel.active{display:block;animation:fade .12s ease;}
   @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
-  .flow{display:flex;flex-direction:column;gap:8px;}
-  /* Секции визита = единый атом section-header (collapsed/expanded), как шапка визита */
+  .flow{display:flex;flex-direction:column;gap:14px;}
+  /* Секции визита: свёрнуто = кликабельная «полка»; открыто = типографика
+     (не ещё одна белая рамка рядом с textarea — иначе иерархия схлопывается). */
   .fstep{margin:0;border:none;background:transparent;}
   .fstep > summary.section-header{
     background:var(--surface-1);border:0.5px solid var(--border);border-radius:10px;
     padding:0.75rem 1rem;display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;
+    transition:background .12s ease,border-color .12s ease,padding .12s ease;
   }
   .fstep > summary.section-header::-webkit-details-marker{display:none;}
   .fstep > summary.section-header::before{content:none;}
   .section-header__icon{font-size:16px;color:var(--text-secondary);flex:none;}
   .section-header__title{font-size:14px;font-weight:500;color:var(--text-primary);flex:none;}
+  .fstep[open] > summary.section-header{
+    background:transparent;border-color:transparent;border-radius:0;
+    padding:0.35rem 0.15rem 0.15rem;
+  }
+  .fstep[open] > summary.section-header .section-header__title{
+    font-size:15px;font-weight:650;letter-spacing:-.01em;
+  }
+  .fstep[open] > summary.section-header .section-header__icon{
+    color:var(--text-primary);
+  }
   /* Правый кластер забирает всё свободное место между заголовком и шевроном —
      иначе бейдж с диагнозом режется при max-width, а середина строки пустует. */
   .section-header__right{
@@ -138,7 +150,7 @@
   .fstep[open] > summary.section-header .section-chev-right{display:none;}
   .fstep.attention > summary.section-header{border-color:var(--border-danger);}
   /* Плавное раскрытие секции — без прыжка контента ниже (см. smoothToggleDetails). */
-  .fstep-b{padding:8px 4px 4px;overflow:hidden;transition:height .18s ease;}
+  .fstep-b{padding:10px 2px 6px;overflow:hidden;transition:height .18s ease;}
   .visit-list{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;}
   .visit-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;text-decoration:none;color:inherit;font-size:13px;}
   .visit-row:hover{border-color:var(--steel);}
@@ -525,16 +537,26 @@
   .save-status{font-size:12px;color:var(--text-muted);margin-left:8px;min-height:1em;}
   .save-status.is-ok{color:var(--text-success);}
   .save-status.is-err{color:var(--text-danger);}
-  /* Dirty-state: кнопка = индикатор (неактивна / есть изменения / сохраняю / сохранено). */
+  /* Dirty-state: покой = secondary (.btn-small); fill только когда есть что сохранить.
+     !important нужен, чтобы перебить SSOT .btn-small в clinic.css. */
   .btn-save{transition:background-color .15s ease,color .15s ease,border-color .15s ease;}
   .btn-save:disabled{
-    background:var(--surface-1,#f5f5f3);color:var(--text-muted);border:1px solid var(--border);
-    cursor:default;opacity:1;
+    background:var(--surface-2) !important;color:var(--text-muted) !important;
+    border-color:var(--border) !important;cursor:default;opacity:1;font-weight:500;
   }
   .btn-save.is-dirty:not(:disabled),
-  .btn-save.is-dirty{background:var(--fill-accent);color:#fff;border-color:var(--fill-accent);cursor:pointer;}
-  .btn-save.is-saving{background:var(--text-muted);color:#fff;border-color:transparent;cursor:wait;}
-  .btn-save.is-saved{background:var(--green,#2e6b2e);color:#fff;border-color:transparent;}
+  .btn-save.is-dirty{
+    background:var(--fill-accent) !important;color:var(--on-accent) !important;
+    border-color:var(--fill-accent) !important;cursor:pointer;font-weight:600;
+  }
+  .btn-save.is-saving{
+    background:var(--text-muted) !important;color:#fff !important;
+    border-color:transparent !important;cursor:wait;
+  }
+  .btn-save.is-saved{
+    background:var(--bg-success) !important;color:var(--text-success) !important;
+    border-color:var(--border-success) !important;
+  }
   .enc-complaint-edit input[type=text]{min-width:18em;max-width:100%;}
   /* Все триггеры тулбара = размер .btn (SSOT 32px), без «плашки» Жалоба другого роста. */
   .enc-toolbar .add-panel,
@@ -791,9 +813,10 @@
      По нему (наряду с тяжестью ВП) решается амбулаторно/стационар/ОРИТ. #}
   {% macro gc_form(pid, eid, chip_target='', current='') %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-replace="1">
+    {# Без data-replace: блок chips-gc держит и значение (attr-row), и форму смены.
+       После записи UI обновляет soft_refresh, как у виталов. #}
+    <form method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      {# Label скрыт: заголовок уже в add_panel / attr-row — без дубля на экране. #}
       <div class="field"><label class="sr-only">Общее состояние</label>
         <select name="key" aria-label="Общее состояние">
           {% for k in general_condition_order %}
@@ -1660,24 +1683,30 @@
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
                open=true) %}
+            {# Тот же атом, что температура/АД: attr-row в .obs-attrs + форма ниже
+               (смена без удаления). Раньше после «Оценить» форма пропадала — только
+               значение без возможности изменить; × снимал строку, но не возвращал ввод. #}
             <div id="chips-gc-{{ e.id }}">
               {% if gc_flag %}
-              <div class="attr-row">
-                <p class="attr-label"><i class="ti ti-activity" aria-hidden="true"></i>Общее состояние</p>
-                <div class="attr-value-row">
-                  <p class="attr-value"><span class="k">{{ general_condition_display(gc_flag) }}</span></p>
-                  <div class="attr-actions">
-                    {% if general_condition_needs_inpatient(gc_flag) %}<span class="badge red">показана госпитализация</span>{% endif %}
-                    <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=gc_flag_id) }}">
-                      <button class="chip-x" type="submit" title="Убрать оценку общего состояния" aria-label="Убрать оценку общего состояния">×</button>
-                    </form>
+              <div class="obs-attrs">
+                <div class="attr-row">
+                  <p class="attr-label"><i class="ti ti-activity" aria-hidden="true"></i>Общее состояние</p>
+                  <div class="attr-value-row">
+                    <p class="attr-value">{{ general_condition_display(gc_flag) }}</p>
+                    <div class="attr-actions">
+                      {% if general_condition_needs_inpatient(gc_flag) %}<span class="badge red">показана госпитализация</span>{% endif %}
+                      <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=gc_flag_id) }}">
+                        <button class="chip-x" type="submit" title="Убрать оценку общего состояния" aria-label="Убрать оценку общего состояния">×</button>
+                      </form>
+                    </div>
                   </div>
                 </div>
               </div>
-              {% else %}
-              <p class="section-label" style="margin-top:0;">Общее состояние</p>
-              {{ gc_form(patient.id, e.id, 'chips-gc-' ~ e.id, gc_flag) }}
               {% endif %}
+              {% if not gc_flag %}
+              <p class="section-label" style="margin-top:0;">Общее состояние</p>
+              {% endif %}
+              {{ gc_form(patient.id, e.id, '', gc_flag) }}
             </div>
             {# Виталы: labeled row max 420px; АДс+АДд одной строкой; red flags — danger chip.
                Название показателя — из loinc_display (единый источник: то же имя, что в

@@ -145,9 +145,12 @@ h1, h2, h3,
 }
 .back:hover { color: var(--steel); }
 
-/* Единый размер кнопки во всём приложении — приоритет действия показывает
-   цвет (fill-danger/accent/ghost), а не размер. Не переопределять
-   height/padding/font-size локально в шаблонах — только здесь (SSOT). */
+/* Единый размер кнопки — приоритет действия показывает цвет, не размер.
+   Иерархия (Linear / clinical dense UI):
+   - .btn / .action-btn — primary fill (CDS, «добавить пациента», редкий CTA)
+   - .btn-small — secondary outline (рутинные «Сохранить / Добавить / Назначить»
+     в карточке; не конкурируют с заголовком секции и полем)
+   Не переопределять height/padding/font-size локально — только здесь (SSOT). */
 .btn,
 .btn-small,
 .action-btn,
@@ -160,18 +163,52 @@ button.btn-small {
   padding: 0 14px;
   font-family: var(--font);
   font-size: 13px;
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #fff !important;
   border-radius: var(--radius);
-  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   text-decoration: none;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+/* Primary */
+.btn,
+.action-btn,
+button.btn {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 600;
 }
 .btn:hover,
-.btn-small:hover,
 .action-btn:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: #fff !important;
+}
+/* Secondary — default for forms in the encounter card */
+.btn-small,
+button.btn-small {
+  background: var(--surface) !important;
+  color: var(--steel) !important;
+  border-color: var(--line) !important;
+  font-weight: 500;
+}
+.btn-small:hover,
+button.btn-small:hover {
+  background: var(--tint) !important;
+  border-color: var(--line) !important;
+  color: var(--steel) !important;
+}
+/* Явный primary на малом размере (редко; dirty-save поднимает сам) */
+.btn-small.primary,
+button.btn-small.primary {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  font-weight: 600;
+}
+.btn-small.primary:hover,
+button.btn-small.primary:hover {
   background: var(--accent-hover) !important;
   border-color: var(--accent-hover) !important;
   color: #fff !important;
@@ -181,6 +218,7 @@ button.btn-small {
   background: var(--surface) !important;
   color: var(--steel) !important;
   border: 1px solid var(--line) !important;
+  font-weight: 500;
 }
 .btn.ghost:hover { background: var(--tint) !important; }
 .btn.danger {

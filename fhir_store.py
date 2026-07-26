@@ -838,6 +838,7 @@ def add_flag(pid, key, value="true", category="exam", encounter_id=None, recorde
         "INSERT INTO clinical_flag (id, patient_id, encounter_id, key, value, category, recorded_date) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s)",
         (fid, pid, encounter_id, key, value, category, recorded_date))
+    clear_pid_cache(pid)
     return fid
 
 
