@@ -970,7 +970,7 @@
   <div class="fform">
     <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-eye" aria-hidden="true"></i>Признак осмотра</label>
+      <div class="field"><label><i class="ti ti-eye" aria-hidden="true"></i>Данные объективного осмотра</label>
         <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
@@ -1717,7 +1717,7 @@
               </div>
               {% endfor %}
             </div>
-            <p class="section-label" style="margin-top:8px;">Признаки осмотра</p>
+            <p class="section-label" style="margin-top:8px;">Данные объективного осмотра</p>
             <div class="chips" id="chips-exam-flags-{{ e.id }}">
               {% for f in exam_flags %}
               {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
@@ -1732,7 +1732,7 @@
               {% call add_panel('Показатель') %}
                 {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
               {% endcall %}
-              {% call add_panel('Признак осмотра') %}
+              {% call add_panel('Данные объективного осмотра') %}
                 {{ exam_flag_form(patient.id, e.id, 'chips-exam-flags-' ~ e.id) }}
               {% endcall %}
             </div>
