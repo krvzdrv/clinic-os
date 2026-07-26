@@ -88,9 +88,9 @@
   {% set rate_ok = measure.rate >= 70 %}
   <div class="metric-bar">
     <div class="metric-cell">
-      <p class="k">Всего пациентов</p>
+      <p class="k">В протоколе</p>
       <p class="v">{{ measure.total }}</p>
-      <p class="sub">с активным протоколом</p>
+      <p class="sub">из {{ total }} пациентов · активный протокол</p>
     </div>
     <div class="metric-cell">
       <p class="k">Соответствует</p>
@@ -148,7 +148,7 @@
     {% if q or f_sev or f_set or f_com %}
       <a href="{{ url_for('dashboard') }}" class="action-link" style="font-weight:500;">Сбросить</a>
     {% endif %}
-    <span class="cnt">Показано: {{ patients|length }} из {{ total }}</span>
+    <span class="cnt">Показано: {{ patients|length }} из {{ total }}{% if measure.total != total %} · в протоколе {{ measure.total }}{% endif %}</span>
   </form>
   {% endif %}
 

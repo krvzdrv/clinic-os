@@ -189,6 +189,10 @@ def dashboard():
         return (s, r["name"].lower())
     rows.sort(key=_priority)
 
+    # Знаменатель списка — все пациенты (до фильтров). Не путать с measure.total:
+    # там только cohort «с активным протоколом» (applicable в cap_cache).
+    total_patients = len(rows)
+
     # Фильтры и поиск
     q = (request.args.get("q", "") or "").strip().lower()
     f_sev = request.args.get("severity", "")
@@ -210,7 +214,7 @@ def dashboard():
 
     return render_template("dashboard.html", measure=measure, patients=rows,
                            q=q, f_sev=f_sev, f_set=f_set, f_com=f_com,
-                           total=len(caches),
+                           total=total_patients,
                            demo_mode=os.environ.get("DEMO_MODE", "1") == "1")
 
 
