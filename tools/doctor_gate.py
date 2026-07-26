@@ -94,9 +94,9 @@ def main() -> int:
     print(f"DB: {db.DB_PATH}")
     print("=" * 70)
 
-    print("\n[1] Сид 10 пациентов")
+    print("\n[1] Сид пациентов (ВП + ЖДА)")
     by_name = seed()
-    check(len(by_name) == 10, f"seeded {len(by_name)} patients")
+    check(len(by_name) == 11, f"seeded {len(by_name)} patients")
     check(len(fs.get_drug_catalog()) >= 20, f"drugs={len(fs.get_drug_catalog())}")
 
     # app после привязки DB_PATH (dotenv уже заглушен)
@@ -163,7 +163,9 @@ def main() -> int:
             focus = ui.get("focus_stage")
             if focus == "med":
                 check('id="med-code-now"' in now, f"{name}: форма АБТ в now-action")
-                check("Заменить" in now, f"{name}: кнопка замены")
+                # «Назначить» — если АБТ не назначена вовсе; «Заменить» — если назначена неверная.
+                med_verb = "Назначить" if ui.get("no_active_therapy") else "Заменить"
+                check(med_verb in now, f"{name}: кнопка {med_verb.lower()}")
                 sug = ui.get("suggest_atc")
                 if sug:
                     check(

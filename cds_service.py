@@ -2,12 +2,13 @@
 Слой 5 — CDS Hooks (точка оказания помощи).
 
 Хуки:
-  patient-view — врач открыл карту. Карточки: показания к госпитализации/ОРИТ,
-                 отсутствие обязательных исследований, и сводка соответствия
-                 протоколу ВП (из protocol_cap — Слой 3b).
+  patient-view — врач открыл карту. Карточки строятся по каждому применимому
+                 пациенту протоколу (protocol_dispatch — ВП и/или ЖДА): показания
+                 к госпитализации/ОРИТ/трансфузии, отсутствие терапии, сводка
+                 соответствия протоколу.
   order-sign   — врач назначает препарат. drug_service (аллергии/взаимодействия)
                  + protocol_cap.evaluate_abt_choice (АБТ не по КП №768 → hard-stop
-                 с осознанным подтверждением).
+                 с осознанным подтверждением). Пока проверяет только АБТ/ВП.
 
 Политика сигналов / override / continuous пересчёта:
   docs/processes/CDS_SIGNALING.md (якорь cds_policy в process_registry.yaml).
@@ -25,15 +26,38 @@ import rules_engine as re
 import drug_service
 import protocol_cap as pcap
 import protocol_verdict as pverdict
+import protocol_dispatch as pdisp
+
+# Метка источника карточки и класс препарата терапии — по протоколу.
+# Добавление протокола = одна строка здесь + регистрация evaluator в protocol_dispatch.
+_PROTOCOL_LABELS = {
+    "cap_adult_768": "Регламент ВП (КП №768)",
+    "ida_adult_23": "Регламент ЖДА (КП №23)",
+}
+_THERAPY_ATC_PREFIX = {
+    "cap_adult_768": "J01",
+    "ida_adult_23": "B03A",
+}
+_THERAPY_WORD = {
+    "cap_adult_768": "АБТ",
+    "ida_adult_23": "терапию железом",
+}
+
+
+def _protocol_label(protocol_id):
+    return _PROTOCOL_LABELS.get(protocol_id, "Регламент протокола")
 
 
 def cds_patient_view(pid):
     cards = []
 
-    # --- Сводка соответствия протоколу ВП: те же checks, что в карточке/дашборде ---
-    assessment = pcap.evaluate_cap(pid)
-    if assessment.get("applicable"):
-        verdict = pverdict.verdict_for_ui(assessment)
+    # --- По каждому применимому протоколу: сводка + госпитализация/критическое + терапия ---
+    for item in pdisp.patient_assessments(pid):
+        protocol_id = item["protocol_id"]
+        assessment = item["assessment"]
+        label = _protocol_label(protocol_id)
+        verdict = pverdict.verdict_for_ui(assessment, protocol_id)
+
         if not verdict.get("ok"):
             problems = list(verdict.get("checks_primary") or [])
             problems += [c for c in (verdict.get("checks_more") or []) if c.get("level") == "problem"]
@@ -43,50 +67,56 @@ def cds_patient_view(pid):
                     for c in problems
                 )
                 cards.append({
-                    "uuid": f"card-cap-{pid}",
-                    "summary": verdict.get("headline") or f"Отклонения от протокола ВП: {len(problems)}",
+                    "uuid": f"card-{protocol_id}-{pid}",
+                    "summary": verdict.get("headline") or f"Отклонения от протокола: {len(problems)}",
                     "detail": detail,
                     "indicator": "critical" if verdict.get("tier") == "critical" else "warning",
-                    "source": {"label": "Регламент ВП (КП №768, единый вердикт)"},
+                    "source": {"label": f"{label}, единый вердикт"},
                     "type": "info",
                 })
 
         # --- Показания к госпитализации ---
         if assessment.get("hospitalization"):
             cards.append({
-                "uuid": f"card-cap-hosp-{pid}",
+                "uuid": f"card-{protocol_id}-hosp-{pid}",
                 "summary": "Показания к госпитализации: " + "; ".join(assessment["hospitalization"]),
-                "detail": "Госпитализация (КП №768).",
+                "detail": f"Госпитализация ({label}).",
                 "indicator": "warning",
-                "source": {"label": "Регламент ВП (КП №768)"},
+                "source": {"label": label},
                 "type": "suggestion",
             })
 
-        # --- Показания к ОРИТ ---
-        if assessment.get("icu"):
+        # --- Показания к ОРИТ (ВП) / трансфузии (ЖДА) — самое острое действие ---
+        critical_list = assessment.get("icu") or assessment.get("transfusion")
+        if critical_list:
+            is_icu = bool(assessment.get("icu"))
+            summary_word = "переводу в ОРИТ" if is_icu else "трансфузии эритроцитарной массы"
+            detail_text = "Перевод в отделение реанимации" if is_icu else "Трансфузия эритроцитарной массы"
             cards.append({
-                "uuid": f"card-cap-icu-{pid}",
-                "summary": "Показания к переводу в ОРИТ: " + "; ".join(assessment["icu"]),
-                "detail": "Перевод в отделение реанимации (КП №768).",
+                "uuid": f"card-{protocol_id}-critical-{pid}",
+                "summary": f"Показания к {summary_word}: " + "; ".join(critical_list),
+                "detail": f"{detail_text} ({label}).",
                 "indicator": "critical",
-                "source": {"label": "Регламент ВП (КП №768)"},
+                "source": {"label": label},
                 "type": "suggestion",
             })
 
-        # --- Нет АБТ при диагностированной ВП ---
-        if not _has_active_antibiotic(pid):
-            exp = assessment.get("expected_regimen", {})
+        # --- Нет терапии при подтверждённом диагнозе ---
+        if not _has_active_therapy(pid, protocol_id):
+            exp = assessment.get("expected_regimen") or {}
             name = exp.get("name") or (exp.get("primary", {}) or {}).get("name")
+            therapy_word = _THERAPY_WORD.get(protocol_id, "терапию")
             cards.append({
-                "uuid": f"card-cap-noabt-{pid}",
-                "summary": "ВП диагностирована, АБТ не назначена",
-                "detail": f"Назначить АБТ первой линии: {name}" if name else "Назначить АБТ.",
+                "uuid": f"card-{protocol_id}-notx-{pid}",
+                "summary": f"Диагноз подтверждён, {therapy_word} не назначена",
+                "detail": (f"Назначить {therapy_word} первой линии: {name}" if name
+                          else f"Назначить {therapy_word}."),
                 "indicator": "warning",
-                "source": {"label": "Регламент ВП (КП №768)"},
+                "source": {"label": label},
                 "type": "suggestion",
             })
 
-    # --- Ко-морбидность с диабетом (info) — влияет на тяжесть фона ---
+    # --- Ко-морбидность с диабетом (info) — влияет на тяжесть фона ВП ---
     if re.has_diabetes(pid):
         cards.append({
             "uuid": f"card-diabetes-{pid}",
@@ -147,5 +177,8 @@ def cds_order_sign(pid, medication_code):
     return cards
 
 
-def _has_active_antibiotic(pid):
-    return any(m["code"].startswith("J01") for m in fs.get_medications(pid))
+def _has_active_therapy(pid, protocol_id):
+    prefix = _THERAPY_ATC_PREFIX.get(protocol_id)
+    if not prefix:
+        return True  # протокол без смоделированного класса препарата — не сигналим
+    return any((m.get("code") or "").upper().startswith(prefix) for m in fs.get_medications(pid))

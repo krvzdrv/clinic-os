@@ -1,0 +1,37 @@
+# SSOT выбора терапии железом при железодефицитной анемии (взрослые).
+# Протокол: КП МЗ РБ №23 от 01.04.2022.
+#
+# Движок (protocol_rules_ida.py) берёт первое совпавшее правило по возрастанию priority.
+# Каталог препаратов (drug_catalog) — только справочник: название, доза, маршрут.
+# Роль препарата в протоколе задаётся ЗДЕСЬ, не полем protocol_role в каталоге.
+#
+# when:
+#   malabsorption / gi_disease / intolerance_oral_iron: true | false | any (по умолчанию any)
+
+protocol: "КП МЗ РБ №23 от 01.04.2022 (Железодефицитная анемия, взрослое население)"
+version: 1
+
+therapy:
+  - priority: 10
+    when: { malabsorption: true }
+    atc_code: B03AC08
+    route: iv
+    rationale: "Нарушение всасывания железа → внутривенное железо."
+
+  - priority: 20
+    when: { gi_disease: true }
+    atc_code: B03AC08
+    route: iv
+    rationale: "Заболевание ЖКТ, ограничивающее приём внутрь → внутривенное железо."
+
+  - priority: 30
+    when: { intolerance_oral_iron: true }
+    atc_code: B03AC08
+    route: iv
+    rationale: "Непереносимость перорального железа → внутривенное железо."
+
+  - priority: 40
+    when: {}
+    atc_code: B03AA07
+    route: oral
+    rationale: "Железодефицитная анемия без противопоказаний к приёму внутрь → железо внутрь (первая линия)."

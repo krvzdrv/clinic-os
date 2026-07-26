@@ -63,7 +63,27 @@ _SHORT_CHECK = {
     "missing_cultures": ("Нет посевов", "Взять посевы до АБТ"),
     "no_reassessment": ("Нет оценки эффекта АБТ", "Оценить через 48–72 ч"),
     "crp_not_decreasing": ("СРБ не снижается", "Пересмотреть терапию"),
+    # --- Протокол ЖДА (КП №23, взрослые) — свои коды, без пересечения с ВП ---
+    "transfusion_indicated": ("Показания к трансфузии", "Рассмотреть трансфузию эритроцитарной массы"),
+    "no_iron_therapy": ("Терапия железом не назначена", "Назначить железо по протоколу"),
+    "not_first_line_iron": ("Препарат железа не по протоколу", None),
+    "route_mismatch_iron": ("Маршрут введения железа не по протоколу", None),
+    "missing_ferritin": ("Нет ферритина", "Назначить ферритин"),
+    "missing_iron_serum": ("Нет железа сыворотки", "Назначить железо сыворотки"),
+    "missing_biochem": ("Нет биохимии крови", "Назначить биохимический анализ крови"),
+    "missing_urine": ("Нет общего анализа мочи", "Назначить ОАМ"),
+    "no_hb_reassessment": ("Нет контрольного ОАК", "Оценить через 3–4 нед"),
+    "hb_not_normalized": ("Гемоглобин не нормализован", "Продолжить терапию железом"),
+    "ferritin_not_replenished": ("Ферритин не восполнен", "Продолжить терапию железом"),
+    "no_repeat_cbc_plan": ("Нет плана повторного ОАК", "Запланировать контроль ОАК 1×/мес"),
 }
+
+# Коды gap'ов, относящиеся к «терапии не назначена / не первой линии» — для CTA/reason.
+_THERAPY_GAP_CODES = ("not_first_line_abt", "not_inpatient_first_line", "no_abt",
+                      "not_first_line_iron", "no_iron_therapy")
+_NOT_FIRST_LINE_CODES = ("not_first_line_abt", "not_inpatient_first_line", "not_first_line_iron")
+_NO_THERAPY_CODES = ("no_abt", "no_iron_therapy")
+_CRITICAL_CODES = ("icu_indicated", "transfusion_indicated")
 
 
 def _clean_ui_text(text: str | None) -> str:
@@ -118,31 +138,41 @@ def _route_label(atc_code: str | None, setting: str, explicit_route: str | None 
 
 
 def _expected_therapy(expected_regimen: dict | None, setting: str) -> dict:
+    """Форма ожидаемой терапии — по структуре dict, не по protocol_id/setting:
+    вложенный {'primary': {...}} (стационарный режим ВП) vs плоский {'atc_code','name',...}
+    (амбулаторная ВП или терапия железом ЖДА — там нет ветвления по 'setting')."""
     if not expected_regimen:
         return {"title": "", "detail": ""}
 
-    if setting == "outpatient":
-        name = expected_regimen.get("name") or "антибиотик первой линии"
-        route = _route_label(expected_regimen.get("atc_code"), setting)
+    if "primary" in expected_regimen:
+        primary = expected_regimen.get("primary") or {}
+        name = primary.get("name") or "препарат первой линии"
+        route = _route_label(primary.get("atc_code"), setting, expected_regimen.get("route"))
         title = f"{name} {route}".strip()
-        detail = _clean_ui_text(expected_regimen.get("rationale") or "")
+        detail = _clean_ui_text(
+            primary.get("reason") or expected_regimen.get("rationale") or ""
+        )
         return {"title": title, "detail": detail}
 
-    primary = expected_regimen.get("primary") or {}
-    name = primary.get("name") or "антибиотик"
-    route = _route_label(primary.get("atc_code"), setting, expected_regimen.get("route"))
-    title = f"{name} {route}".strip()
-    detail = _clean_ui_text(
-        primary.get("reason") or expected_regimen.get("rationale") or ""
+    name = expected_regimen.get("name") or "препарат первой линии"
+    route = _route_label(
+        expected_regimen.get("atc_code"), setting, expected_regimen.get("route")
     )
+    title = f"{name} {route}".strip()
+    detail = _clean_ui_text(expected_regimen.get("rationale") or "")
     return {"title": title, "detail": detail}
 
 
-def _therapy_next_step(expected_regimen: dict | None, setting: str) -> str:
+def _therapy_next_step(expected_regimen: dict | None, setting: str,
+                       protocol_id: str = DEFAULT_PROTOCOL_ID) -> str:
     therapy = _expected_therapy(expected_regimen, setting)
+    is_cap = protocol_id == DEFAULT_PROTOCOL_ID
     if not therapy["title"]:
-        return "Назначить антибактериальную терапию по протоколу"
-    return f"Назначить {therapy['title']} на 7–14 дней"
+        label = "антибактериальную терапию" if is_cap else "терапию железом"
+        return f"Назначить {label} по протоколу"
+    if is_cap:
+        return f"Назначить {therapy['title']} на 7–14 дней"
+    return f"Назначить {therapy['title']}"
 
 
 def _compact_abt_action(recommendation: str | None, fallback: str | None = None) -> str:
@@ -194,17 +224,19 @@ def _gap_to_check(gap: dict) -> dict:
     else:
         title = _truncate(_clean_ui_text(gap.get("message") or ""), 80)
         action = _clean_ui_text(gap.get("recommendation") or "")
-    if code == "no_abt":
+    if code in _NO_THERAPY_CODES:
         action = _compact_abt_action(gap.get("recommendation"), action)
-    elif code in ("not_first_line_abt", "not_inpatient_first_line"):
+    elif code in _NOT_FIRST_LINE_CODES:
+        is_iron = code == "not_first_line_iron"
         if gap.get("cds_override"):
-            title = "АБТ назначена осознанно вне протокола"
+            title = ("Препарат железа назначен осознанно вне протокола" if is_iron
+                     else "АБТ назначена осознанно вне протокола")
         rec = gap.get("recommendation") or ""
         m = re.search(r"→\s*(.+?)(?:\s*\(|$)", rec)
         if m:
             action = f"Заменить на {m.group(1).strip()}"
         else:
-            action = "Заменить АБТ по протоколу"
+            action = "Заменить препарат железа по протоколу" if is_iron else "Заменить АБТ по протоколу"
     title = _ui_sentence(title)
     action = _ui_sentence(action) if action else action
     # CTA без точки в конце — так читается как действие, не как абзац
@@ -224,6 +256,7 @@ def _pick_next_step(
     ok: bool,
     primary_gap: dict | None = None,
     gaps: list[dict] | None = None,
+    protocol_id: str = DEFAULT_PROTOCOL_ID,
 ) -> str | None:
     if primary_gap and gaps and len(gaps) == len(checks):
         for g, c in zip(gaps, checks):
@@ -241,7 +274,7 @@ def _pick_next_step(
                 return check["action"].rstrip(".")
         return "Продолжить ведение по протоколу"
     if expected_regimen:
-        return _therapy_next_step(expected_regimen, setting)
+        return _therapy_next_step(expected_regimen, setting, protocol_id)
     return None
 
 
@@ -276,23 +309,41 @@ _FOCUS_BY_GAP = {
     "icu_indicated": "actions",
     "inpatient_preferable": "actions",
     "diagnosis_unsupported": "cond",
+    # --- ЖДА (КП №23) — свои коды ---
+    "transfusion_indicated": "actions",
+    "no_iron_therapy": "med",
+    "not_first_line_iron": "med",
+    "route_mismatch_iron": "med",
+    "missing_ferritin": "diag",
+    "missing_iron_serum": "diag",
+    "missing_biochem": "diag",
+    "missing_urine": "diag",
+    "no_hb_reassessment": "reassess",
+    "hb_not_normalized": "reassess",
+    "ferritin_not_replenished": "reassess",
 }
 
 _CLINICAL_PRIORITY = (
     ("icu_indicated", "Показан перевод в ОРИТ"),
+    ("transfusion_indicated", "Показания к трансфузии эритроцитарной массы"),
     ("hospitalization_indicated", "Показана госпитализация"),
     ("abt_no_effect", "АБТ без эффекта — смена терапии или госпитализация"),
     ("diagnosis_unsupported", "Диагноз не подтверждён осмотром и анамнезом"),
     ("not_first_line_abt", "Антибиотик не соответствует протоколу"),
     ("not_inpatient_first_line", "Схема АБТ не соответствует протоколу"),
+    ("not_first_line_iron", "Препарат железа не соответствует протоколу"),
     ("no_abt", "Не назначена антибактериальная терапия"),
+    ("no_iron_therapy", "Не назначена терапия железом"),
     ("oral_in_inpatient", "В стационаре нужен старт АБТ внутривенно"),
     ("parenteral_in_outpatient", "Амбулаторно нужна пероральная АБТ"),
+    ("route_mismatch_iron", "Маршрут введения железа не соответствует протоколу"),
     ("bronchodilator_not_indicated", "Бронхолитик без показаний"),
     ("course_too_short", "Курс АБТ короче рекомендуемого"),
     ("missing_spo2", "Нет SpO₂ — нельзя оценить тяжесть"),
     ("missing_cbc", "Нет общего анализа крови"),
     ("missing_crp", "Нет С-реактивного белка"),
+    ("missing_ferritin", "Не определён ферритин"),
+    ("missing_iron_serum", "Не определено железо сыворотки"),
 )
 
 _PRIMARY_PROBLEMS = 1  # в «Ещё» не дублируем главный сигнал
@@ -332,31 +383,31 @@ def _clinical_headline(gaps: list[dict], ok: bool, primary: dict | None) -> str:
         return "Соответствует протоколу"
     if primary:
         code = primary.get("code")
-        if primary.get("cds_override") and code in (
-            "not_first_line_abt", "not_inpatient_first_line",
-        ):
-            return "АБТ назначена осознанно вне протокола"
+        if primary.get("cds_override") and code in _NOT_FIRST_LINE_CODES:
+            return ("Препарат железа назначен осознанно вне протокола" if code == "not_first_line_iron"
+                    else "АБТ назначена осознанно вне протокола")
         for c, title in _CLINICAL_PRIORITY:
             if c == code:
                 return title
     return "Есть отклонения от протокола"
 
 
-def _short_reason(assessment: dict, primary_gap: dict | None, expected: dict | None, setting: str) -> str | None:
+def _short_reason(assessment: dict, primary_gap: dict | None, expected: dict | None, setting: str,
+                  protocol_id: str = DEFAULT_PROTOCOL_ID) -> str | None:
     """Одна короткая строка «почему» под заголовком.
 
     Без дампа критериев/виталов — детали уходят в «Ещё».
-    Для ОРИТ/госпитализации reason не нужен: хватает headline + кнопка.
+    Для ОРИТ/госпитализации/трансфузии reason не нужен: хватает headline + кнопка.
     """
     if not primary_gap:
         return None
     code = primary_gap.get("code") or ""
-    if code in ("icu_indicated", "hospitalization_indicated"):
+    if code in _CRITICAL_CODES or code == "hospitalization_indicated":
         return None
-    if code in ("not_first_line_abt", "not_inpatient_first_line", "no_abt"):
+    if code in _THERAPY_GAP_CODES:
         if primary_gap.get("cds_override"):
             return "Врач подтвердил назначение при предупреждении CDS"
-        return _ui_sentence(_truncate(_therapy_next_step(expected, setting), 100))
+        return _ui_sentence(_truncate(_therapy_next_step(expected, setting, protocol_id), 100))
     if code == "abt_no_effect":
         return "Нет ответа на текущую АБТ за 48–72 ч"
     if code == "diagnosis_unsupported":
@@ -366,8 +417,9 @@ def _short_reason(assessment: dict, primary_gap: dict | None, expected: dict | N
 
 
 def _icu_detail_lines(assessment: dict) -> list[str]:
-    """Критерии ОРИТ — только для свёрнутого «Ещё», не в шапку карточки."""
-    return [_ui_sentence(x) for x in (assessment.get("icu") or [])[:4] if x]
+    """Критерии ОРИТ/трансфузии — только для свёрнутого «Ещё», не в шапку карточки."""
+    lines = (assessment.get("icu") or assessment.get("transfusion") or [])[:4]
+    return [_ui_sentence(x) for x in lines if x]
 
 
 def _cta_label(
@@ -375,23 +427,32 @@ def _cta_label(
     assessment: dict,
     ok: bool,
     primary_code: str = "",
+    protocol_id: str = DEFAULT_PROTOCOL_ID,
 ) -> str | None:
     if not focus:
         return None
+    if ok:
+        # Соответствует протоколу — CTA-кнопка не нужна, план контроля уже в next_step.
+        return None
     if focus == "repeat_cxr":
         return "Запланировать контроль через 4–6 нед"
-    if ok:
-        return None
     if focus == "actions":
         if assessment.get("icu"):
             return "Госпитализировать в ОРИТ"
+        if assessment.get("transfusion"):
+            return "Рассмотреть трансфузию"
         return "Госпитализировать"
     if focus == "reassess":
         if primary_code == "no_reassessment":
             return "Запланировать контроль через 3 дня"
+        if primary_code == "no_hb_reassessment":
+            return "Запланировать контрольный ОАК"
         return "Сменить АБТ"
     if focus == "med":
-        return "Заменить АБТ"
+        is_iron = protocol_id != DEFAULT_PROTOCOL_ID
+        if primary_code in _NO_THERAPY_CODES:
+            return "Назначить препарат железа" if is_iron else "Назначить АБТ"
+        return "Заменить препарат железа" if is_iron else "Заменить АБТ"
     if focus == "cond":
         return "Поставить диагноз"
     if focus == "exam":
@@ -435,14 +496,20 @@ def _split_checks(
 
 
 def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> dict:
-    """Преобразует сырой verdict evaluate_cap в ClinicalVerdict для шаблона."""
+    """Преобразует сырой verdict evaluate_cap/evaluate_ida в ClinicalVerdict для шаблона.
+
+    Форма ответа одинакова для любого протокола — шаблон не различает, чей это
+    вердикт; конкретный текст берётся из общих таблиц по gap.code (см. выше)."""
     if not assessment.get("applicable"):
+        proto = protocol_rules.get_protocol(protocol_id) or {}
+        title = proto.get("title")
+        headline = f"Протокол «{title}» не активен" if title else "Нет активного протокола"
         return {
             "applicable": False,
             "protocol_title": None,
-            "headline": "Протокол ВП не активен",
-            "reason": "Нужен диагноз ВП из справочника МКБ",
-            "next_step": "Укажите диагноз внебольничной пневмонии из справочника МКБ",
+            "headline": headline,
+            "reason": "Нужен диагноз из справочника МКБ, включённый в этот протокол",
+            "next_step": "Укажите диагноз из справочника МКБ, входящий в протокол",
             "checks": [],
             "checks_primary": [],
             "checks_more": [],
@@ -472,20 +539,21 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
 
     suggest_atc = None
     if expected:
-        if setting == "outpatient":
-            suggest_atc = expected.get("atc_code")
-        else:
+        if "primary" in expected:
             suggest_atc = (expected.get("primary") or {}).get("atc_code")
+        else:
+            suggest_atc = expected.get("atc_code")
 
     primary_code = (primary_gap or {}).get("code") or ""
-    reason = None if ok else _short_reason(assessment, primary_gap, expected, setting)
+    reason = None if ok else _short_reason(assessment, primary_gap, expected, setting, protocol_id)
     next_step = _pick_next_step(
-        checks, expected, setting, ok=ok, primary_gap=primary_gap, gaps=gaps
+        checks, expected, setting, ok=ok, primary_gap=primary_gap, gaps=gaps,
+        protocol_id=protocol_id,
     )
-    cta = _cta_label(focus, assessment, ok, primary_code=primary_code)
+    cta = _cta_label(focus, assessment, ok, primary_code=primary_code, protocol_id=protocol_id)
 
-    # Критерии ОРИТ — только в «Ещё», не второй строкой под заголовком.
-    if not ok and primary_code == "icu_indicated":
+    # Критерии ОРИТ/трансфузии — только в «Ещё», не второй строкой под заголовком.
+    if not ok and primary_code in _CRITICAL_CODES:
         for line in _icu_detail_lines(assessment):
             more.append(
                 {"level": "info", "title": line, "action": None, "code": "icu_criterion"}
@@ -500,20 +568,24 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
     # Дашборд / next_step: действие, не дамп критериев.
     if ok:
         step_for_ui = next_step
-    elif primary_code in ("icu_indicated", "hospitalization_indicated"):
+    elif primary_code in _CRITICAL_CODES or primary_code == "hospitalization_indicated":
         step_for_ui = cta or next_step
     else:
         step_for_ui = reason or cta or next_step
 
-    tier = "ok" if ok else ("critical" if primary_code == "icu_indicated" else "warn")
+    tier = "ok" if ok else ("critical" if primary_code in _CRITICAL_CODES else "warn")
 
-    # Предвыбор АБТ: лечение и reassess (кроме «ещё не оценили эффект»).
+    # Предвыбор препарата: лечение и reassess (кроме «ещё не оценили эффект»).
     suggest_med = (
         not ok
         and focus in ("med", "reassess")
-        and primary_code != "no_reassessment"
+        and primary_code not in ("no_reassessment", "no_hb_reassessment")
     )
-    suggest_route = "iv" if setting == "inpatient" else "oral"
+    # Маршрут — явно из ожидаемого режима (ЖДА: перорально/в/в по факторам, не по setting),
+    # иначе — по условиям лечения ВП (амбулаторно = внутрь, стационар = в/в).
+    suggest_route = (expected.get("route") if expected else None) or (
+        "iv" if setting == "inpatient" else "oral"
+    )
 
     return {
         "applicable": True,
@@ -531,6 +603,8 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
         "suggest_atc": suggest_atc if suggest_med else None,
         "suggest_route": suggest_route if suggest_med else None,
         "suggest_repeat_cxr": bool(has_repeat_cxr),
+        # Терапия ещё не назначена вовсе (не «неверный препарат») — кнопка «Назначить», не «Заменить».
+        "no_active_therapy": primary_code in _NO_THERAPY_CODES,
         "checks": checks,
         "checks_primary": primary,
         "checks_more": more,

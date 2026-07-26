@@ -35,8 +35,10 @@ db.DB_PATH = _TMP_DB.name
 
 import fhir_store as fs  # noqa: E402
 import protocol_cap as pcap  # noqa: E402
+import protocol_anemia as pida  # noqa: E402
 from terminology import (  # noqa: E402
     TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE, WBC_CODE, CRP_CODE,
+    HB_CODE, FERRITIN_CODE, IRON_CODE,
 )
 
 fs.init_db()
@@ -527,6 +529,88 @@ def c5_wrong():
             "warn_in": ["not_inpatient_first_line", "course_too_short", "icu_indicated"]}
 
 
+# ====================================================================
+#  Сценарии (взрослые, КП №23 — железодефицитная анемия)
+# ====================================================================
+
+IDA_CODE = "D50.9"
+IDA_DISP = "Железодефицитная анемия неуточнённая"
+IRON_ORAL = "B03AA07"
+IRON_IV = "B03AC08"
+
+
+def add_anemia(pid, onset_days_ago=0, code=IDA_CODE):
+    return fs.add_condition(pid, code, IDA_DISP, onset_date=_days_ago(onset_days_ago))
+
+
+def _ida_full_labs(pid, hb, ferritin=25, iron=8, days_ago=0):
+    """ОАК + ферритин + железо сыворотки + биохимия + ОАМ — полный набор КП №23."""
+    obs(pid, HB_CODE, hb, "g/L", days_ago=days_ago, display="Гемоглобин")
+    obs(pid, FERRITIN_CODE, ferritin, "ng/mL", days_ago=days_ago, display="Ферритин")
+    obs(pid, IRON_CODE, iron, "umol/L", days_ago=days_ago, display="Железо сыворотки")
+    req(pid, "CBC", days_ago=days_ago, status="completed")
+    req(pid, "FERRITIN", days_ago=days_ago, status="completed")
+    req(pid, "IRON_SERUM", days_ago=days_ago, status="completed")
+    req(pid, "BIOCHEM", days_ago=days_ago, status="completed")
+    req(pid, "URINE", days_ago=days_ago, status="completed")
+
+
+def s_ida_positive_outpatient_mild():
+    """IP1: амбулаторно, лёгкая ЖДА (Hb 100), полный набор исследований, железо внутрь — верно."""
+    pid = make_patient(35, gender="female", family="Ферротестова")
+    add_anemia(pid)
+    add_encounter(pid, cls="ambulatory")
+    flag(pid, "Слабость, бледность")
+    _ida_full_labs(pid, hb=100)
+    med(pid, IRON_ORAL, route="oral", start_days_ago=0, duration_days=60)
+    return {"applicable": True, "setting": "outpatient", "compliant": True,
+            "warn_not_in": ["no_iron_therapy", "not_first_line_iron", "missing_ferritin",
+                            "missing_iron_serum", "hospitalization_indicated"]}
+
+
+def s_ida_negative_no_therapy():
+    """IN1: ЖДА диагностирована, терапия железом не назначена."""
+    pid = make_patient(40, gender="female", family="Ферротестова")
+    add_anemia(pid)
+    add_encounter(pid, cls="ambulatory")
+    obs(pid, HB_CODE, 95, "g/L", display="Гемоглобин")
+    return {"applicable": True, "any_warning": True,
+            "warn_in": ["no_iron_therapy", "missing_ferritin", "missing_iron_serum"]}
+
+
+def s_ida_negative_route_iv_needed():
+    """IN2: мальабсорбция → нужно в/в железо, но назначено внутрь."""
+    pid = make_patient(45, gender="female", family="Ферротестова")
+    add_anemia(pid)
+    add_encounter(pid, cls="ambulatory")
+    flag(pid, "malabsorption")
+    _ida_full_labs(pid, hb=95)
+    med(pid, IRON_ORAL, route="oral", start_days_ago=0, duration_days=60)
+    return {"applicable": True, "any_warning": True,
+            "warn_in": ["not_first_line_iron", "route_mismatch_iron"]}
+
+
+def s_ida_negative_severe_hospitalization():
+    """IN3: тяжёлая ЖДА (Hb 60) амбулаторно — нужна госпитализация/трансфузия."""
+    pid = make_patient(50, gender="male", family="Ферротестова")
+    add_anemia(pid)
+    add_encounter(pid, cls="ambulatory")
+    obs(pid, HB_CODE, 60, "g/L", display="Гемоглобин")
+    return {"applicable": True, "any_warning": True,
+            "warn_in": ["hospitalization_indicated"]}
+
+
+IDA_SCENARIOS = [
+    ("IP1  амбулаторно, лёгкая ЖДА, железо внутрь — всё верно", "positive",
+     s_ida_positive_outpatient_mild),
+    ("IN1  ЖДА без терапии железом", "negative", s_ida_negative_no_therapy),
+    ("IN2  мальабсорбция → нужно в/в железо, назначено внутрь", "negative",
+     s_ida_negative_route_iv_needed),
+    ("IN3  тяжёлая ЖДА (Hb 60) амбулаторно — госпитализация/трансфузия", "negative",
+     s_ida_negative_severe_hospitalization),
+]
+
+
 SCENARIOS = [
     ("P1  амбулаторно, нетяжёлая, амоксициллин — всё верно", "positive", s_positive_outpatient_mild),
     ("P2  амбулаторно, фактор риска, амокс/клавуланат — верно", "positive", s_positive_outpatient_risk_clavulanate),
@@ -586,12 +670,15 @@ def main():
     args = ap.parse_args()
 
     print("=" * 78)
-    print("Прогон сценариев протокола ВП (КП МЗ РБ №768, взрослые) — clinic-os")
+    print("Прогон сценариев протоколов ВП (КП №768) и ЖДА (КП №23), взрослые — clinic-os")
     print(f"БД: изолированный SQLite ({db.DB_PATH})")
     print("=" * 78)
 
     passed = failed = 0
-    for name, kind, builder in SCENARIOS:
+    all_scenarios = [(n, k, b, pcap.evaluate_cap) for n, k, b in SCENARIOS]
+    all_scenarios += [(n, k, b, pida.evaluate_ida) for n, k, b in IDA_SCENARIOS]
+
+    for name, kind, builder, evaluate in all_scenarios:
         for t in ("observation", "medication_request", "service_request", "diagnostic_report",
                  "condition_", "encounter", "allergy_intolerance", "clinical_flag",
                  "care_plan", "goal", "pathway", "patient", "practitioner",
@@ -603,7 +690,7 @@ def main():
 
         expects = builder()
         pid = fs.get_all_patients()[0]["id"] if fs.get_all_patients() else None
-        verdict = pcap.evaluate_cap(pid) if pid else {"applicable": False, "gaps": []}
+        verdict = evaluate(pid) if pid else {"applicable": False, "gaps": []}
         ok, problems = check(verdict, expects)
 
         status = "PASS" if ok else "FAIL"
@@ -631,7 +718,7 @@ def main():
                     print(f"        - [{g['severity']}] {g['code']}: {g['message']}")
 
     print("\n" + "=" * 78)
-    print(f"ИТОГ: {passed} прошли, {failed} провалены (всего {len(SCENARIOS)})")
+    print(f"ИТОГ: {passed} прошли, {failed} провалены (всего {len(all_scenarios)})")
     print("=" * 78)
 
     try:

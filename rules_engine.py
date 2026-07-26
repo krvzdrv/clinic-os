@@ -17,9 +17,10 @@ from fhir_store import (
     get_condition, get_all_patients, get_medications, get_last_observation,
     get_conditions, get_observations,
 )
-from terminology import (PNEUMONIA_CODES, TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE,
+from terminology import (PNEUMONIA_CODES, IDA_CODES, TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE,
                          WBC_CODE, CRP_CODE, PCT_CODE, SBP_CODE, DBP_CODE,
-                         CREAT_CODE, UREA_CODE, HB_CODE)
+                         CREAT_CODE, UREA_CODE, HB_CODE,
+                         FERRITIN_CODE, IRON_CODE, MCV_CODE, MCH_CODE, MCHC_CODE, TSAT_CODE)
 
 
 # --- Ко-морбидность: диабет (влияет на выбор АБТ и тяжесть фона) ---
@@ -78,9 +79,37 @@ def has_pneumonia(pid):
     )
 
 
+# ====================================================================
+#  Правила для протокола железодефицитной анемии (КП МЗ РБ №23, взрослые)
+# ====================================================================
+
+def has_ida(pid):
+    """exists [Condition] C where C.code in protocol_registry('ida_adult_23').icd_codes
+    and C.clinical_status='active'"""
+    import protocol_rules as pr
+
+    codes = pr.protocol_icd_codes("ida_adult_23")
+    return any(
+        c.get("code") in codes and c.get("clinical_status") == "active"
+        for c in get_conditions(pid)
+    )
+
+
 def age_years(pid):
     from fhir_store import get_age
     return get_age(pid)
+
+
+def encounter_setting(pid):
+    """'inpatient' если есть стационарный приём (любой статус), иначе 'outpatient'.
+
+    Общая для всех протоколов оценка условий лечения — не зависит от диагноза.
+    """
+    from fhir_store import get_encounters
+    for e in get_encounters(pid):
+        if e.get("class") in ("inpatient", "program", "day"):
+            return "inpatient"
+    return "outpatient"
 
 
 def _latest_value(pid, code):
@@ -100,6 +129,12 @@ def latest_dbp(pid):    return _latest_value(pid, DBP_CODE)
 def latest_creat(pid):  return _latest_value(pid, CREAT_CODE)
 def latest_urea(pid):   return _latest_value(pid, UREA_CODE)
 def latest_hb(pid):     return _latest_value(pid, HB_CODE)
+def latest_ferritin(pid): return _latest_value(pid, FERRITIN_CODE)
+def latest_iron(pid):     return _latest_value(pid, IRON_CODE)
+def latest_mcv(pid):      return _latest_value(pid, MCV_CODE)
+def latest_mch(pid):      return _latest_value(pid, MCH_CODE)
+def latest_mchc(pid):     return _latest_value(pid, MCHC_CODE)
+def latest_tsat(pid):     return _latest_value(pid, TSAT_CODE)
 
 
 def _worst_value(pid, code, direction):
@@ -123,6 +158,7 @@ def worst_wbc(pid):    return _worst_value(pid, WBC_CODE, "max")
 def worst_creat(pid):  return _worst_value(pid, CREAT_CODE, "max")
 def worst_urea(pid):   return _worst_value(pid, UREA_CODE, "max")
 def worst_hb(pid):     return _worst_value(pid, HB_CODE, "min")
+def worst_ferritin(pid): return _worst_value(pid, FERRITIN_CODE, "min")
 
 
 def crp_history(pid):

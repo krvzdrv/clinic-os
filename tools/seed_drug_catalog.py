@@ -65,6 +65,10 @@ CURATED_META = {
     "R03DA05": ("aminophylline", "symptomatic", "2 раза в день", "ксантин"),
     "H02AB06": ("prednisolone", "symptomatic", "1 раз в день", "ГКС"),
     "H02AB04": ("methylprednisolone", "symptomatic", "1 раз в день", "ГКС"),
+    # --- Железодефицитная анемия (КП №23, взрослые) ---
+    "B03AA07": ("ferrous sulfate", "iron_oral", "1–2 раза в день", "первая линия, приём внутрь"),
+    "B03AC08": ("ferric carboxymaltose", "iron_iv", "по расчёту дефицита железа",
+                "мальабсорбция / заболевание ЖКТ / непереносимость перорального железа"),
 }
 
 # Симптоматика / препараты без записи в ADULT_DOSES: (route, dose_note, default_dose, max_daily_mg)
@@ -78,6 +82,8 @@ SYMPTOMATIC_DOSES = {
     "H02AB06": ("oral", "преднизолон по показаниям", "по показаниям", None),
     "H02AB04": ("oral", "метилпреднизолон по показаниям", "по показаниям", None),
     "J05AH02": ("oral", "осельтамивир 75 мг 2 р/сут", "75 мг", 150),
+    "B03AC08": ("iv", "железа карбоксимальтозат — доза по расчёту дефицита железа, индивидуально",
+                "по расчёту", None),
 }
 
 
@@ -136,7 +142,7 @@ def _short_dose(dose_note: str) -> str:
         if p.replace(",", ".").replace(".", "", 1).isdigit() or any(c.isdigit() for c in p):
             # взять число + следующая единица, если есть
             chunk = [p]
-            if i + 1 < len(parts) and parts[i + 1] in ("мг", "г", "мкг", "мг/кг"):
+            if i + 1 < len(parts) and parts[i + 1] in ("мг", "г", "мкг", "мг/кг", "мг/сут"):
                 chunk.append(parts[i + 1])
             return " ".join(chunk)
     return dose_note[:40]
@@ -213,7 +219,7 @@ def main():
             max_daily_mg=max_mg,
             default_dose=default_dose,
             default_frequency=default_freq,
-            protocol_ref="КП №768",
+            protocol_ref="КП №23" if atc.startswith("B03A") else "КП №768",
             note=note,
             category=category,
             verify_flag=0,

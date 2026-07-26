@@ -30,6 +30,8 @@ import rules_engine as re
 import drug_service
 import protocol_cap as pcap
 import protocol_verdict
+import protocol_dispatch as pdisp
+import protocol_rules
 import care_plan_service as cps
 import cds_service as cds
 from terminology import (
@@ -272,6 +274,13 @@ def patient_detail(pid):
         cap = pcap.evaluate_cap(pid)
         fs.save_cap_cache(pid, cap)
         verdict = protocol_verdict.verdict_for_ui(cap)
+        # Все применимые пациенту протоколы (ВП + ЖДА и т.д.) — каждый со своим
+        # вердиктом; шаблон вкладывает CDS-карточку под тот диагноз, к которому
+        # относится condition_id (см. verdict_by_condition), не только под ВП.
+        verdicts = pdisp.patient_verdicts(pid)
+        verdict_by_condition = {
+            v["condition_id"]: v["verdict"] for v in verdicts if v.get("condition_id")
+        }
         goals = fs.get_goals(pid)
         care_plans = fs.get_care_plans(pid)
 
@@ -354,9 +363,11 @@ def patient_detail(pid):
 
         has_unassigned = any(unassigned[k] for k in unassigned)
         conditions = fs.get_conditions(pid)
-        triage_conditions = _triage_from_verdict(
-            conditions, verdict, set(PNEUMONIA_CODES),
-        )
+        # По каждому применимому протоколу отдельно — не только ВП (см. protocol_dispatch).
+        triage_conditions = []
+        for item in verdicts:
+            codes = protocol_rules.protocol_icd_codes(item["protocol_id"])
+            triage_conditions.extend(_triage_from_verdict(conditions, item["verdict"], codes))
         enc_has_more = enc_offset + enc_limit < enc_total
 
         return render_template(
@@ -394,7 +405,10 @@ def patient_detail(pid):
             cards=cds.cds_patient_view(pid),
             cap=cap,
             verdict=verdict,
+            verdicts=verdicts,
+            verdict_by_condition=verdict_by_condition,
             has_pneumonia=re.has_pneumonia(pid),
+            has_ida=re.has_ida(pid),
             diabetes=re.has_diabetes(pid),
             general_condition=re.general_condition(pid),
             loinc_options=sorted(LOINC.keys()),

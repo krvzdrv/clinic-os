@@ -1,17 +1,36 @@
 # ClinicalVerdict — контракт для UI (спринт 1)
 
 Единый объект, который шаблон карточки пациента рендерит **без** технических кодов.
-Движок сверки остаётся `protocol_cap.evaluate_cap(pid)`; для UI — обёртка
-`verdict_for_ui(assessment)` (реализует `clinic-protocol`).
+Контракт **протокол-независим**: тот же формат используется для любого числа
+протоколов у одного пациента (сейчас — ВП `cap_adult_768` и ЖДА `ida_adult_23`).
+
+- Движок сверки — свой модуль на протокол: `protocol_cap.evaluate_cap(pid)` (ВП),
+  `protocol_anemia.evaluate_ida(pid)` (ЖДА). Оба возвращают одинаковую форму
+  `{applicable, setting, severity, expected_regimen, compliant, gaps, ...}`.
+- `protocol_dispatch.py` — единая точка входа: `patient_assessments(pid)` /
+  `patient_verdicts(pid)` перечисляют **все** применимые пациенту протоколы
+  (диагноз МКБ пациента входит в `icd_codes` протокола в `protocol_registry.yaml`)
+  и для каждого зовут `verdict_for_ui(assessment, protocol_id)`.
+- У пациента может быть активно сразу несколько протоколов (например ВП + ЖДА) —
+  каждый получает свою независимую вложенную CDS-карточку под «своим» диагнозом
+  (`verdict_by_condition` в шаблоне), а не один общий баннер.
+- Добавление нового протокола = новый evaluate_* модуль той же формы + запись
+  в `PROTOCOL_EVALUATORS` (`protocol_dispatch.py`) + `protocol_registry.yaml`.
+  `protocol_verdict.py` и шаблон не меняются под конкретный протокол.
 
 ## Когда протокол не применим
+
+`protocol_dispatch.patient_assessments(pid)` уже отфильтровал неприменимые
+протоколы — `verdict_for_ui(assessment, protocol_id)` с `applicable=False`
+вызывается редко (напр. прямой вызов в отладке). Текст общий, не привязан
+к конкретному протоколу — заголовок берётся из `protocol_registry.yaml[protocol_id].title`:
 
 ```json
 {
   "applicable": false,
   "protocol_title": null,
-  "headline": "Протокол ВП не активен",
-  "next_step": "Укажите диагноз внебольничной пневмонии из справочника МКБ.",
+  "headline": "Протокол «Внебольничная пневмония (КП МЗ РБ №768)» не активен",
+  "next_step": "Укажите диагноз из справочника МКБ, входящий в протокол",
   "checks": [],
   "ok": true
 }
@@ -71,7 +90,8 @@
 | `tier` | str | `ok` / `warn` / `critical` — уровень шума CDS |
 | `cta_label` | str\|null | Подпись кнопки действия на месте (не «прыжок» по якорю) |
 | `suggest_atc` | str\|null | ATC для предвыбора в форме (в текст UI не выводится) |
-| `suggest_route` | str\|null | `oral` / `iv` — маршрут АБТ по режиму ведения |
+| `suggest_route` | str\|null | `oral` / `iv` — маршрут терапии по режиму ведения / факторам |
+| `no_active_therapy` | bool | `true`, если терапия **не назначена вовсе** (`no_abt`/`no_iron_therapy`) — кнопка «Назначить …», а не «Заменить …» |
 
 ### Элемент `checks[]`
 
@@ -97,9 +117,12 @@
 
 ## Реализация
 
-1. `docs/protocols/protocol_registry.yaml` — `cap_adult_768` + МКБ + ссылка на правила АБТ.
-2. `protocol_verdict.verdict_for_ui(assessment)` — **уже в репо**; расширять контракт согласованно с UI.
-3. Не менять семантику `evaluate_cap` без согласования с architect.  
+1. `docs/protocols/protocol_registry.yaml` — реестр `protocol_id -> {title, icd_codes, therapy_rules}`;
+   сейчас `cap_adult_768` (ВП) и `ida_adult_23` (ЖДА).
+2. `protocol_verdict.verdict_for_ui(assessment, protocol_id=DEFAULT_PROTOCOL_ID)` — **уже в репо**;
+   расширять контракт согласованно с UI и для всех протоколов одновременно (не только ВП).
+3. `protocol_dispatch.py` — `PROTOCOL_EVALUATORS`, `patient_assessments(pid)`, `patient_verdicts(pid)`.
+4. Не менять семантику `evaluate_cap`/`evaluate_ida` без согласования с architect.  
    Override: `CDS_SIGNALING.md` / `process_registry.yaml` → `cds_policy`.
 
 ## Потребитель (clinic-ui)

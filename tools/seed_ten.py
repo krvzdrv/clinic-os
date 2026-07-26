@@ -33,6 +33,7 @@ if clinic_db and not os.environ.get("DATABASE_URL"):
 import care_plan_service as cps  # noqa: E402
 import fhir_store as fs  # noqa: E402
 import protocol_cap as pcap  # noqa: E402
+import protocol_dispatch as pdisp  # noqa: E402
 from protocol_verdict import verdict_for_ui  # noqa: E402
 
 
@@ -119,6 +120,8 @@ def seed_ten(dr_id: str):
       8 Бронхов     — бронхолитик без обструкции + короткий курс
       9 Контролёв   — 3 визита, АБТ без эффекта (лихорадка)
      10 Пустова     — почти пустая карта (пустые этапы UI)
+     11 Феррова     — ВП (контроль) + вторым диагнозом впервые выявленная ЖДА
+                       (два протокола одновременно на одной карте, терапия железом не назначена)
     """
     stories = []
 
@@ -355,6 +358,40 @@ def seed_ten(dr_id: str):
     cps.create_cap_plan(pid)
     stories.append((pid, "Пустова", "пустая карта: gaps + пустые этапы UI"))
 
+    # ── 11. Феррова — ВП пролечена + впервые выявленная ЖДА (2 протокола) ─
+    pid = fs.add_patient("Феррова", "Ирина", "Дмитриевна", "female", "1982-11-03")
+    e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
+                          start=_ago(20), complaint="Кашель, t 38.0")
+    fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
+                     onset_date=_ago(20), encounter_id=e1)
+    _gc(pid, e1, "satisfactory")
+    fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
+    fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
+    _vitals(pid, e1, 20, t=38.0, spo2=97, rr=18, hr=86, sbp=120, dbp=78, wbc=10.5, crp=40)
+    _labs_done(pid, e1, 20)
+    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
+                             conclusion="Инфильтрация нижней доли справа",
+                             rep_date=_ago(20), encounter_id=e1)
+    _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=20,
+         duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500,
+         status="completed")
+    fs.finish_encounter(e1, end=_ago(13))
+    cps.create_cap_plan(pid)
+    # Контроль: ОАК показал анемию → второй диагноз (ЖДА) по результату исследования
+    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="followup",
+                          start=_ago(2), complaint="Плановый контроль после ВП; по ОАК — анемия")
+    _obs(pid, e2, "718-7", "Гемоглобин", 92, "g/L", 2)
+    _obs(pid, e2, "2276-4", "Ферритин", 8, "ng/mL", 2)
+    fs.add_service_request(pid, "CBC", "ОАК", encounter_id=e2,
+                           occurrence_date=_ago(2), status="completed")
+    fs.add_service_request(pid, "FERRITIN", "Ферритин", encounter_id=e2,
+                           occurrence_date=_ago(2), status="completed")
+    fs.add_condition(pid, "D50.9", "Железодефицитная анемия неуточнённая",
+                     onset_date=_ago(2), encounter_id=e2)
+    fs.finish_encounter(e2, end=_ago(2))
+    fs.set_pathway(pid, "treatment", "ВП на контроле; ЖДА впервые выявлена — терапия не назначена")
+    stories.append((pid, "Феррова", "ВП (контроль) + впервые выявленная ЖДА — два протокола, обе карточки видны"))
+
     return stories
 
 
@@ -376,18 +413,25 @@ def _print_verdicts(stories):
     print("\n── Вердикты ──")
     for pid, name, story in stories:
         try:
-            raw = pcap.evaluate_cap(pid)
-            v = verdict_for_ui(raw)
-            ok = "OK" if v.get("ok") else ("n/a" if not v.get("applicable") else "GAP")
-            print(
-                f"  {name:14} [{ok:4}] "
-                f"CTA={(v.get('cta_label') or '—'):22} | "
-                f"{(v.get('headline') or '')[:70]}"
-            )
+            items = pdisp.patient_assessments(pid)
+            if not items:
+                print(f"  {name:14} [n/a ] нет применимого протокола")
+                print(f"                 → {story}")
+                continue
+            for item in items:
+                raw = item["assessment"]
+                v = verdict_for_ui(raw, item["protocol_id"])
+                ok = "OK" if v.get("ok") else ("n/a" if not v.get("applicable") else "GAP")
+                tag = f"{name:14}" if item is items[0] else " " * 14
+                print(
+                    f"  {tag} [{ok:4}] ({item['protocol_id']}) "
+                    f"CTA={(v.get('cta_label') or '—'):22} | "
+                    f"{(v.get('headline') or '')[:70]}"
+                )
+                warns = [g["code"] for g in raw.get("gaps", []) if g.get("severity") == "warning"]
+                if warns:
+                    print(f"                 warnings: {warns}")
             print(f"                 → {story}")
-            warns = [g["code"] for g in raw.get("gaps", []) if g.get("severity") == "warning"]
-            if warns:
-                print(f"                 warnings: {warns}")
         except Exception as e:
             print(f"  {name}: ERROR {e}")
 

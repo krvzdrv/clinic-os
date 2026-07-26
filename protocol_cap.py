@@ -69,10 +69,7 @@ def classify_severity(pid):
 
 def _setting(pid):
     """'inpatient' если есть стационарный приём (любой статус — активный или выписанный), иначе 'outpatient'."""
-    for e in fs.get_encounters(pid):
-        if e.get("class") in ("inpatient", "program", "day"):
-            return "inpatient"
-    return "outpatient"
+    return re.encounter_setting(pid)
 
 
 # ---- Показания к госпитализации (КП №768, взрослые) ----
