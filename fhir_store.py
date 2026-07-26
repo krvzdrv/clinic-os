@@ -810,7 +810,10 @@ def add_flag(pid, key, value="true", category="exam", encounter_id=None, recorde
 
 
 def delete_flag(fid):
+    row = db.fetchone("SELECT patient_id FROM clinical_flag WHERE id = %s", (fid,))
     db.execute("DELETE FROM clinical_flag WHERE id = %s", (fid,))
+    if row and row.get("patient_id"):
+        clear_pid_cache(row["patient_id"])
 
 
 # ============ Кэш оценки протокола (дашборд, одна строка на пациента) ============

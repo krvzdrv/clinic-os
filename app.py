@@ -1133,24 +1133,33 @@ def clear_flag_route(pid, fid):
 # ---------- Анамнез в свободной форме (не оценивается протоколом) ----------
 @app.route("/patient/<pid>/anamnesis", methods=["POST"])
 def add_anamnesis_route(pid):
+    """Свободный анамнез — один текст на приём.
+
+    replace=1 (форма в карточке): перезаписывает прежние записи категории
+    anamnesis у этого encounter. Пустой текст — очистка.
+    """
     if not fs.get_patient(pid):
         return "Пациент не найден", 404
     text = (request.form.get("text", "") or "").strip()
     eid = request.form.get("encounter_id") or None
+    replace = (request.form.get("replace") or "") == "1"
+    if replace:
+        for f in fs.get_flags(pid, category="anamnesis"):
+            if eid is None or f.get("encounter_id") == eid:
+                fs.delete_flag(f["id"])
     if not text:
+        if replace:
+            if _wants_json():
+                return _json_after_clinical(pid, reload_ui=True)
+            return redirect(url_for("patient_detail", pid=pid, e=eid) if eid else url_for("patient_detail", pid=pid))
         if _wants_json():
             return _err("Пустой анамнез")
         return redirect(url_for("patient_detail", pid=pid))
-    # Сохраняем как флаг категории anamnesis: ключ — сам текст, не оценивается протоколом.
-    fid = fs.add_flag(pid, text[:500], value="true", category="anamnesis", encounter_id=eid)
+    # Ключ — сам текст; протоколом не оценивается.
+    fid = fs.add_flag(pid, text[:2000], value="true", category="anamnesis", encounter_id=eid)
     if _wants_json():
-        chip = ('<div class="anam-note">%s'
-                '<form method="POST" action="%s" style="display:inline;">'
-                '<button class="chip-x" type="submit" title="Удалить" aria-label="Удалить запись анамнеза">×</button>'
-                '</form></div>') % (text.replace('<', '&lt;').replace('>', '&gt;'),
-                                   url_for("clear_flag_route", pid=pid, fid=fid))
-        return _ok(chip, id=fid)
-    return redirect(url_for("patient_detail", pid=pid))
+        return _json_after_clinical(pid, reload_ui=True, id=fid)
+    return redirect(url_for("patient_detail", pid=pid, e=eid) if eid else url_for("patient_detail", pid=pid))
 
 
 # ---------- Общее состояние (клиническая оценка врача при осмотре) ----------

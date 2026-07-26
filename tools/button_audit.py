@@ -291,17 +291,14 @@ def scenario_anamnesis_exam_forms(page, audit: Audit):
         except Exception:
             pass
 
-    if _open_details(page, "Запись"):
-        ta = page.locator("textarea[name='text'], #flow-anam textarea, details.add-panel textarea").first
-        if ta.count():
-            ta.fill("Тестовая запись анамнеза button_audit")
-            page.locator("#flow-anam button[type='submit'], details.add-panel:has-text('Анамнез') button[type='submit']").first.click()
-            page.wait_for_timeout(700)
-            audit.add(sc, "Анамнез +Запись", "button_audit" in page.content() or "Тестовая" in page.content(), "")
-        else:
-            audit.add(sc, "Анамнез textarea", False, "нет поля")
+    ta = page.locator("#flow-anam textarea[name='text']").first
+    if ta.count():
+        ta.fill("Тестовая запись анамнеза button_audit")
+        page.locator("#flow-anam form[action*='anamnesis'] button[type='submit']").first.click()
+        page.wait_for_timeout(700)
+        audit.add(sc, "Анамнез сохранить", "button_audit" in page.content() or "Тестовая" in page.content(), "")
     else:
-        audit.add(sc, "Открыть +Запись", False, "")
+        audit.add(sc, "Анамнез textarea", False, "нет поля")
 
     # Фактор риска
     if _open_details(page, "Фактор риска"):

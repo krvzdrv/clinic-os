@@ -545,7 +545,8 @@ def main() -> int:
     check(bool(enc_no_complaint), "Морозов: создан приём без жалобы")
     if enc_no_complaint:
         html_empty = client.get(f"/patient/{pid_v}?e={enc_no_complaint['id']}").data.decode("utf-8", "replace")
-        check("Жалоба не указана" in html_empty, "Морозов: «Жалоба не указана» видна без жалобы")
+        check('name="complaint"' in html_empty and "flow-anam" in html_empty,
+              "Морозов: поле жалобы в блоке Анамнез")
         r = client.post(
             f"/patient/{pid_v}/encounter/{enc_no_complaint['id']}/complaint",
             data={"complaint": "Кашель, температура 2 дня"},
