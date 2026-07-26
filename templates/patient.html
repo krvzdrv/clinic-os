@@ -1979,7 +1979,9 @@
       html+='<p class="cds-ov-msg">'+(msgs[0]||'Выбранный препарат не соответствует протоколу')+'</p>';
       if(msgs.length>1){ html+='<ul class="cds-ov-list">'+msgs.slice(1).map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'; }
       html+='<label class="cds-ov-check"><input type="checkbox" id="cds-ack-live"> Понимаю, что это отклонение от протокола, и назначаю на своё усмотрение</label>';
-      html+='<textarea class="cds-ov-reason" id="cds-reason-live" placeholder="Причина (необязательно)"></textarea>';
+      html+='<label class="cds-ov-label">Причина отклонения от протокола <span class="req">*</span></label>';
+      html+='<textarea class="cds-ov-reason" id="cds-reason-live" required placeholder="Обязательно к заполнению"></textarea>';
+      if(errMsg){ html+='<p class="cds-ov-err">'+errMsg+'</p>'; }
       html+='<div class="cds-ov-actions">';
       html+='<button class="btn cds-ov-danger" type="button" data-cds-confirm="1" disabled>Назначить всё равно</button>';
       html+='<button class="btn ghost" type="button" data-cds-cancel="1">Отмена, выбрать другой</button>';
@@ -1991,15 +1993,12 @@
     var ta=box.querySelector('#cds-reason-live');
     var cb=box.querySelector('#cds-ack-live');
     function sync(){
-      if(hard){
-        var ok=ta && ta.value.trim().length>0;
-        btnOk.disabled=!ok;
-        btnOk.style.opacity=ok?'1':'0.4';
-      } else {
-        var ok=cb && cb.checked;
-        btnOk.disabled=!ok;
-        btnOk.style.opacity=ok?'1':'0.4';
-      }
+      // И hard-, и soft-stop требуют письменного обоснования — чекбокс
+      // «понимаю» сам по себе не объясняет решение при аудите протокола.
+      var reasonOk=ta && ta.value.trim().length>0;
+      var ok=hard?reasonOk:(cb && cb.checked && reasonOk);
+      btnOk.disabled=!ok;
+      btnOk.style.opacity=ok?'1':'0.4';
     }
     if(ta) ta.addEventListener('input', sync);
     if(cb) cb.addEventListener('change', sync);

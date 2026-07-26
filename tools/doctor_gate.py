@@ -274,7 +274,32 @@ def main() -> int:
     )
     after = {m["id"] for m in fs.get_medications(pid_p, status="active")}
     check(after == before, "Пустова: без confirm АБТ не сохранена")
-    # Soft: confirm + ack (причина опциональна).
+    # Soft: confirm + ack, но без причины — как и hard-stop, чекбокса
+    # недостаточно, нужно письменное обоснование (иначе override
+    # бесполезен для аудита протокола).
+    r = client.post(
+        f"/patient/{pid_p}/medication",
+        data={
+            "encounter_id": eid_p,
+            "code": "J01FA10",
+            "display": "Азитромицин",
+            "dose": "500 мг",
+            "frequency": "1 раз в день",
+            "route": "oral",
+            "med_date": "2026-07-25",
+            "period_end": "2026-08-01",
+            "confirm": "1",
+            "ack": "1",
+        },
+        headers=hdr,
+    )
+    data = r.get_json(silent=True) or {}
+    check(r.status_code == 400, f"Пустова: soft confirm+ack без причины → 400 (got {r.status_code})")
+    check(data.get("need_confirm") is True and data.get("level") == "soft",
+          f"Пустова: soft без причины остаётся need_confirm (got {data})")
+    after2 = {m["id"] for m in fs.get_medications(pid_p, status="active")}
+    check(after2 == before, "Пустова: без причины АБТ всё ещё не сохранена")
+    # Soft: confirm + ack + причина — назначение проходит.
     r = client.post(
         f"/patient/{pid_p}/medication",
         data={

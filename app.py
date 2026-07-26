@@ -682,6 +682,17 @@ def add_medication_route(pid):
                 "cds": _cds_summary(verdict),
             })
         return redirect(url_for("patient_detail", pid=pid))
+    # Отклонение от протокола — не просто чекбокс: врач обязан письменно
+    # обосновать назначение (то же требование, что у hard-stop), иначе
+    # override остаётся немотивированным и бесполезен для аудита протокола.
+    if soft_stops and not hard_stops and confirmed and ack and not override_reason:
+        if _wants_json():
+            return jsonify({
+                "ok": False, "need_confirm": True, "level": "soft",
+                "error": "Укажите причину отклонения от протокола",
+                "cds": _cds_summary(verdict),
+            }), 400
+        return redirect(url_for("patient_detail", pid=pid))
 
     dpd_raw = request.form.get("dose_per_day", "").strip()
     try:
