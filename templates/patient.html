@@ -354,6 +354,8 @@
   .status-add:not([open]) > :not(summary){display:none !important;}
   /* Плавное раскрытие — без прыжка контента ниже (см. smoothToggleDetails). */
   .status-add > .fform{overflow:hidden;transition:height .18s ease;margin-top:8px;}
+  /* Кнопка в одном ряду с полями (не на отдельной полной строке из‑за width:100%). */
+  .status-add .fform .form-actions{width:auto;margin-top:0;flex:0 0 auto;}
 
   .dx-card{
     border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-1);
