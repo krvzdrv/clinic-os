@@ -43,6 +43,8 @@ from terminology import (
     PARENTERAL_ONLY, ORAL_ANTIBIOTICS,
     general_condition_display, general_condition_needs_inpatient,
     adult_dose,
+    format_expected_dose,
+    abt_equivalent,
 )
 
 PROTOCOL_REF = "КП МЗ РБ №768 от 05.07.2012 (Внебольничная пневмония, взрослое население)"
@@ -194,6 +196,74 @@ def expected_inpatient_regimen(pid, severity=None):
     return protocol_rules.select_inpatient(pid, severity=severity)
 
 
+def evaluate_abt_choice(pid, atc_code):
+    """
+    Проверка выбираемого АБТ ДО сохранения (order-sign).
+
+    Возвращает список issues (как drug_service): пусто — можно сохранять;
+    warning not_first_line_abt — soft-stop (чекбокс + опц. причина).
+    Не-J01 и пациенты без ВП — без замечаний.
+    """
+    code = (atc_code or "").strip().upper()
+    if not code.startswith("J01"):
+        return []
+    if not re.has_pneumonia(pid):
+        return []
+
+    severity = classify_severity(pid)
+    hosp = hospitalization_reasons(pid)
+    encounter_setting = _setting(pid)
+    needed_inpatient = (severity == "severe") or bool(hosp)
+    setting = "inpatient" if needed_inpatient else encounter_setting
+
+    if setting == "inpatient":
+        expected = expected_inpatient_regimen(pid, severity)
+        primary = expected.get("primary") or {}
+        allowed_groups = set()
+        names = []
+        pcode = (primary.get("atc_code") or "").upper()
+        if pcode:
+            grp, _ = atc_group(pcode)
+            if grp:
+                allowed_groups.add(grp)
+            names.append(primary.get("name") or atc_drug_display(pcode))
+        for addon in expected.get("addons") or []:
+            ac = (addon.get("atc_code") or "").upper()
+            if not ac:
+                continue
+            grp, _ = atc_group(ac)
+            if grp:
+                allowed_groups.add(grp)
+            names.append(addon.get("name") or atc_drug_display(ac))
+        grp_sel, _ = atc_group(code)
+        if grp_sel in allowed_groups:
+            return []
+        expect_txt = ", ".join(names) if names else "режим по КП №768"
+        return [{
+            "severity": "warning",
+            "category": "not_first_line_abt",
+            "message": (
+                f"Препарат {atc_drug_display(code)} не соответствует протоколу "
+                f"для этого пациента. Ожидается: {expect_txt}."
+            ),
+        }]
+
+    expected = expected_antibiotic(pid)
+    exp_grp = expected.get("atc_group")
+    grp_sel, _ = atc_group(code)
+    if exp_grp and grp_sel == exp_grp:
+        return []
+    exp_name = expected.get("name") or atc_drug_display(expected.get("atc_code") or "")
+    return [{
+        "severity": "warning",
+        "category": "not_first_line_abt",
+        "message": (
+            f"Препарат {atc_drug_display(code)} не соответствует протоколу "
+            f"для этого пациента. По КП №768 ожидается {exp_name}."
+        ),
+    }]
+
+
 def icu_criteria(pid):
     """Показания к переводу в ОРИТ (КП №768). Возвращает список причин."""
     crit = []
@@ -257,6 +327,13 @@ def _active_abts(pid):
 
 def _has_med_class(pid, prefix):
     return any(m["code"].startswith(prefix) for m in fs.get_medications(pid)
+               if m.get("status") == "active")
+
+
+def _has_equivalent_med(pid, expected_code):
+    """Есть ли среди активных назначений сам ожидаемый препарат или его протокольная замена
+    (см. terminology.abt_equivalent) — напр. второй антибиотик в схеме уже покрывает ожидание."""
+    return any(abt_equivalent(m["code"], expected_code) for m in fs.get_medications(pid)
                if m.get("status") == "active")
 
 
@@ -327,14 +404,6 @@ def evaluate_cap(pid):
                 "message": "Тяжёлая ВП — показана госпитализация.",
                 "recommendation": "Госпитализация (КП №768).",
             })
-    # Предпочтительность стационара (возраст >60, сопутствующие, беременность) — info, не жёсткое показание.
-    if encounter_setting == "outpatient" and not needed_inpatient and prefer:
-        gaps.append({
-            "severity": "info",
-            "code": "inpatient_preferable",
-            "message": "Предпочтителен стационар: " + "; ".join(prefer),
-            "recommendation": "Рассмотреть стационарное лечение (КП №768).",
-        })
     # Предпочтительность стационара (возраст >60, сопутствующие, беременность) — info, не жёсткое показание.
     if encounter_setting == "outpatient" and not needed_inpatient and prefer:
         gaps.append({
@@ -458,16 +527,23 @@ def _evaluate_abt(pid, setting, severity, expected, gaps):
             gaps.append({
                 "severity": "warning", "code": "no_abt",
                 "message": "Внебольничная пневмония диагностирована, АБТ не назначена.",
-                "recommendation": f"Назначить АБТ первой линии: {exp_name} — {exp_dose} ({expected['ref']}).",
+                "recommendation": f"Назначить {exp_name} внутрь",
             })
             return
         grp, _ = atc_group(abt["code"])
-        if grp != exp_grp:
+        if not abt_equivalent(abt["code"], expected["atc_code"]):
+            ov = bool(abt.get("cds_override"))
+            base = (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
+                    f"по протоколу первая линия — {exp_name} (группа {exp_grp}).")
+            if ov:
+                base += " Врач подтвердил назначение осознанно."
+                if abt.get("cds_override_detail"):
+                    base += f" ({abt['cds_override_detail']})"
             gaps.append({
                 "severity": "warning", "code": "not_first_line_abt",
-                "message": (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
-                            f"по протоколу первая линия — {exp_name} (группа {exp_grp})."),
+                "message": base,
                 "recommendation": f"{expected['rationale']} ({expected['ref']}).",
+                "cds_override": ov,
             })
         # Маршрут: в амбулаторных условиях — перорально (КП №768)
         if abt["code"] in PARENTERAL_ONLY or (abt.get("route") or "") in ("iv", "im"):
@@ -486,17 +562,22 @@ def _evaluate_abt(pid, setting, severity, expected, gaps):
             gaps.append({
                 "severity": "warning", "code": "no_abt",
                 "message": f"{sev_label}, АБТ не назначена.",
-                "recommendation": f"Старт АБТ в/в: {primary['name']} — {primary.get('dose','')} ({expected['ref']}).",
+                "recommendation": f"Назначить {primary['name']} в/в",
             })
             return
         grp, _ = atc_group(abt["code"])
         exp_grp, _ = atc_group(primary["atc_code"])
-        if grp != exp_grp and not _has_med_class(pid, exp_grp or ""):
+        if not abt_equivalent(abt["code"], primary["atc_code"]) and not _has_equivalent_med(pid, primary["atc_code"]):
+            ov = bool(abt.get("cds_override"))
+            base = (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
+                    f"по протоколу стационар — {primary['name']} (группа {exp_grp}).")
+            if ov:
+                base += " Врач подтвердил назначение осознанно."
             gaps.append({
                 "severity": "warning", "code": "not_inpatient_first_line",
-                "message": (f"Назначен {atc_drug_display(abt['code'])} (группа {grp}), "
-                            f"по протоколу стационар — {primary['name']} (группа {exp_grp})."),
+                "message": base,
                 "recommendation": f"{primary['reason']} ({expected['ref']}).",
+                "cds_override": ov,
             })
         # Маршрут: в стационаре старт в/в (КП №768)
         if (abt.get("route") or "") not in ("iv", "im") and abt["code"] in PARENTERAL_ONLY:
@@ -541,17 +622,18 @@ def _check_dose(abt, expected, gaps):
         v = float(dpd)
     except (TypeError, ValueError):
         return
+    expected_label = format_expected_dose(abt["code"])
     if v < min_mg * 0.5:
         gaps.append({
             "severity": "warning", "code": "dose_too_low",
             "message": f"Доза {atc_drug_display(abt['code'])} {v} мг/сут — ниже ожидаемой ({dose_text}).",
-            "recommendation": f"Ожидаемая доза: {dose_text} (КП №768).",
+            "recommendation": f"Ожидаемая доза: {expected_label} (КП №768).",
         })
     elif v > max_mg * 1.5:
         gaps.append({
             "severity": "warning", "code": "dose_too_high",
             "message": f"Доза {atc_drug_display(abt['code'])} {v} мг/сут — выше ожидаемой ({dose_text}).",
-            "recommendation": f"Ожидаемая доза: {dose_text} (КП №768).",
+            "recommendation": f"Ожидаемая доза: {expected_label} (КП №768).",
         })
 
 
@@ -559,7 +641,7 @@ def _check_course(abt, gaps):
     """Длительность курса 7–14 дней (КП №768, взрослые)."""
     if abt.get("period_start") and abt.get("period_end"):
         dur = (_parse_date(abt["period_end"]) - _parse_date(abt["period_start"])).days
-        if dur < 5:
+        if dur < 7:
             gaps.append({
                 "severity": "warning", "code": "course_too_short",
                 "message": f"Курс АБТ {dur} дн. — короче протокольных 7–14 дней.",

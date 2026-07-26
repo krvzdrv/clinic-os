@@ -56,8 +56,13 @@ def check(cond, msg):
 
 
 def verdict(html):
-    m = re.search(r'<section class="verdict-panel[^"]*"[^>]*>.*?</section>', html, re.S)
+    m = re.search(r'<section id="now-action"[^>]*>.*?</section>', html, re.S)
     return m.group(0) if m else ""
+
+
+def verdict_text(html_block: str) -> str:
+    """Текст вердикта без <form> (ATC в option value допустим)."""
+    return html_block.split("<form")[0] if "<form" in html_block else html_block
 
 
 def pid_of(dash, name):
@@ -71,7 +76,8 @@ def main():
     check(st == 200, "dashboard")
     check("С чего начать" in dash, "guest banner")
     check('href="/demo"' in dash, "/demo CTA")
-    for name in ("ДемоА", "ДемоБ", "ДемоВ"):
+    check("Сделать сейчас" in dash, "dashboard колонка аудита")
+    for name in ("Орлов", "Соколов", "Морозов"):
         check(name in dash, f"dashboard has {name}")
 
     try:
@@ -82,60 +88,83 @@ def main():
         loc = e.headers.get("Location", "")
         check("/patient/" in loc, f"/demo Location={loc}")
 
-    pids = {n: pid_of(dash, n) for n in ("ДемоА", "ДемоБ", "ДемоВ")}
+    pids = {n: pid_of(dash, n) for n in ("Орлов", "Соколов", "Морозов")}
     check(all(pids.values()), f"pids={pids}")
 
-    st, a = get(f"/patient/{pids['ДемоА']}")
+    st, a = get(f"/patient/{pids['Орлов']}")
     va = verdict(a)
-    check("verdict-ok" in va or "Соответствует" in va, "ДемоА соответствует")
-    check("Есть отклонения" not in va, "ДемоА без warn badge")
-    check("амоксициллин" in va.lower(), "ДемоА therapy")
-    check("Назначить Амоксициллин" not in va, "ДемоА next_step не «назначить АБТ»")
-    check(not ATC_RE.search(va), "ДемоА verdict no ATC")
-    check(not GAP_RE.search(va), "ДемоА verdict no gap")
-    check("К назначениям" not in va, "ДемоА без CTA на fix")
+    ta = verdict_text(va)
+    check("verdict-ok" in va or "Соответствует" in va, "Орлов соответствует")
+    check("не соответствует" not in va.lower(), "Орлов без warn headline")
+    check("Назначить Амоксициллин" not in ta, "Орлов next_step не «назначить АБТ»")
+    check(not ATC_RE.search(ta), "Орлов verdict no ATC")
+    check(not GAP_RE.search(ta), "Орлов verdict no gap")
+    check("К назначениям" not in va, "Орлов без CTA на fix")
 
-    st, b = get(f"/patient/{pids['ДемоБ']}")
+    st, b = get(f"/patient/{pids['Соколов']}")
     vb = verdict(b)
-    check("Есть отклонения" in vb, "ДемоБ отклонения")
-    check("амоксициллин" in vb.lower(), "ДемоБ → амоксициллин")
-    check("Азитромицин" in vb or "азитромицин" in vb.lower(), "ДемоБ видит азитромицин")
-    check("клавулан" not in vb.lower(), "ДемоБ не амокс/клав")
-    check('href="#flow-med"' in b, "CTA → #flow-med")
-    check("К назначениям" in b, "CTA label")
-    check('id="flow-med"' in b and "attention" in b, "Назначения open/attention")
-    check(not ATC_RE.search(vb), "ДемоБ verdict no ATC")
-    check(not GAP_RE.search(vb), "ДемоБ verdict no gap")
-    check("J01FA10" not in vb and "J01CA04" not in vb, "ДемоБ verdict no ATC values")
-    # Каталог в форме назначений (иначе врачу нечем исправить АБТ)
-    med_opts = re.findall(r'<select name="code" id="med-code-[^"]*">(.*?)</select>', b, re.S)
+    tb = verdict_text(vb)
+    check(
+        "Антибиотик не соответствует" in vb or "Есть отклонения" in vb,
+        "Соколов клинический headline",
+    )
+    check("Азитромицин" in b or "азитромицин" in b.lower(), "Соколов видит азитромицин")
+    check("клавулан" not in tb.lower(), "Соколов не амокс/клав")
+    check('id="now-action"' in b, "один экран #now-action")
+    check('id="med-code-now"' in b, "форма назначений в #now-action")
+    check('name="replace_abt"' in b, "replace_abt (одна кнопка замены)")
+    check("Сейчас:" in b and "Азитромицин" in b, "виден текущий неверный АБТ")
+    check("Заменить на Амоксициллин" in b or "Заменить АБТ" in b, "кнопка замены АБТ")
+    check(
+        re.search(r'value="J01CA04"[^>]*selected', b) is not None,
+        "Амоксициллин предвыбран",
+    )
+    check("ЧД 32" not in verdict_text(vb) and "лейкоцит" not in verdict_text(vb).lower(),
+          "в подсказке нет стены виталов")
+    check("Здесь · без вкладок" not in b, "нет дев-подписи «без вкладок»")
+    check("К назначениям" not in tb, "нет лишнего CTA (форма уже на экране)")
+    check(not ATC_RE.search(tb), "Соколов verdict no ATC")
+    check(not GAP_RE.search(tb), "Соколов verdict no gap")
+    # Каталог в форме назначений
+    med_opts = re.findall(
+        r'<select name="code" id="med-code-now"[^>]*>(.*?)</select>', b, re.S
+    )
     med_html = med_opts[0] if med_opts else ""
     check("J01CA04" in med_html and "Амоксициллин" in med_html, "в форме есть Амоксициллин")
     check("J01FA10" in med_html and "Азитромицин" in med_html, "в форме есть Азитромицин")
     check(med_html.count("<option") >= 10, f"достаточно препаратов в select ({med_html.count('<option')})")
 
-    st, api_b = get(f"/api/protocol-cap/{pids['ДемоБ']}")
+    st, api_b = get(f"/api/protocol-cap/{pids['Соколов']}")
     data_b = json.loads(api_b)
-    check(data_b.get("compliant") is False, "api ДемоБ compliant=False")
+    check(data_b.get("compliant") is False, "api Соколов compliant=False")
     gap_codes = [g.get("code") for g in data_b.get("gaps") or []]
     check("not_first_line_abt" in gap_codes, f"api gap ABT: {gap_codes}")
 
-    st, c = get(f"/patient/{pids['ДемоВ']}")
+    st, c = get(f"/patient/{pids['Морозов']}")
     vc = verdict(c)
-    check("Есть отклонения" in vc, "ДемоВ отклонения")
-    check("госпитал" in vc.lower() or "Госпитализация" in vc, "ДемоВ госпитализация")
+    tc = verdict_text(vc)
+    check(
+        "Показана госпитализация" in vc
+        or "Показан перевод в ОРИТ" in vc
+        or "Есть отклонения" in vc,
+        "Морозов клинический headline",
+    )
+    check("госпитал" in vc.lower() or "орит" in vc.lower(), "Морозов госпитализация")
     check(
         "цефтриаксон" in vc.lower()
         or "цефалоспорин" in vc.lower()
         or "антибиот" in vc.lower()
         or "орит" in vc.lower(),
-        "ДемоВ клиническая подсказка",
+        "Морозов клиническая подсказка",
     )
-    check("К госпитализации" in c, "ДемоВ CTA к госпитализации")
-    check('data-open-panel="panel-assessment"' in c or "#panel-assessment" in c,
-          "ДемоВ CTA открывает быстрые действия")
-    check(not ATC_RE.search(vc), "ДемоВ verdict no ATC")
-    check(not GAP_RE.search(vc), "ДемоВ verdict no gap")
+    check("Госпитализировать" in vc, "Морозов Госпитализировать в #now-action")
+    check("Госпитализировать в ОРИТ" in vc, "Морозов CTA совпадает с ОРИТ")
+    check("cds-critical" in vc or "Критично" in vc, "Морозов tier критично")
+    check("ЧД 32" not in tc and "лейкоцит" not in tc.lower(), "Морозов без стены виталов в CDS")
+    check("Здесь · без вкладок" not in c and "Сейчас по протоколу" not in c,
+          "Морозов без старого шумного UI")
+    check(not ATC_RE.search(tc), "Морозов verdict no ATC")
+    check(not GAP_RE.search(tc), "Морозов verdict no gap")
 
     # Write tests on throwaway — demos untouched
     st, loc, _ = post("/patient/new", {
@@ -190,10 +219,16 @@ def main():
 
     # demos still intact after write tests
     st, dash3 = get("/")
-    check("ДемоБ" in dash3 and "ДемоА" in dash3 and "ДемоВ" in dash3, "demos intact")
-    st, b_final = get(f"/patient/{pids['ДемоБ']}")
-    check("Азитромицин" in b_final, "ДемоБ still has wrong ABT for guest")
-    check("Есть отклонения" in verdict(b_final), "ДемоБ still non-compliant")
+    check("Соколов" in dash3 and "Орлов" in dash3 and "Морозов" in dash3, "demos intact")
+    st, b_final = get(f"/patient/{pids['Соколов']}")
+    check("Азитромицин" in b_final, "Соколов still has wrong ABT for guest")
+    vf = verdict(b_final)
+    check(
+        "verdict-warn" in vf
+        or "не соответствует" in vf.lower()
+        or "Есть отклонения" in vf,
+        "Соколов still non-compliant",
+    )
 
     print(f"\nИТОГ live_ui_audit: {'PASS' if FAIL == 0 else f'{FAIL} FAIL'}")
     return 0 if FAIL == 0 else 1

@@ -29,7 +29,7 @@ outpatient:
   - priority: 30
     when: { risk_factors: true }
     atc_code: J01CR02
-    rationale: "Факторы риска резистентности → амоксициллин/клавулановая кислота."
+    rationale: "Факторы риска резистентности → амоксициллин с клавулановой кислотой."
 
   - priority: 40
     when: {}
@@ -59,7 +59,7 @@ inpatient:
     - priority: 20
       when: { aspiration: true }
       atc_code: J01CR02
-      rationale: "Подозрение на аспирацию → амокс/клавуланат в/в."
+      rationale: "Подозрение на аспирацию → амоксициллин с клавуланатом в/в."
 
     - priority: 30
       when: { severity: severe }

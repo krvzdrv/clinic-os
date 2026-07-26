@@ -20,21 +20,23 @@ Handoff'ы (артефакт + триггер) — в `process_handoffs` YAML.
 
 ## cap_outpatient — амбулаторный эпизод ВП
 
-Поток: обращение → осмотр/измерения → оценка тяжести → решение о госпитализации → исследования → диагноз → АБТ per os → симптоматика → план/цель → оценка 48–72 ч → контроль → исход → повторная R-графия → закрытие.
+Поток (канон YAML / UI): обращение → анамнез → осмотр/измерения → диагноз → сверка с протоколом (тяжесть / госпитализация) → обследование по показаниям → АБТ per os → симптоматика → план/цель → оценка 48–72 ч → контроль → исход → повторная R-графия → закрытие.
+
+> Если `.bpmn` ещё рисует «исследования → диагноз», для автоматизации и UI приоритет у `process_registry.yaml` и `UI_PROCESS_MAP.md`.
 
 ```mermaid
 flowchart TD
-    A([Start: обращение]) --> B[Task_Intake — приём, жалоба]
+    A([Start: обращение]) --> B[Task_Intake — приём, жалоба / анамнез]
     B --> C[Task_VitalsExam — t, SpO2, ЧД, ЧСС, осмотр]
-    C --> D[Task_AssessSeverity — класс тяжести п.6.3]
+    C --> I[Task_SetDiagnosis — condition ВП]
+    I --> D[Task_AssessSeverity — класс тяжести п.6.3]
     D --> E{Gateway_Hospitalization — п.26}
     E -- показания --> H1([End_Hospitalized → cap_inpatient])
     E -- нет показаний --> F[Task_OrderDiagnostics — ОАК, СРБ, R-графия]
     F --> G[Task_RecordResults — WBC, CRP, CXR]
-    G --> I[Task_SetDiagnosis — condition ВП]
-    I --> J[Task_PrescribeAbt — АБТ per os п.16-21]
-    I --> K[Task_PrescribeSymptomatic — п.40-42]
-    I --> L[Task_CreateCarePlan — план + цель]
+    G --> J[Task_PrescribeAbt — АБТ per os п.16-21]
+    J --> K[Task_PrescribeSymptomatic — п.40-42]
+    J --> L[Task_CreateCarePlan — план + цель]
     J --> M{Gateway_AbtEffect — 48-72 ч}
     M -- нет эффекта --> N[смена АБТ / госпитализация]
     N --> E
@@ -87,3 +89,4 @@ flowchart TD
 2. Для каждого шага открой `process_registry.yaml` → `steps[]` по `id` — `entry_conditions`, `exit_conditions`, `signals`, `data_mapping`, `golden_checks_sql`.
 3. Семантика статусов — `STATUS_SEMANTICS.md`.
 4. Независимая проверка всей картины — `protocol_cap.evaluate_cap(pid)` (вердикт = single source of truth для CDS и метрики).
+5. Сигналы / hard-stop / осознанный override — `docs/processes/CDS_SIGNALING.md` (не путать с «соответствует протоколу»).

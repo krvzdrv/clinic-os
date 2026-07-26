@@ -5,120 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Внебольничная пневмония — Дашборд</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinic.css') }}">
 <style>
-  :root{
-    --cream:#faf9f5; --ink:#20201c; --soft:#54524a; --faint:#8a877d;
-    --coral:#d97757; --coral-deep:#c25e3f; --line:#e6e3d9; --tint:#f3f1e9;
-    --green:#5a8a6a; --green-bg:#eef5f0; --red:#c25e3f; --red-bg:#f7ede8;
+  .wrap{max-width:960px;}
+  h1{font-weight:650;font-size:1.75rem;letter-spacing:-.02em;margin:0;}
+  .kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-accent);font-weight:700;margin-bottom:6px;}
+
+  /* Метрики: 1px gap на фоне border — тонкие разделители без card-теней */
+  .metric-bar{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+    background:var(--border);border-radius:12px;overflow:hidden;
+    margin-bottom:20px;
   }
-  *,*::before,*::after{box-sizing:border-box;} *{margin:0;padding:0;}
-  body{font-family:"Inter",sans-serif;background:var(--cream);color:var(--ink);font-size:14px;line-height:1.5;}
-  .wrap{max-width:960px;margin:0 auto;padding:32px 24px;}
-  h1{font-family:"Spectral",serif;font-weight:600;font-size:28px;letter-spacing:-.01em;}
-  .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--coral-deep);font-weight:600;margin-bottom:6px;}
-  .lead{font-family:"Spectral",serif;font-style:italic;font-size:16px;color:var(--soft);margin:8px 0 24px;padding-left:14px;border-left:3px solid var(--coral);}
+  .metric-cell{padding:16px 18px;background:var(--surface-1);}
+  .metric-cell .k{font-size:12px;color:var(--text-secondary);font-weight:500;margin:0 0 6px;}
+  .metric-cell .v{font-size:1.75rem;font-weight:500;letter-spacing:-.02em;color:var(--text-primary);margin:0;line-height:1.15;}
+  .metric-cell .v.green{color:var(--text-success);}
+  .metric-cell .v.red{color:var(--text-danger);}
+  .metric-cell .sub{font-size:12px;color:var(--text-muted);margin:4px 0 0;}
+  .metric-cell .v-row{display:flex;align-items:baseline;gap:8px;}
+  .metric-cell .v-row .goal{font-size:11px;color:var(--text-muted);}
+  .metric-progress{height:4px;background:var(--bg-danger);border-radius:2px;margin-top:8px;overflow:hidden;}
+  .metric-progress.ok{background:var(--bg-success);}
+  .metric-progress-fill{height:100%;background:var(--text-danger);border-radius:2px;}
+  .metric-progress.ok .metric-progress-fill{background:var(--text-success);}
 
-  .metric-bar{display:flex;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:28px;}
-  .metric-cell{flex:1;padding:18px 20px;border-right:1px solid var(--line);}
-  .metric-cell:last-child{border-right:none;}
-  .metric-cell .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:4px;}
-  .metric-cell .v{font-family:"Spectral",serif;font-size:28px;font-weight:600;}
-  .metric-cell .v.green{color:var(--green);}
-  .metric-cell .v.red{color:var(--coral-deep);}
-  .metric-cell .sub{font-size:12px;color:var(--faint);margin-top:2px;}
+  h2{font-size:1.1rem;font-weight:650;margin:22px 0 12px;}
+  .pat-table-wrap{background:var(--surface-1);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  table.pat-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:13px;background:transparent;border:none;border-radius:0;}
+  table.pat-table th{
+    text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--text-muted);font-weight:500;padding:10px 16px;
+    border-bottom:1px solid var(--border);background:var(--surface-2);
+  }
+  table.pat-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  table.pat-table tr:last-child td{border-bottom:none;}
+  table.pat-table tr.pat-row{cursor:pointer;}
+  table.pat-table tr.pat-row:hover td{background:var(--surface-2);}
+  a{color:var(--text-primary);text-decoration:none;font-weight:500;}
+  a:hover{color:var(--text-accent);}
 
-  .progress{height:8px;background:var(--red-bg);border-radius:4px;overflow:hidden;margin:8px 0 28px;}
-  .progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width .6s ease;}
+  .pat-cell{display:flex;align-items:center;gap:10px;min-width:0;}
+  .pat-cell .pat-text{min-width:0;flex:1;}
+  .pat-cell .pat-name{
+    margin:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .pat-meta{font-size:12px;color:var(--text-muted);margin:0;}
 
-  h2{font-family:"Spectral",serif;font-size:18px;font-weight:600;margin:24px 0 12px;}
-  table{width:100%;border-collapse:collapse;}
-  th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 12px;border-bottom:2px solid var(--line);}
-  td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;}
-  tr:hover td{background:var(--tint);}
-  a{color:var(--ink);text-decoration:none;font-weight:500;}
-  a:hover{color:var(--coral-deep);}
-  .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;}
-  .badge.green{background:var(--green-bg);color:var(--green);}
-  .badge.red{background:var(--red-bg);color:var(--coral-deep);}
-  .badge.grey{background:var(--tint);color:var(--faint);}
-  .arch-note{margin-top:32px;padding:14px 18px;background:var(--tint);border-radius:10px;font-size:12px;color:var(--soft);line-height:1.6;}
-  .arch-note b{color:var(--ink);}
-  .arch-note code{font-family:"SF Mono",Menlo,monospace;font-size:11px;background:#e8e5d8;padding:1px 5px;border-radius:3px;}
+  .now-link{
+    display:flex;align-items:center;gap:8px;min-width:0;
+    color:inherit;font-weight:400;text-decoration:none;
+  }
+  .now-link:hover{color:inherit;}
+  .now-link .now-text{
+    flex:1;min-width:0;font-size:13px;color:var(--text-secondary);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .now-link .ti{font-size:14px;color:var(--text-muted);flex:none;margin-left:auto;}
+  .now-link .badge{flex:none;}
 
-  .action-btn{display:inline-block;padding:8px 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;}
-  .action-btn:hover{background:var(--coral-deep);color:#fff;}
-  .action-link{font-size:13px;color:var(--coral-deep);font-weight:600;text-decoration:none;}
+  .action-btn{display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;}
+  .action-link{font-size:13px;font-weight:600;text-decoration:none;padding:8px 12px;border-radius:8px;}
   .action-link:hover{text-decoration:underline;}
-  .empty-state{padding:24px;background:var(--tint);border-radius:10px;color:var(--soft);font-size:14px;line-height:1.6;}
+  .empty-state{padding:24px;background:var(--surface-2);border-radius:10px;color:var(--text-secondary);font-size:14px;line-height:1.6;border:1px solid var(--border);}
   .filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px;}
   .filters input[type="search"], .filters select{
-    font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);
-    border-radius:8px;background:#fff;color:var(--ink);}
+    font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--border);
+    border-radius:8px;background:var(--surface-1);color:var(--text-primary);margin:0;width:auto;}
   .filters input[type="search"]{min-width:200px;}
-  .filters .lbl{font-size:11px;color:var(--faint);font-weight:600;}
-  .filters .cnt{margin-left:auto;font-size:12px;color:var(--faint);}
-  @media(max-width:768px){ .metric-bar{flex-direction:column;} .metric-cell{border-right:none;border-bottom:1px solid var(--line);} }
+  .filters .cnt{margin-left:auto;font-size:12px;color:var(--text-muted);}
+  .filters button{width:auto;margin:0;padding:7px 14px;font-size:13px;}
+  @media(max-width:720px){
+    .metric-bar{grid-template-columns:1fr 1fr;}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
+<main class="wrap container-fluid">
   <div class="kicker">Демо · Внебольничная пневмония (взрослые) · КП МЗ РБ №768</div>
   <h1>Дашборд качества</h1>
-  <p class="lead">Система подсказывает следующий шаг по протоколу и проверяет, что уже сделано.</p>
 
   {% if guest %}
-  <div style="margin:0 0 22px;padding:16px 18px;border:1px solid var(--line);border-left:5px solid var(--coral);border-radius:12px;background:#fff;">
-    <div style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--coral-deep);font-weight:700;margin-bottom:6px;">С чего начать демо</div>
-    <p style="font-size:15px;font-weight:600;margin:0 0 6px;line-height:1.4;">Откройте {{ guest.full }} — здесь назначена не та АБТ.</p>
-    <p style="font-size:13px;color:var(--soft);margin:0 0 12px;line-height:1.45;">Вверху карточки увидите проверку и следующий шаг: амоксициллин вместо азитромицина.</p>
-    <a href="{{ url_for('demo_guest') }}" class="action-btn">Открыть карточку гостя →</a>
-    <a href="{{ url_for('patient_detail', pid=guest.id) }}" class="action-link" style="margin-left:12px;">или прямо к {{ guest.name }}</a>
+  <div class="page-banner warning guest-banner" role="status">
+    <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+    <span class="pb-text"><b>{{ guest.full }}</b> — назначена не та АБТ</span>
+    <a href="{{ url_for('patient_detail', pid=guest.id) }}" class="btn btn-small">Открыть карту</a>
   </div>
   {% endif %}
 
-  <!-- Метрика -->
+  {% set rate_ok = measure.rate >= 70 %}
   <div class="metric-bar">
     <div class="metric-cell">
-      <div class="k">Всего пациентов</div>
-      <div class="v">{{ measure.total }}</div>
-      <div class="sub">с активной ВП</div>
+      <p class="k">Всего пациентов</p>
+      <p class="v">{{ measure.total }}</p>
+      <p class="sub">с активной ВП</p>
     </div>
     <div class="metric-cell">
-      <div class="k">Соответствует</div>
-      <div class="v green">{{ measure.compliant }}</div>
-      <div class="sub">нет warning-отклонений</div>
+      <p class="k">Соответствует</p>
+      <p class="v green">{{ measure.compliant }}</p>
+      <p class="sub">нет warning-отклонений</p>
     </div>
     <div class="metric-cell">
-      <div class="k">Есть отклонения</div>
-      <div class="v red">{{ measure.with_warnings }}</div>
-      <div class="sub">warning-уровень</div>
+      <p class="k">Есть отклонения</p>
+      <p class="v red">{{ measure.with_warnings }}</p>
+      <p class="sub">warning-уровень</p>
     </div>
     <div class="metric-cell">
-      <div class="k">Доля соответствия</div>
-      <div class="v">{{ measure.rate }}%</div>
-      <div class="sub">целевая ≥ 70%</div>
+      <p class="k">Доля соответствия</p>
+      <div class="v-row">
+        <p class="v">{{ measure.rate }}%</p>
+        <span class="goal">цель ≥70%</span>
+      </div>
+      <div class="metric-progress{% if rate_ok %} ok{% endif %}">
+        <div class="metric-progress-fill" style="width:{{ measure.rate }}%"></div>
+      </div>
     </div>
   </div>
 
-  <div class="progress">
-    <div class="progress-fill" style="width:{{ measure.rate }}%"></div>
-  </div>
-
-  <!-- Действия -->
   <div style="display:flex;gap:10px;align-items:center;margin:0 0 16px;">
-    <a href="{{ url_for('new_patient') }}" class="action-btn">+ Добавить пациента</a>
-    <a href="{{ url_for('export_csv') }}" class="action-link">↓ Экспорт в CSV</a>
+    <a href="{{ url_for('new_patient') }}" class="action-btn">Добавить пациента</a>
+    <a href="{{ url_for('export_csv') }}" class="action-link">Экспорт CSV</a>
     {% if demo_mode and patients|length == 0 %}
     <form method="POST" action="{{ url_for('seed_route') }}" style="margin:0;">
       <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font-family:inherit;">
-        ⟳ Заполнить демо-данными (4 пациента с ВП)
+        Заполнить демо
       </button>
     </form>
     {% endif %}
   </div>
 
-  <!-- Поиск и фильтры -->
   {% if patients|length > 0 or q or f_sev or f_set or f_com %}
   <form method="GET" action="{{ url_for('dashboard') }}" class="filters">
     <input type="search" name="q" value="{{ q }}" placeholder="Поиск по фамилии или ID…">
@@ -139,60 +156,88 @@
     </select>
     <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;">Применить</button>
     {% if q or f_sev or f_set or f_com %}
-      <a href="{{ url_for('dashboard') }}" class="action-link" style="font-weight:500;">сбросить</a>
+      <a href="{{ url_for('dashboard') }}" class="action-link" style="font-weight:500;">Сбросить</a>
     {% endif %}
     <span class="cnt">Показано: {{ patients|length }} из {{ total }}</span>
   </form>
   {% endif %}
 
-  <!-- Таблица пациентов -->
-  <h2>Пациенты <span style="font-size:12px;color:var(--faint);font-weight:400;font-family:inherit;">— отсортированы по клиническому приоритету</span></h2>
+  <h2>Пациенты <span style="font-size:12px;color:var(--text-muted);font-weight:400;">— по клиническому приоритету</span></h2>
   {% if patients|length == 0 %}
     <div class="empty-state">
       Список пациентов пуст. Добавьте первого пациента кнопкой выше
       или заполните демо-данными для знакомства с интерфейсом.
     </div>
   {% else %}
-  <table>
+  <div class="pat-table-wrap">
+  <table class="pat-table">
+    <colgroup>
+      <col style="width:26%">
+      <col style="width:14%">
+      <col style="width:14%">
+      <col style="width:14%">
+      <col style="width:32%">
+    </colgroup>
     <thead>
       <tr>
-        <th>ФИО</th>
-        <th>Возраст</th>
-        <th>Пол</th>
+        <th>Пациент</th>
         <th>Тяжесть</th>
         <th>Условия</th>
-        <th>Соответствие</th>
-        <th>Этап пути</th>
+        <th>Вердикт</th>
+        <th>Сделать сейчас</th>
       </tr>
     </thead>
     <tbody>
       {% for p in patients %}
-      <tr>
-        <td><a href="{{ url_for('patient_detail', pid=p.id) }}">{{ p.name }}</a></td>
-        <td>{{ p.age }}</td>
-        <td>{{ "М" if p.gender == "male" else "Ж" }}</td>
+      {% set parts = (p.full or p.name or '').split() %}
+      {% set ini = ((parts[0][:1] if parts else '?') ~ (parts[1][:1] if parts|length > 1 else ''))|upper %}
+      {% set ns = (p.next_step or '')|lower %}
+      {% set urgent = ('орит' in ns) or ('госпитализ' in ns) %}
+      {% set abtish = ('амокси' in ns) or ('азитр' in ns) or ('антибиот' in ns) or ('абт' in ns) or ('замен' in ns) or ('назнач' in ns and 'исслед' not in ns) %}
+      <tr class="pat-row" onclick="location.href='{{ url_for('patient_detail', pid=p.id) }}'">
+        <td>
+          <div class="pat-cell">
+            <div class="icon-avatar sm accent" aria-hidden="true"><span class="ini">{{ ini }}</span></div>
+            <div class="pat-text">
+              <p class="pat-name">{{ p.full or p.name }}</p>
+              <p class="pat-meta">{{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}</p>
+            </div>
+          </div>
+        </td>
         <td>
           {% if p.severity == 'severe' %}<span class="badge red">тяжёлая</span>
-          {% elif p.severity == 'mild' %}<span class="badge grey">нетяжёлая</span>
-          {% else %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
+          {% elif p.severity == 'mild' %}<span class="category-tag">нетяжёлая</span>
+          {% else %}<span style="color:var(--text-muted);font-size:12px;">—</span>{% endif %}
         </td>
         <td>
-          {% if p.setting == 'inpatient' %}<span class="badge red">стационар</span>
-          {% elif p.setting == 'outpatient' %}<span class="badge grey">амбулаторно</span>
-          {% else %}<span style="color:var(--faint);font-size:12px;">—</span>{% endif %}
+          {% if p.setting == 'inpatient' %}<span class="category-tag">стационар</span>
+          {% elif p.setting in ('outpatient', 'ambulatory') %}<span class="category-tag">амбулаторно</span>
+          {% else %}<span style="color:var(--text-muted);font-size:12px;">—</span>{% endif %}
         </td>
         <td>
-          {% if p.compliant is none %}<span style="color:var(--faint);font-size:12px;">—</span>
+          {% if p.compliant is none %}<span style="color:var(--text-muted);">—</span>
           {% elif p.compliant %}<span class="badge green">соответствует</span>
-          {% else %}<span class="badge red">есть отклонения</span>{% endif %}
+          {% else %}<span class="badge red">отклонение</span>{% endif %}
         </td>
-        <td><span class="badge grey">{{ p.state_label }}</span></td>
+        <td>
+          {% if p.next_step %}
+          <a class="now-link" href="{{ url_for('patient_detail', pid=p.id) }}" onclick="event.stopPropagation()">
+            {% if urgent %}<span class="badge red">срочно</span>
+            {% elif not p.compliant and abtish %}<span class="badge warning">АБТ</span>
+            {% elif not p.compliant %}<span class="badge warning">сейчас</span>
+            {% endif %}
+            <span class="now-text">{{ p.next_step }}</span>
+            <i class="ti ti-chevron-right" aria-hidden="true"></i>
+          </a>
+          {% else %}<span style="color:var(--text-muted);font-weight:400;">—</span>{% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% endif %}
 
-</div>
+</main>
 </body>
 </html>

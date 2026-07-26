@@ -31,3 +31,6 @@ cql/node_modules/
 cql_runner/node_modules/
 cql/*.cql.json
 .cql-build/
+
+# Scratch / QA screenshots
+.tmp/

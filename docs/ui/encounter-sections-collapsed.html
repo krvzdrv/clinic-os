@@ -1,0 +1,241 @@
+<!--
+  ЕДИНЫЙ АТОМ: свёрнутая секция визита (Encounter section, collapsed state)
+  Используется одинаково для: Анамнез, Осмотр, Исследования, Назначения.
+  Форма всегда одна: icon + заголовок + summary-badge (опционально) + chevron.
+  Различается только ЛОГИКА того, что попадает в summary-badge — см. правило приоритета ниже.
+
+  ПРАВИЛО ПРИОРИТЕТА для содержимого summary-badge (единое для всех 4 секций):
+  1. Активный CDS/protocol issue внутри секции — всегда наверху, bg-danger, текст issue
+  2. Red flag / значение вне критического диапазона — bg-danger, счётчик или конкретное имя
+  3. Есть данные, но всё в норме — нейтральный счётчик (bg-surface-2/text-secondary) или
+     вообще без бейджа, если это сама секция сигнализирует "порядок" (см. правило для Осмотра)
+  4. Нет данных вообще — placeholder текстом, text-muted, БЕЗ бейджа-пилюли
+     (пустой бейдж выглядел бы как "0 чего-то", а не как "не заполнено")
+-->
+
+<style>
+  :root {
+    --surface-1: #f5f5f3;
+    --surface-2: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b68;
+    --text-muted: #9a9a97;
+    --border: rgba(0,0,0,0.08);
+    --bg-danger: #fdecea;   --text-danger: #9c2b2b;
+    --bg-accent: #e8f0fd;   --text-accent: #2255a4;
+  }
+
+  .section-header {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+  }
+  .section-header__icon { font-size:16px; color: var(--text-secondary); }
+  .section-header__title { font-size:14px; font-weight:500; }
+  .section-header__right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .section-badge {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:11px; font-weight:500; padding:2px 8px;
+    border-radius:12px; white-space:nowrap;
+  }
+  .section-badge--danger { background: var(--bg-danger); color: var(--text-danger); }
+  .section-badge--neutral { background: var(--surface-2); color: var(--text-secondary); border:0.5px solid var(--border); }
+  .section-badge--accent { background: var(--bg-accent); color: var(--text-accent); }
+  .section-placeholder { font-size:13px; color: var(--text-muted); }
+  .chevron { font-size:14px; color: var(--text-muted); }
+</style>
+
+
+<!-- ============================================= -->
+<!-- 1. АНАМНЕЗ — текст важнее счётчика             -->
+<!-- ============================================= -->
+
+<!-- Вариант: есть тревожный анамнестический флаг (аллергия/сопутствующее) -->
+<div class="section-header">
+  <i class="ti ti-notes section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Анамнез</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--danger">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      Аллергия на пенициллин
+    </span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: нет тревожного флага — короткая выжимка жалобы, нейтрально -->
+<div class="section-header">
+  <i class="ti ti-notes section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Анамнез</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--neutral">Кашель, лихорадка 3 дня…</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: анамнез не заполнен -->
+<div class="section-header">
+  <i class="ti ti-notes section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Анамнез</span>
+  <div class="section-header__right">
+    <span class="section-placeholder">Не заполнено</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+
+<!-- ============================================= -->
+<!-- 2. ОСМОТР — red flag > счётчик вне нормы       -->
+<!-- ============================================= -->
+
+<!-- Вариант: есть red flag (приоритетнее счётчика) -->
+<div class="section-header">
+  <i class="ti ti-stethoscope section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Осмотр</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--danger">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      Шок · 5 вне нормы
+    </span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: вне нормы есть, но без red flag -->
+<div class="section-header">
+  <i class="ti ti-stethoscope section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Осмотр</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--danger">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      2 вне нормы
+    </span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: всё в норме — бейдж не рендерится вовсе -->
+<div class="section-header">
+  <i class="ti ti-stethoscope section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Осмотр</span>
+  <div class="section-header__right">
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+
+<!-- ============================================= -->
+<!-- 3. ИССЛЕДОВАНИЯ — статус важнее списка         -->
+<!-- ============================================= -->
+
+<!-- Вариант: есть результаты вне референса -->
+<div class="section-header">
+  <i class="ti ti-flask section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Исследования</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--danger">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      2 вне референса
+    </span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: результаты ещё не пришли — нейтрально-accent, не danger -->
+<div class="section-header">
+  <i class="ti ti-flask section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Исследования</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--accent">Ожидает результатов</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: всё в референсе -->
+<div class="section-header">
+  <i class="ti ti-flask section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Исследования</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--neutral">4 в норме</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: не назначено -->
+<div class="section-header">
+  <i class="ti ti-flask section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Исследования</span>
+  <div class="section-header__right">
+    <span class="section-placeholder">Не назначено</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+
+<!-- ============================================= -->
+<!-- 4. НАЗНАЧЕНИЯ — CDS issue > просто счётчик     -->
+<!-- ============================================= -->
+
+<!-- Вариант: есть активный CDS/protocol issue — высший приоритет во всей системе -->
+<div class="section-header">
+  <i class="ti ti-pill section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Назначения</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--danger">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      Не соответствует протоколу
+    </span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: назначения есть, issue нет -->
+<div class="section-header">
+  <i class="ti ti-pill section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Назначения</span>
+  <div class="section-header__right">
+    <span class="section-badge section-badge--neutral">1 назначение</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!-- Вариант: ничего не назначено -->
+<div class="section-header">
+  <i class="ti ti-pill section-header__icon" aria-hidden="true"></i>
+  <span class="section-header__title">Назначения</span>
+  <div class="section-header__right">
+    <span class="section-placeholder">Нет назначений</span>
+    <i class="ti ti-chevron-right chevron" aria-hidden="true"></i>
+  </div>
+</div>
+
+
+<!--
+  ПРОМТ ДЛЯ АГЕНТА:
+
+  Реализуй единый компонент .section-header для всех 4 секций визита
+  (Анамнез, Осмотр, Исследования, Назначения). Форма компонента одна и та же
+  (см. CSS-классы выше), различается только источник данных для summary-badge.
+
+  Порядок проверки для каждой секции (использовать первый подходящий, остальные не проверять):
+  1. Есть активный CDS/protocol issue, привязанный к данным этой секции →
+     .section-badge--danger с текстом issue (переиспользовать текст из CDS-карточки диагноза)
+  2. Есть red flag или значение вне критического диапазона →
+     .section-badge--danger со счётчиком и/или именем флага, если он один
+  3. Есть данные, всё в норме/референсе →
+     .section-badge--neutral со счётчиком, ЛИБО вообще без бейджа — единообразно решить
+     для каждой секции заранее (напр. для Осмотра — без бейджа, для Исследований — со счётчиком,
+     т.к. "5 анализов в норме" несёт полезную информацию, а "5 витальных в норме" — избыточна,
+     раз они и так все перечислены при разворачивании)
+  4. Данных нет вообще → .section-placeholder с текстом ("Не заполнено"/"Не назначено"),
+     без бейджа-пилюли.
+
+  При разворачивании секции — не пересоздавать .section-header заново, менять только
+  правую часть (badge исчезает или сворачивается в chevron-down) и добавлять контент ниже,
+  тот же принцип "один компонент, два состояния", что и для шапки визита целиком.
+-->

@@ -1,0 +1,193 @@
+<!--
+  Дашборд качества — исправленная версия.
+  Ключевое изменение против текущего состояния: колонка "Сделать сейчас" больше не
+  содержит полный текст рекомендации — только компактный status badge (переиспользуем
+  из основного гайда). Полная рекомендация остаётся в CDS-карточке диагноза конкретного
+  пациента (уже спроектирована ранее) — сюда дублировать не нужно, это и есть источник
+  "прыгающих" строк при масштабе.
+-->
+
+<style>
+  :root {
+    --surface-1: #f5f5f3;
+    --surface-2: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b68;
+    --text-muted: #9a9a97;
+    --border: rgba(0,0,0,0.08);
+    --bg-danger: #fdecea;   --text-danger: #9c2b2b;
+    --bg-success: #e8f3e5;  --text-success: #2e6b2e;
+    --bg-warning: #fdf3e0;  --text-warning: #9c6a1a;
+    --bg-accent: #e8f0fd;   --text-accent: #2255a4;
+  }
+</style>
+
+<div style="display:flex; flex-direction:column; gap:16px;">
+
+  <!-- Баннер: page banner атом, та же пара токенов, что и везде -->
+  <div style="background: var(--bg-warning); border-radius:12px; padding:0.75rem 1rem; display:flex; align-items:center; gap:10px;">
+    <i class="ti ti-alert-triangle" style="font-size:18px; color: var(--text-warning);" aria-hidden="true"></i>
+    <span style="font-size:13px; color: var(--text-warning); flex:1;">
+      <span style="font-weight:500;">Соколов Борис Иванович</span> — назначена не та АБТ
+    </span>
+    <button style="flex-shrink:0; height:34px; padding:0 14px; background: var(--fill-danger, #9c2b2b); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:500;">
+      Открыть карту
+    </button>
+  </div>
+
+  <!-- Метрики: единый визуальный язык, роль = цвет числа, без отдельного градиентного бара -->
+  <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:1px; background: var(--border); border-radius:12px; overflow:hidden;">
+
+    <div style="background: var(--surface-2); padding:1rem 1.25rem;">
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 6px;">Всего пациентов</p>
+      <p style="font-size:28px; font-weight:500; margin:0; color:var(--text-primary);">10</p>
+      <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">с активной ВП</p>
+    </div>
+
+    <div style="background: var(--surface-2); padding:1rem 1.25rem;">
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 6px;">Соответствует</p>
+      <p style="font-size:28px; font-weight:500; margin:0; color:var(--text-success);">3</p>
+      <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">нет warning-отклонений</p>
+    </div>
+
+    <div style="background: var(--surface-2); padding:1rem 1.25rem;">
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 6px;">Есть отклонения</p>
+      <p style="font-size:28px; font-weight:500; margin:0; color:var(--text-danger);">7</p>
+      <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">warning-уровень</p>
+    </div>
+
+    <div style="background: var(--surface-2); padding:1rem 1.25rem;">
+      <p style="font-size:12px; color:var(--text-secondary); margin:0 0 6px;">Доля соответствия</p>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <p style="font-size:28px; font-weight:500; margin:0; color:var(--text-primary);">30.0%</p>
+        <span style="font-size:11px; color:var(--text-muted);">цель ≥70%</span>
+      </div>
+      <!-- индикатор прогресса встроен в саму карту, не отдельный элемент вне системы -->
+      <div style="height:4px; background:var(--bg-danger); border-radius:2px; margin-top:8px; overflow:hidden;">
+        <div style="height:100%; width:30%; background:var(--text-danger);"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Таблица: фиксированные колонки, статус — всегда badge, не голый текст -->
+  <div style="background: var(--surface-2); border:0.5px solid var(--border); border-radius:12px; overflow:hidden;">
+    <table style="width:100%; border-collapse:collapse; font-size:13px; table-layout:fixed;">
+      <colgroup>
+        <col style="width:26%;">
+        <col style="width:14%;">
+        <col style="width:14%;">
+        <col style="width:14%;">
+        <col style="width:32%;">
+      </colgroup>
+      <thead>
+        <tr style="background:var(--surface-1);">
+          <th style="text-align:left; padding:10px 16px; font-size:11px; color:var(--text-muted); font-weight:500; text-transform:uppercase;">Пациент</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; color:var(--text-muted); font-weight:500; text-transform:uppercase;">Тяжесть</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; color:var(--text-muted); font-weight:500; text-transform:uppercase;">Условия</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; color:var(--text-muted); font-weight:500; text-transform:uppercase;">Вердикт</th>
+          <th style="text-align:left; padding:10px 16px; font-size:11px; color:var(--text-muted); font-weight:500; text-transform:uppercase;">Сделать сейчас</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr style="border-top:0.5px solid var(--border);">
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:var(--bg-accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <span style="font-size:12px; font-weight:500; color:var(--text-accent);">МВ</span>
+              </div>
+              <div style="min-width:0;">
+                <p style="margin:0; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Морозов Виктор Сергеевич</p>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">51 лет · М</p>
+              </div>
+            </div>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--bg-danger); color:var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">тяжёлая</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--surface-1); color:var(--text-secondary); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; border:0.5px solid var(--border); white-space:nowrap;">стационар</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--bg-danger); color:var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">отклонение</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <span style="background:var(--bg-danger); color:var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap; flex-shrink:0;">срочно</span>
+              <span style="color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Госпитализировать в ОРИТ</span>
+              <i class="ti ti-chevron-right" style="font-size:14px; color:var(--text-muted); margin-left:auto; flex-shrink:0;" aria-hidden="true"></i>
+            </div>
+          </td>
+        </tr>
+
+        <tr style="border-top:0.5px solid var(--border);">
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; border-radius:50%; background:var(--bg-accent); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <span style="font-size:12px; font-weight:500; color:var(--text-accent);">КМ</span>
+              </div>
+              <div style="min-width:0;">
+                <p style="margin:0; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Клавуланова Мария Сергеевна</p>
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">38 лет · Ж</p>
+              </div>
+            </div>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--surface-1); color:var(--text-secondary); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; border:0.5px solid var(--border); white-space:nowrap;">нетяжёлая</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--surface-1); color:var(--text-secondary); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; border:0.5px solid var(--border); white-space:nowrap;">амбулаторно</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <span style="background:var(--bg-danger); color:var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">отклонение</span>
+          </td>
+          <td style="padding:10px 16px; vertical-align:middle;">
+            <div style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <span style="background:var(--bg-warning); color:var(--text-warning); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap; flex-shrink:0;">АБТ</span>
+              <span style="color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Заменить на амоксициллин/клавуланат</span>
+              <i class="ti ti-chevron-right" style="font-size:14px; color:var(--text-muted); margin-left:auto; flex-shrink:0;" aria-hidden="true"></i>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+
+<!--
+  ПРОМТ ДЛЯ АГЕНТА:
+
+  Замени текущую разметку дашборда качества на приведённую выше. Ключевые правила:
+
+  1. Баннер наверху — page banner атом (bg-warning/text-warning пара), не произвольный
+     жёлтый с несвязанной по цвету кнопкой. Кнопка внутри баннера — единственная
+     filled-кнопка в этой зоне (zone-scoped restraint).
+
+  2. Метрики — единая карточная сетка (CSS grid, 1px gap на фоне border для тонких
+     разделителей вместо отдельных card-теней). Число — цвет по роли (success/danger/
+     primary), никакого отдельного градиентного progress-бара вне системы: если нужен
+     прогресс — он встроен внутрь карточки метрики тем же danger/success токеном.
+
+  3. Таблица — table-layout:fixed с явными процентными ширинами колонок (colgroup),
+     чтобы контент не мог разъехать структуру при любом объёме данных.
+     - Имя пациента — обрезается text-overflow:ellipsis при переполнении, не переносится
+       на вторую строку и не расширяет колонку.
+     - Тяжесть — status badge с ролью (danger для "тяжёлая", нейтральный category tag
+       для "нетяжёлая" — это клиническая оценка, роль оправдана только для срочного
+       состояния).
+     - Условия (стационар/амбулаторно) — ВСЕГДА нейтральный category tag
+       (surface-1/text-secondary), это административная классификация, не состояние.
+     - Вердикт — ВСЕГДА status badge (danger/success), никогда голый цветной текст.
+     - "Сделать сейчас" — компактный status badge (danger/warning по срочности) +
+       ОДНОСТРОЧНЫЙ обрезаемый текст (ellipsis) + chevron. Полная рекомендация с дозой
+       и длительностью НЕ дублируется в таблице — она уже есть в CDS-карточке диагноза
+       конкретного пациента; клик по строке ведёт туда.
+
+  4. Аватар пациента — icon avatar 32px с инициалами, ВСЕГДА один и тот же нейтральный
+     bg-accent/text-accent, без случайной раскраски по хешу имени — цвет должен нести
+     смысл (роль), а не быть декоративным идентификатором.
+-->

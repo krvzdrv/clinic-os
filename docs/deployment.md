@@ -58,9 +58,11 @@ git push origin master
 
 ```bash
 # локально, с DATABASE_URL из .env
-DATABASE_URL=... PYTHONPATH=. python3 tools/seed_ten.py
-DATABASE_URL=... PYTHONPATH=. python3 tools/warm_cache.py
+DATABASE_URL=... python3 tools/seed_ten.py
+# эквивалент: python3 tools/prepare_demo_db.py
+# warm_cache уже вызывается внутри seed_ten
 ```
+
 
 ## Шаг 6. Проверка
 

@@ -20,7 +20,7 @@
 - `docs/protocols/**` (в т.ч. новый `protocol_registry.yaml`, `cap_abt_rules.yaml`)
 - `cds_service.py`, `care_plan_service.py`, `drug_service.py`
 - `terminology.py` (осторожно: согласовать с UI при смене подписей/доз)
-- **новый** `protocol_verdict.py` (рекомендуется) — `verdict_for_ui()`
+- `protocol_verdict.py` — `verdict_for_ui()` (существует; не создавать заново)
 
 ## Нельзя трогать
 

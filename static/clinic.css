@@ -1,0 +1,453 @@
+/**
+ * clinic-os UI — рабочее место врача (Flask + Jinja)
+ *
+ * Палитра «graphite ward»: тёплый камень + угольные кнопки + приглушённый steel.
+ * Не teal-SaaS, не terracotta/cream-marketing, не кислотный blue-500.
+ */
+
+:root {
+  /* ---- Graphite ward (канон clinic-os) ---- */
+  --cream: #e7e6e2;
+  --ink: #1c1b19;
+  --soft: #3f3c38;
+  --faint: #6f6b66;
+  --line: #d2cfc8;
+  --tint: #f2f1ed;
+  --surface: #ffffff;
+
+  /* Primary action = graphite-navy (не яркий синий) */
+  --accent: #243447;
+  --accent-hover: #1a2736;
+  --accent-soft: #e8edf2;
+  --accent-line: #b8c4d0;
+  --steel: #3d5a80;
+
+  /* legacy aliases used across templates */
+  --coral: var(--accent);
+  --coral-deep: var(--accent-hover);
+
+  --green: #2f5c4a;
+  --green-bg: #e8f0eb;
+  --green-line: #b7cfc2;
+  --red: #8c2f2f;
+  --red-bg: #f7ecec;
+  --red-line: #e2c4c4;
+  --critical: var(--red);
+  --critical-bg: var(--red-bg);
+
+  --font: "IBM Plex Sans", "Segoe UI", sans-serif;
+  --radius: 8px;
+
+  /* ---- Семантические алиасы (для агентов / внешних промптов) ----
+     Не дублировать hex: только ссылки на канон выше.
+     docs/ui/STYLE_GUIDE.md */
+  --surface-0: var(--cream);
+  --surface-1: var(--surface);
+  --surface-2: var(--tint);
+  --text-primary: var(--ink);
+  --text-secondary: var(--soft);
+  --text-muted: var(--faint);
+  --border: var(--line);
+  --border-strong: var(--line);
+  --bg-success: var(--green-bg);
+  --text-success: var(--green);
+  --border-success: var(--green-line);
+  --bg-danger: var(--red-bg);
+  --text-danger: var(--red);
+  --border-danger: var(--red-line);
+  --bg-warning: #fef3c7;
+  --text-warning: #92400e;
+  --border-warning: #f59e0b;
+  --bg-accent: var(--accent-soft);
+  --text-accent: var(--steel);
+  --border-accent: var(--accent-line);
+  /* Кнопки: fill (см. page-system guide) */
+  --fill-accent: var(--accent);
+  --on-accent: #ffffff;
+  --fill-danger: var(--red);
+  --on-danger: #ffffff;
+  --bg-gray: var(--tint);
+  --text-gray: var(--faint);
+}
+
+html { color-scheme: light; }
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Компактные «×» у записей */
+button.chip-x,
+.chip-x {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  padding: 0 !important;
+  margin: 0 0 0 4px !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background: var(--tint) !important;
+  color: var(--faint) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+button.chip-x:hover,
+.chip-x:hover {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+.dlist .it {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px dotted var(--line);
+}
+.dlist form { display: inline; margin: 0; padding: 0; }
+
+h1, h2, h3,
+.cds-title,
+.verdict-headline,
+.metric-cell .v,
+.lead {
+  font-family: var(--font) !important;
+  font-style: normal !important;
+}
+
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+.wrap-wide { max-width: 1120px; }
+
+.back {
+  font-size: 13px;
+  color: var(--faint);
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 14px;
+}
+.back:hover { color: var(--steel); }
+
+.btn,
+.btn-small,
+.action-btn,
+button.btn,
+button.btn-small {
+  font-family: var(--font);
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:hover,
+.btn-small:hover,
+.action-btn:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: #fff !important;
+}
+.btn.ghost,
+.action-link {
+  background: var(--surface) !important;
+  color: var(--steel) !important;
+  border: 1px solid var(--line) !important;
+}
+.btn.ghost:hover { background: var(--tint) !important; }
+.btn.danger {
+  background: var(--surface) !important;
+  color: var(--critical) !important;
+  border: 1px solid var(--critical) !important;
+}
+.btn.danger:hover {
+  background: var(--critical) !important;
+  color: #fff !important;
+}
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+.badge.green { background: var(--bg-success); color: var(--text-success); }
+.badge.red { background: var(--bg-danger); color: var(--text-danger); }
+.badge.grey { background: var(--bg-gray); color: var(--text-gray); }
+/* Админ. состояние визита (открыт) — не success: docs/ui/ui-design-guide-page-system.md */
+.badge.accent { background: var(--bg-accent); color: var(--text-accent); }
+.badge.warning { background: var(--bg-warning); color: var(--text-warning); }
+
+/* Icon avatar — контейнер для Tabler / инициалов (40px default, .sm = 32px) */
+.icon-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-avatar .ti {
+  font-size: 20px;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+.icon-avatar.sm { width: 32px; height: 32px; }
+.icon-avatar.sm .ti { font-size: 16px; }
+.icon-avatar.sm .ini {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-accent);
+}
+.icon-avatar.accent { background: var(--bg-accent); border-color: transparent; }
+.icon-avatar.danger { background: var(--bg-danger); border-color: transparent; }
+.icon-avatar.danger .ti { color: var(--text-danger); }
+.icon-avatar.warning { background: var(--bg-warning); border-color: transparent; }
+.icon-avatar.warning .ti { color: var(--text-warning); }
+
+/* Category tag — классификация, не оценка (амбулаторный / стационар) */
+.category-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* Removable tag chip — членство в множестве (есть ×), не status badge */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 6px 3px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  line-height: 1.3;
+}
+.tag-chip.danger { background: var(--bg-danger); color: var(--text-danger); border-color: transparent; }
+.tag-chip.warning { background: var(--bg-warning); color: var(--text-warning); border-color: transparent; }
+.tag-chip .chip-x,
+.tag-chip button.chip-x {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  margin: 0 !important;
+  background: transparent !important;
+  color: inherit !important;
+  opacity: 0.6;
+  font-size: 14px !important;
+}
+.tag-chip .chip-x:hover,
+.tag-chip button.chip-x:hover {
+  opacity: 1;
+  color: var(--text-danger) !important;
+  background: transparent !important;
+}
+
+/* Section label — разделитель внутри Encounter, без avatar/rail */
+.section-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 16px 0 8px;
+}
+
+/* Page banner (guest и системные) — без левой полосы */
+.page-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--bg-accent);
+  color: var(--text-accent);
+  margin: 0 0 16px;
+}
+.page-banner.warning { background: var(--bg-warning); color: var(--text-warning); }
+.page-banner .ti { font-size: 18px; flex: none; }
+.page-banner .pb-text { font-size: 13px; flex: 1; min-width: 0; }
+/* Единственная filled-кнопка зоны баннера — fill-danger (не accent) */
+.page-banner .btn,
+.page-banner a.btn,
+.page-banner .btn-small {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--fill-danger) !important;
+  border-color: var(--fill-danger) !important;
+  color: var(--on-danger) !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+}
+.page-banner .btn:hover,
+.page-banner a.btn:hover,
+.page-banner .btn-small:hover {
+  filter: brightness(0.94);
+  color: var(--on-danger) !important;
+}
+
+/* ---- Action card: та же рамка, что у остального UI; статус — текстом/кнопкой, не полосой ---- */
+.cds {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 16px 18px 14px;
+  margin: 0 0 16px;
+}
+.cds-critical,
+.cds-warn,
+.cds-ok {
+  border-color: var(--line);
+  background: var(--surface);
+}
+.cds-tier {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+  color: var(--faint);
+}
+.cds-critical .cds-tier { color: var(--critical); }
+.cds-warn .cds-tier { color: var(--accent); }
+.cds-ok .cds-tier { color: var(--green); }
+.cds-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.cds-reason {
+  font-size: 13px;
+  color: var(--soft);
+  margin: 0 0 14px;
+  line-height: 1.4;
+  max-width: 40em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* Primary CTA протокола (не вложенные add-panel формы) */
+.cds-action > form > .btn,
+.cds-action > .fform > form > .btn {
+  min-width: 220px;
+  height: 46px;
+  font-size: 15px;
+  font-weight: 650;
+  box-shadow: none;
+}
+/* Несоответствие / критично → fill-danger; ok / плановый контроль → fill-accent */
+.cds-warn .cds-action > form > .btn,
+.cds-warn .cds-action > .fform > form > .btn,
+.cds-critical .cds-action > form > .btn,
+.cds-critical .cds-action > .fform > form > .btn,
+.verdict-warn .cds-action > form > .btn,
+.verdict-warn .cds-action > .fform > form > .btn {
+  background: var(--fill-danger) !important;
+  border-color: var(--fill-danger) !important;
+  color: var(--on-danger) !important;
+}
+.cds-ok .cds-action > form > .btn,
+.verdict-ok .cds-action > form > .btn {
+  background: var(--fill-accent) !important;
+  border-color: var(--fill-accent) !important;
+  color: var(--on-accent) !important;
+}
+.cds-action > form > .btn:hover,
+.cds-action > .fform > form > .btn:hover {
+  filter: brightness(0.92);
+}
+.cds-current { display: none; } /* текущий АБТ — только в status strip */
+.cds-more {
+  margin-top: 14px;
+  font-size: 13px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.cds-more summary {
+  cursor: pointer;
+  color: var(--soft);
+  font-weight: 550;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cds-more summary::-webkit-details-marker { display: none; }
+.cds-more summary::before { content: "▸ "; color: var(--faint); }
+.cds-more[open] summary::before { content: "▾ "; }
+.sev-dots { display: inline-flex; gap: 4px; align-items: center; }
+.sev-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+  display: inline-block;
+}
+.sev-dot.problem { background: var(--text-danger); }
+.sev-dot.info { background: var(--text-muted); }
+.cds-more ul { list-style: none; margin: 8px 0 0; padding: 0; }
+.cds-check {
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--tint);
+  display: grid;
+  grid-template-columns: 10px 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.cds-check:last-child { border-bottom: none; }
+.cds-check-title { display: block; font-weight: 600; }
+.cds-check-action { display: block; font-size: 12px; color: var(--faint); margin-top: 2px; }
+.cds-alt { margin-top: 10px; font-size: 12px; }
+.cds-alt summary {
+  cursor: pointer;
+  color: var(--faint);
+  font-weight: 500;
+  list-style: none;
+}
+.cds-alt summary::-webkit-details-marker { display: none; }
+.cds-alt:not([open]) > :not(summary) { display: none !important; }
+
+.history-fold:not([open]) > :not(summary) { display: none !important; }
+
+/* guest-banner class retained for doctor_gate; styles from .page-banner */

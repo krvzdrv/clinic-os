@@ -23,7 +23,7 @@
 
 Задача спринта 1:
 1) Создать docs/protocols/protocol_registry.yaml (cap_adult_768 → МКБ, ссылка на КП и cap_abt_rules.yaml).
-2) Реализовать verdict_for_ui(assessment) по docs/agents/verdict-contract.md (лучше новый protocol_verdict.py).
+2) Держать verdict_for_ui(assessment) в protocol_verdict.py по docs/agents/verdict-contract.md (модуль уже есть).
 3) Подключить реестр к «протокол применим» тонко, не ломая семантику evaluate_cap для scenarios.
 
 Можно трогать только: protocol_cap.py, protocol_rules.py, rules_engine.py, docs/protocols/**, cds_service.py, care_plan_service.py, drug_service.py, terminology.py, новый protocol_verdict.py.
@@ -55,14 +55,14 @@
 Задача спринта 1:
 1) Верх templates/patient.html: блок «Сейчас по протоколу» из ClinicalVerdict (headline, next_step, expected_therapy, checks).
 2) Убрать из видимого вердикта ATC, LOINC, gap-коды.
-3) Минимально сгруппировать Осмотр → Диагноз → Назначения; остальное не раздувать.
+3) Минимально сгруппировать Осмотр → Диагноз → Лечение (канон UI_PROCESS_MAP); остальное не раздувать.
 4) Осмотр: показатель → только число. Назначение: связанные доза/кратность/маршрут/срок.
 
 Можно: templates/**, static/**.
 Нельзя: protocol_*.py, protocol_verdict.py, rules_engine.py, docs/protocols/**, schema.sql, db.py, fhir_store.py, tools/**.
 app.py не трогать без явного разрешения architect (ожидай verdict в контексте шаблона после merge protocol).
 
-Если verdict_for_ui ещё нет — верстай под поля контракта docs/agents/verdict-contract.md.
+Верстай под protocol_verdict.verdict_for_ui / docs/agents/verdict-contract.md (включая cds_override / «осознанно»).
 
 Критерий готовности: как в docs/agents/clinic-ui.md (DoD).
 Не коммить. В конце — отчёт, что увидит гость на карточке.

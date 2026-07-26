@@ -1,0 +1,109 @@
+---
+description: UI-паттерны clinic-os — nested clinical hierarchy, labeled rows, бейджи (не левые полосы на карточках)
+globs: templates/**/*.html,static/**/*.css,docs/ui/**/*
+alwaysApply: false
+---
+
+# UI patterns — clinic-os (для агентов)
+
+Компоненты: `docs/ui/ui-design-guide.md`.  
+Зоны страницы (Encounter vs Condition, chip≠badge): `docs/ui/ui-design-guide-page-system.md`.  
+Токены: `docs/ui/STYLE_GUIDE.md` + `static/clinic.css`.  
+Иерархия диагноза: `docs/ui/CLINICAL_HIERARCHY.md`.  
+Язык врача: `.cursor/rules/clinic-ui-doctor.mdc`.
+
+**Encounter ≠ Condition по роли бейджа:** визит = `badge.accent` (открыт) / grey (закрыт); диагноз = green/grey. Не красить «открыт» в success.  
+**Chip ≠ badge:** chip = членство + ×; badge = read-only состояние.  
+**Макс. 2 уровня rail:** секции визита — только `.section-label`, без своего rail.  
+**Один header визита:** collapsed/expanded — одна строка; «Закрыть» (ghost) в expanded справа, не второй avatar/шапка.  
+**Секции визита:** не степ-аккордеон (номер/card); attention → `.sev-dot`, не новый badge.  
+**Accent-кнопка:** max одна `fill-accent` на открытую зону/панель (не на всю страницу); CDS `fill-danger` — другая роль.
+
+## Когда применять
+
+Родительско-дочерние клинические сущности: диагноз → лечение / цель / DetectedIssue; приём → факты визита.  
+Не применять к дашборду «список пациентов» и к сырым таблицам.
+
+## Токены (не выдумывать новые)
+
+Канон или алиасы из `STYLE_GUIDE.md` / `:root` — одно и то же:
+
+| Роль | Фон | Текст | Линия |
+|------|-----|-------|-------|
+| success | `--green-bg` / `--bg-success` | `--green` / `--text-success` | `--green-line` |
+| danger | `--red-bg` / `--bg-danger` | `--red` / `--text-danger` | `--red-line` |
+| neutral | `--tint` / `--surface-2` | `--faint` / `--text-muted` | `--line` / `--border` |
+| ink | — | `--ink` / `--text-primary` | — |
+
+Шрифт: `--font`. Радиус: `--radius`. Пары фон+текст одной роли.  
+**Запрещено:** новые hex, purple/terracotta/dark-SaaS, левые accent-bar на карточках.
+
+## Паттерн A — Nested clinical hierarchy + connector rail
+
+Диагноз (Condition) — **контейнер**, не строка таблицы.
+
+1. **Заголовок родителя:** `.icon-avatar` 40px + Tabler outline + название 14–15px weight 500 + код МКБ тусклым (`--faint`) + статус-бейдж справа (`margin-left: auto`).
+2. **Дети** внутри контейнера, слева **connector rail**:
+   - `border-left: 2px solid var(--line)` (или чуть сильнее `--line`, не цвет роли)
+   - `margin-left: ~7px; padding-left: ~16px`
+   - смысл: MedicationRequest / Goal ссылаются на Condition (FHIR), не «карточки рядом»
+3. **Encounter / карта приёма** — **вне** контейнера диагноза (разовое событие ≠ длительный эпизод).
+4. Несколько диагнозов → у каждого свой контейнер со своими детьми. Не сваливать все АБТ в один общий блок.
+
+## Паттерн B — Labeled attribute row (иконка + микро-лейбл + значение + бейдж)
+
+«Круто» за счёт трёх решений — воспроизводить буквально:
+
+1. **Двухуровневая типографика:** лейбл 12px `--faint`/`--soft`; значение 14px `--ink`; ключ в значении — `font-weight: 500`.
+2. **Иконка в лейбле**, не в значении: ~13px, тот же приглушённый цвет, что лейбл. Якорь сканирования, не декор.
+3. **Статус — отдельный бейдж справа** (`display:flex; justify-content:space-between`), никогда внутри фразы («цель не достигнута» посреди текста).
+
+Иконки по смыслу (Tabler Icons `ti ti-*` если уже подключены):  
+`ti-pill` / препарат · `ti-target-arrow` / цель · `ti-calendar` / даты · `ti-flask` / лаб · `ti-stethoscope` / диагноз.
+
+Если статуса нет — **не** рендерить пустой badge-слот.
+
+### Скелет (адаптировать под классы проекта, не inline-style в проде)
+
+```html
+<div class="attr-row">
+  <p class="attr-label">
+    <i class="ti ti-pill" aria-hidden="true"></i>
+    Лечение
+  </p>
+  <div class="attr-value-row">
+    <p class="attr-value"><b>Амоксициллин</b> · 500 мг · внутрь · до 2026-07-29</p>
+    <!-- опционально: --><span class="badge red">не достигнута</span>
+  </div>
+</div>
+```
+
+## Паттерн C — Issue / алерт внутри родителя
+
+Несоответствие протоколу, DetectedIssue, hard-stop summary — **внутри** контейнера диагноза (после лечения/цели), не отдельной картой на уровне всей страницы.
+
+- Один акцент: `border: 1–2px solid var(--red-line)` + фон `--red-bg` или нейтральный surface с красной рамкой.
+- Внутри: короткий лейбл роли (можно uppercase 11–12px `--red`) → действие/причина 14px → CTA.
+- «Ещё N замечаний **по этому диагнозу**» — привязка к родителю, не «по карточке».
+- Override / «осознанно» — бейдж `badge grey`, не success: эпизод остаётся non-compliant (`CDS_SIGNALING.md`).
+
+## Бейджи
+
+- Компактные: ~11–12px, weight 600, padding ~3px 10px, `border-radius: 6px` (класс `.badge`).
+- Всегда пара фон+текст одной роли: `.badge.green` / `.badge.red` / `.badge.grey`.
+- Никогда чёрный текст на цветном фоне.
+
+## Что НЕ делать (частые ошибки агентов)
+
+- **Левая цветная полоса на всю карточку** (accent bar / stripe слева у `.cds` / секций) — запрещена. Connector rail — только внутри nested списка детей.
+- Дублировать одно и то же (цель в шапке и снова в алерте дословно).
+- Сырые ATC/LOINC/gap-коды в UI врача (`clinic-ui-doctor.mdc`).
+- Карточки ради карточек; алерт как сосед диагноза на одном уровне, если он *выведен* из диагноза+лечения.
+- Переименовывать «Цель терапии» обратно в «Цель / план».
+
+## Проверка перед сдачей UI
+
+1. Можно ли убрать рамку/тень у блока без потери смысла связи? Если да — лишняя «карточка».
+2. Понятно ли без чтения текста, что лечение/цель принадлежат диагнозу? (коннектор)
+3. Статусы только бейджами в конце строки?
+4. Палитра из `:root`, без новых «красивых» цветов?

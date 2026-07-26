@@ -5,9 +5,9 @@
 и только если БД пуста. В прод-режиме с реальными данными этот модуль не нужен.
 
 Три пациента для ручного демо (A/B/C):
-  ДемоА — ведение по протоколу
-  ДемоБ — неверная АБТ (азитромицин вместо амоксициллина)
-  ДемоВ — тяжёлая амбулаторно, АБТ не назначена
+  Орлов — ведение по протоколу
+  Соколов — неверная АБТ (азитромицин вместо амоксициллина)
+  Морозов — тяжёлая амбулаторно, АБТ не назначена
 """
 from datetime import date, timedelta
 
@@ -29,7 +29,7 @@ def seed_all():
     dr = fs.add_practitioner(*_DR)
 
     # A — соответствует протоколу: амбулаторная нетяжёлая ВП, амоксициллин per os
-    pid = fs.add_patient("ДемоА", "Антон", "Петрович", "male", "1985-03-12")
+    pid = fs.add_patient("Орлов", "Антон", "Петрович", "male", "1985-03-12")
     eid = fs.add_encounter(pid, practitioner_id=dr, cls="ambulatory",
                            complaint="Кашель, лихорадка 3 дня")
     fs.add_condition(pid, "J18.9", "Пневмония неуточненная", onset_date=_d(-3), encounter_id=eid)
@@ -73,7 +73,7 @@ def seed_all():
 
     # B — неверная АБТ: азитромицин вместо амоксициллина (нет факторов риска, нет аллергии).
     # ОАК/СРБ/SpO2 заполнены, чтобы главная подсказка была про препарат, не про анализы.
-    pid = fs.add_patient("ДемоБ", "Борис", "Иванович", "male", "1978-06-05")
+    pid = fs.add_patient("Соколов", "Борис", "Иванович", "male", "1978-06-05")
     eid = fs.add_encounter(pid, practitioner_id=dr, cls="ambulatory",
                            complaint="Кашель, t 38.5")
     fs.add_condition(pid, "J18.9", "Пневмония неуточненная", onset_date=_d(-1), encounter_id=eid)
@@ -96,7 +96,7 @@ def seed_all():
     fs.set_pathway(pid, "treatment", "Терапия ВП (отклонение АБТ)")
 
     # C — тяжёлая амбулаторно, АБТ не назначена → госпитализация
-    pid = fs.add_patient("ДемоВ", "Виктор", "Сергеевич", "male", "1975-04-18")
+    pid = fs.add_patient("Морозов", "Виктор", "Сергеевич", "male", "1975-04-18")
     eid = fs.add_encounter(pid, practitioner_id=dr, cls="ambulatory",
                            complaint="Выраженная одышка, цианоз")
     fs.add_flag(pid, "cyanosis", "true", "exam", encounter_id=eid)

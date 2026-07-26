@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""HTTP smoke: дашборд, вердикты ДемоА/Б/В, сохранение форм на throwaway-пациенте."""
+"""HTTP smoke: дашборд, вердикты Орлов/Б/В, сохранение форм на throwaway-пациенте."""
 import json
 import re
 import sys
@@ -60,22 +60,34 @@ def check(cond, msg):
 
 
 def find_demo_pids(dash):
-    """Жёстко: ссылка сразу содержит имя (без DOTALL — иначе цепляет соседний ряд)."""
+    """Дашборд — таблица без <a href>: pid в onclick строки, имя в .pat-name.
+
+    Разбиваем на строки таблицы (lookahead-split), чтобы не цепляло соседний
+    ряд без DOTALL по всему документу.
+    """
     out = {}
-    for name in ("ДемоА", "ДемоБ", "ДемоВ"):
-        m = re.search(rf'href="/patient/(p-[a-f0-9]+)">\s*{name}\b', dash)
-        if m:
-            out[name] = m.group(1)
+    for row in re.split(r'(?=<tr class="pat-row")', dash):
+        m = re.search(r"location\.href='/patient/(p-[a-f0-9]+)'", row)
+        if not m:
+            continue
+        for name in ("Орлов", "Соколов", "Морозов"):
+            if re.search(rf'<p class="pat-name">\s*{name}\b', row):
+                out[name] = m.group(1)
     return out
 
 
 def verdict_section(html):
+    # class может идти в любом порядке ("cds verdict-panel ..."), не только с начала.
     m = re.search(
-        r'<section class="verdict-panel[^"]*"[^>]*>.*?</section>',
+        r'<section id="now-action"[^>]*class="[^"]*verdict-panel[^"]*"[^>]*>.*?</section>',
         html,
         re.S,
     )
-    return m.group(0) if m else ""
+    v = m.group(0) if m else ""
+    # Внутри вердикта может быть встроенная форма замены АБТ (полный каталог
+    # в <select>) — это машинные value/option, а не текст для врача; не считаем
+    # их «текстом вердикта» при проверке ATC/названий препаратов.
+    return re.sub(r"<select\b.*?</select>", "", v, flags=re.S)
 
 
 def encounter_id(html):
@@ -90,10 +102,10 @@ def main():
     print(f"HTTP smoke → {BASE}")
     st, dash = get("/")
     check(st == 200, f"dashboard {st}")
-    check("ДемоА" in dash and "ДемоБ" in dash and "ДемоВ" in dash, "на дашборде ДемоА/Б/В")
+    check("Орлов" in dash and "Соколов" in dash and "Морозов" in dash, "на дашборде Орлов/Б/В")
 
     pids = find_demo_pids(dash)
-    check(set(pids) == {"ДемоА", "ДемоБ", "ДемоВ"}, f"pid map={pids}")
+    check(set(pids) == {"Орлов", "Соколов", "Морозов"}, f"pid map={pids}")
     if len(pids) < 3:
         return 1
 
@@ -103,31 +115,33 @@ def main():
         cards[name] = html
         check(st == 200 and name in html, f"{name}: карточка 200")
         v = verdict_section(html)
-        check("Сейчас по протоколу" in v, f"{name}: блок вердикта")
+        check("verdict-headline" in v, f"{name}: блок вердикта")
         check(not ATC_RE.search(v), f"{name}: в вердикте нет ATC")
         check(not GAP_RE.search(v), f"{name}: в вердикте нет gap-кодов")
         check("Unexpected" not in html, f"{name}: нет JS/HTML Unexpected")
 
-    a, b, c = cards["ДемоА"], cards["ДемоБ"], cards["ДемоВ"]
+    a, b, c = cards["Орлов"], cards["Соколов"], cards["Морозов"]
     va, vb, vc = verdict_section(a), verdict_section(b), verdict_section(c)
 
-    check("verdict-ok" in va or "Соответствует" in va, "ДемоА: соответствует")
-    check("Есть отклонения" not in va, "ДемоА: без badge отклонений")
-    check("амоксициллин" in va.lower(), "ДемоА: терапия амоксициллин")
+    check("verdict-ok" in va, "Орлов: соответствует")
+    check("verdict-warn" not in va, "Орлов: без статуса отклонений")
+    check("амоксициллин" in a.lower(), "Орлов: терапия амоксициллин")
 
-    check("Есть отклонения" in vb, "ДемоБ: есть отклонения")
-    check("амоксициллин" in vb.lower(), "ДемоБ: подсказка амоксициллин")
-    check("клавулан" not in vb.lower(), "ДемоБ: не амокс/клав (нет лишнего фактора риска)")
-    check("Азитромицин" in vb or "азитромицин" in vb.lower(), "ДемоБ: видно неверную АБТ")
-    check("Азитромицин" in b, "ДемоБ: назначение Азитромицин в карте")
+    check("verdict-warn" in vb, "Соколов: есть отклонения")
+    check("амоксициллин" in vb.lower(), "Соколов: подсказка амоксициллин")
+    check("клавулан" not in vb.lower(), "Соколов: не амокс/клав (нет лишнего фактора риска)")
+    # Текущий (неверный) препарат вердикт не повторяет (антидубль-правило UI) —
+    # он виден в карточке диагноза/приёма, не в самом блоке подсказки.
+    check("Азитромицин" in b or "азитромицин" in b.lower(), "Соколов: видно неверную АБТ")
+    check("Азитромицин" in b, "Соколов: назначение Азитромицин в карте")
 
-    check("Есть отклонения" in vc, "ДемоВ: есть отклонения")
+    check("verdict-warn" in vc, "Морозов: есть отклонения")
     check(
         any(x in vc.lower() for x in ("тяжёл", "госпитал", "орит", "амокси", "цефтриак", "антибиот")),
-        "ДемоВ: клиническая подсказка в вердикте",
+        "Морозов: клиническая подсказка в вердикте",
     )
 
-    for name, expect_ok in (("ДемоА", True), ("ДемоБ", False), ("ДемоВ", False)):
+    for name, expect_ok in (("Орлов", True), ("Соколов", False), ("Морозов", False)):
         st, body = get(f"/api/protocol-cap/{pids[name]}")
         check(st == 200, f"api {name} {st}")
         try:
@@ -233,11 +247,11 @@ def main():
     st, after = get(f"/patient/{pid}")
     check("Амоксициллин" in after, "назначение Амоксициллин сохранилось")
 
-    # ДемоБ после write-тестов не должен «поплыть»
-    st, b2 = get(f"/patient/{pids['ДемоБ']}")
+    # Соколов после write-тестов не должен «поплыть»
+    st, b2 = get(f"/patient/{pids['Соколов']}")
     vb2 = verdict_section(b2)
-    check("Есть отклонения" in vb2, "ДемоБ после smoke всё ещё с отклонениями")
-    check("клавулан" not in vb2.lower(), "ДемоБ не испорчен фактором риска из smoke")
+    check("verdict-warn" in vb2, "Соколов после smoke всё ещё с отклонениями")
+    check("клавулан" not in vb2.lower(), "Соколов не испорчен фактором риска из smoke")
 
     # Убрать throwaway, чтобы дашборд оставался демо-чистым
     st, _, _ = post(f"/patient/{pid}/delete", {})

@@ -13,15 +13,23 @@
 |------|-----|--------|
 | ~5 мин | `docs/processes/PROCESS_REGISTRY.md` (этот файл) — §0 | Два процесса в репозитории и что каждый покрывает |
 | ~10 мин | `docs/processes/process_registry.yaml` — у каждого процесса `reader_intro_ru`, затем `steps` | Машиночитаемые шаги, условия, таблицы, SQL-проверки |
+| ~5 мин | `docs/processes/UI_PROCESS_MAP.md` | Как шаги процесса ложатся на карту пациента и CDS |
+| ~5 мин | `docs/processes/CDS_SIGNALING.md` + блок `cds_policy` в YAML | Сигнал врачу, hard-stop / осознанный override, непрерывный пересчёт |
+| ~5 мин | `docs/processes/STATUS_SEMANTICS.md` — **§0 Encounter ≠ Condition** | Два lifecycle (приём vs диагноз), M2M `encounter_reason`, UI-фильтр ≠ вложенность |
 | по желанию | `docs/processes/PROCESSES_BPMN.md` + `docs/processes/BPMN_PRACTICES.md` | Mermaid, нюансы BPMN |
-| по желанию | `docs/processes/STATUS_SEMANTICS.md` | Семантика статусов pathway/encounter/condition/medication/goal |
-| по желанию | Открыть `docs/bpmn/*.bpmn` в Camunda Modeler / bpmn.io | Картинка для обсуждения с командой |
+| по желанию | `docs/processes/STATUS_SEMANTICS.md` — остальные § | Семантика статусов pathway/encounter/condition/medication/goal |
+| по желанию | Открыть `docs/bpmn/*.bpmn` в Camunda Modeler / bpmn.io | Картинка (без дорожек, подписи по-русски) |
 
-**Три правила, которые нельзя нарушать**
+**Правила, которые нельзя нарушать**
 
 1. **Диагноз ≠ измерение:** `condition_` (диагноз, МКБ) и `observation` (числовые показатели) — разные пространства смысла. Тяжесть вычисляется (`protocol_cap.classify_severity`), а не хранится как статус.
-2. **Амбулаторный ≠ стационарный:** `cap_outpatient` (АБТ per os, класс тяжести «средняя») и `cap_inpatient` (АБТ в/в, «тяжёлая»/госпитализация) — отдельные процессы со сквозным handoff.
-3. **При расхождении картинки (BPMN) и таблицы шагов (YAML)** для автоматизации и агентов приоритет у **`docs/processes/process_registry.yaml`**; BPMN обновляем под это или явно помечаем расхождение в бэклоге.
+2. **Приём ≠ диагноз:** `encounter` закрывается в конце каждого контакта; `condition_` — когда болезнь разрешилась. Связь — `encounter_reason` (M2M), не вложенность. Подробно: `STATUS_SEMANTICS.md` §0.
+3. **Амбулаторный ≠ стационарный:** `cap_outpatient` (АБТ per os, класс тяжести «средняя») и `cap_inpatient` (АБТ в/в, «тяжёлая»/госпитализация) — отдельные процессы со сквозным handoff.
+4. **При расхождении картинки (BPMN) и таблицы шагов (YAML)** для автоматизации и агентов приоритет у **`docs/processes/process_registry.yaml`**; BPMN обновляем под это или явно помечаем расхождение в бэклоге.
+
+**Пятое (CDS):** сигнал continuous + врач может override + override видим. Подробно — `CDS_SIGNALING.md`; не «зеленить» эпизод после `cds_override=1`.
+
+**Процесс ≠ инструкция.** BPMN — этапы и решения эпизода. Критерии/дозы/списки исследований КП №768 — в YAML (`intent_ru`) и в коде; на диаграмме у шлюзов только якоря `КП №768, п.…` для сверки. Подробнее: `BPMN_PRACTICES.md` §0.
 
 ---
 
@@ -29,7 +37,7 @@
 
 | `process.id` | Смысл (уровень управления) | BPMN-файл |
 |----------------|----------------------------|-----------|
-| `cap_outpatient` | **Амбулаторный** эпизод ВП у взрослого: обращение → осмотр/измерения → оценка тяжести → решение о госпитализации → исследования → диагноз → АБТ per os → симптоматика → план/цель → оценка эффективности 48–72 ч → контрольный визит → исход → повторная R-графия | `docs/bpmn/cap-outpatient-mature.bpmn` |
+| `cap_outpatient` | **Амбулаторный** эпизод ВП у взрослого: обращение → анамнез → осмотр/измерения → диагноз → сверка с протоколом (тяжесть / госпитализация) → обследование по показаниям → АБТ per os → симптоматика → план/цель → оценка эффективности 48–72 ч → контрольный визит → исход → повторная R-графия | `docs/bpmn/cap-outpatient-mature.bpmn` |
 | `cap_inpatient` | **Стационарный** эпизод ВП: госпитализация → обязательные исследования → оценка тяжести/ОРИТ → выбор режима АБТ в/в → назначение в/в АБТ + симптоматика → оценка эффективности 48–72 ч → step-down в/в→per os → критерии выписки → выписка → контроль после выписки | `docs/bpmn/cap-inpatient-mature.bpmn` |
 
 **Сквозные передачи** — в корневом блоке `process_handoffs` (артефакт + `trigger_ru`):
@@ -96,15 +104,19 @@
 |--------|------|-----------|
 | **clinic-os (Flask)** | UI оператора + API + CDS | все шаги (формы ввода) |
 | **Supabase Postgres / SQLite** | Хранилище FHIR-ресурсов | `data_mapping` всех шагов |
-| **protocol_cap** | Регламент ВП (независимая проверка) | `assess_severity`, `decide_hospitalization`, `select_*_regimen`, `reassess_*`, `evaluate_discharge` |
+| **protocol_cap** | Регламент ВП (независимая проверка) | `assess_severity`, `decide_hospitalization`, `select_*_regimen`, `reassess_*`, `evaluate_discharge`; continuous — `evaluate_cap` |
 | **rules_engine** | Правила (CQL-like) | `assess_severity`, `reassess_*` |
-| **drug_service** | Проверка лекарств | `select_and_prescribe_abt`, `prescribe_iv_abt` |
+| **drug_service** | Проверка лекарств | `select_and_prescribe_abt`, `prescribe_iv_abt` (order-sign) |
+| **cds_service** | Карточки CDS Hooks | `patient-view`, `order-sign` (hard-stop → confirm / override) |
 | **openFDA** | Кэш справочника лекарств (`medication_knowledge`) | `load_drugs.py` (офлайн-загрузка) |
+
+Политика сигналов и override: `docs/processes/CDS_SIGNALING.md` (якорь в YAML: `cds_policy`).
 
 ---
 
 ### 3) Правила поддержки (SSOT)
 - **Один источник истины**: процессный SSOT — только `docs/processes/process_registry.yaml`. BPMN и views — производные.
+- **UI соответствует процессу**: подписи и порядок шагов карты — `docs/processes/UI_PROCESS_MAP.md` (алиасы `focus_stage` ↔ `step.id`).
 - **Стабильные идентификаторы**: `process.id` и `step.id` не переименовывать без крайней необходимости.
 - **Не перепутать статусы**: см. `docs/processes/STATUS_SEMANTICS.md`.
 - **Только read-only проверки**: `golden_checks_sql` не должен создавать/изменять объекты.

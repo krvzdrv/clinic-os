@@ -1,0 +1,194 @@
+<!--
+  СВЁРНУТОЕ СОСТОЯНИЕ секции "Осмотр" (section label в свёрнутом виде).
+  Логика: пока секция закрыта, врач должен увидеть срочность одним взглядом —
+  не разворачивая, сколько показателей вне нормы и есть ли red flags.
+  Не дублирует значения (86.0%, 39.5° и т.п.) — только сводку severity.
+-->
+<div style="background: var(--surface-2); border:0.5px solid var(--border); border-radius:10px; padding:0.75rem 1rem; display:flex; align-items:center; gap:10px; cursor:pointer;">
+  <i class="ti ti-stethoscope" style="font-size:16px; color:var(--text-secondary);" aria-hidden="true"></i>
+  <span style="font-size:14px; font-weight:500;">Осмотр</span>
+  <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-flex; align-items:center; gap:4px; background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      5 вне нормы
+    </span>
+    <i class="ti ti-chevron-right" style="font-size:14px; color:var(--text-muted);" aria-hidden="true"></i>
+  </div>
+</div>
+
+<!--
+  Если все показатели в норме — бейдж не рендерится вовсе (не показывать "0 вне нормы" —
+  отсутствие бейджа само по себе читается как "всё в порядке"), достаточно chevron.
+  Если есть хотя бы один red flag из "Признаки осмотра" (Шок/цианоз/нарушение сознания и т.п.),
+  даже при формально нормальных цифрах — бейдж и текст меняются на роль danger с текстом
+  вида "красный флаг" или конкретным названием, если он один: например "Шок".
+-->
+
+<!--
+  ЗОНА: Осмотр / витальные показатели — исправленная версия (развёрнутое состояние)
+  Что изменено относительно текущего состояния (скриншот 2026-07-26):
+  1. Убран дублирующий верхний ряд чипов (SpO2/t/АДд/АДс/ЧСС/ЧД + Шок/цианоз в одном ряду) —
+     количественные измерения и качественные признаки больше не смешаны в одном типе компонента.
+  2. Каждая labeled attribute row для витального показателя получает status badge (bg-danger/text-danger),
+     если значение вне нормы — вместо "все значения выглядят одинаково нормальными".
+  3. Крестик удаления прижат к значению через flex justify-content:space-between внутри
+     ограниченной по ширине строки, а не разнесён на всю ширину контейнера.
+  4. "Признаки осмотра" (red flags) — removable tag chip, но с ролевым цветом bg-danger/text-danger,
+     а не нейтральным серым — это клинически значимые флаги, а не обычная категоризация.
+
+  Пороговые значения (нужно вынести в конфиг на стороне логики, здесь — для справки агенту):
+  SpO2 < 95%        → danger
+  t > 38.0°C        → danger
+  АДс < 90 mmHg     → danger (АДс > 140 тоже danger, если нужна верхняя граница)
+  АДд < 60 mmHg     → danger
+  ЧСС > 100 или < 60 bpm → danger
+  ЧД > 20 или < 12 /min  → danger
+-->
+
+<style>
+  :root {
+    --surface-1: #f5f5f3;
+    --surface-2: #ffffff;
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b68;
+    --text-muted: #9a9a97;
+    --border: rgba(0,0,0,0.08);
+    --bg-danger: #fdecea;   --text-danger: #9c2b2b;
+  }
+</style>
+
+<div style="background: var(--surface-1); border-radius: 12px; padding: 1.25rem; display:flex; flex-direction:column; gap:18px;">
+
+  <p style="font-size:12px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin:0;">
+    Осмотр
+  </p>
+
+  <!-- SpO2 — вне нормы -->
+  <div style="max-width:420px;">
+    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 2px;">
+      <i class="ti ti-activity" style="font-size:13px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>SpO2
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <p style="font-size:15px; font-weight:500; margin:0;">86.0 %</p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">ниже нормы</span>
+        <i class="ti ti-x" style="font-size:16px; color:var(--text-muted); cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Температура — вне нормы -->
+  <div style="max-width:420px;">
+    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 2px;">
+      <i class="ti ti-thermometer" style="font-size:13px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>Температура
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <p style="font-size:15px; font-weight:500; margin:0;">39.5 °C</p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">лихорадка</span>
+        <i class="ti ti-x" style="font-size:16px; color:var(--text-muted); cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- АД систолическое / диастолическое — вне нормы -->
+  <div style="max-width:420px;">
+    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 2px;">
+      <i class="ti ti-heart-rate-monitor" style="font-size:13px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>АД систолическое / диастолическое
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <p style="font-size:15px; font-weight:500; margin:0;">85.0 / 55.0 mmHg</p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">гипотензия</span>
+        <i class="ti ti-x" style="font-size:16px; color:var(--text-muted); cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЧСС — вне нормы -->
+  <div style="max-width:420px;">
+    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 2px;">
+      <i class="ti ti-heartbeat" style="font-size:13px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>ЧСС
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <p style="font-size:15px; font-weight:500; margin:0;">118.0 bpm</p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">тахикардия</span>
+        <i class="ti ti-x" style="font-size:16px; color:var(--text-muted); cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЧД — вне нормы -->
+  <div style="max-width:420px;">
+    <p style="font-size:12px; color:var(--text-secondary); margin:0 0 2px;">
+      <i class="ti ti-lungs" style="font-size:13px; vertical-align:-2px; margin-right:4px;" aria-hidden="true"></i>ЧД
+    </p>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+      <p style="font-size:15px; font-weight:500; margin:0;">32.0 /min</p>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="background: var(--bg-danger); color: var(--text-danger); font-size:11px; font-weight:500; padding:2px 8px; border-radius:12px; white-space:nowrap;">тахипноэ</span>
+        <i class="ti ti-x" style="font-size:16px; color:var(--text-muted); cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- Признаки осмотра — removable tag chip, ролевой цвет для red flags -->
+  <div>
+    <p style="font-size:12px; font-weight:500; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin:0 0 8px;">
+      Признаки осмотра
+    </p>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      <span style="display:inline-flex; align-items:center; gap:4px; background: var(--bg-danger); color: var(--text-danger); font-size:12px; font-weight:500; padding:3px 6px 3px 10px; border-radius:12px;">
+        Двустороннее или многоочаговое поражение лёгких
+        <i class="ti ti-x" style="font-size:14px; cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:4px; background: var(--bg-danger); color: var(--text-danger); font-size:12px; font-weight:500; padding:3px 6px 3px 10px; border-radius:12px;">
+        Нарушение сознания
+        <i class="ti ti-x" style="font-size:14px; cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:4px; background: var(--bg-danger); color: var(--text-danger); font-size:12px; font-weight:500; padding:3px 6px 3px 10px; border-radius:12px;">
+        Центральный цианоз
+        <i class="ti ti-x" style="font-size:14px; cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </span>
+      <span style="display:inline-flex; align-items:center; gap:4px; background: var(--bg-danger); color: var(--text-danger); font-size:12px; font-weight:500; padding:3px 6px 3px 10px; border-radius:12px;">
+        Шок
+        <i class="ti ti-x" style="font-size:14px; cursor:pointer; opacity:0.6;" aria-hidden="true"></i>
+      </span>
+    </div>
+  </div>
+
+</div>
+
+<!--
+  ПРОМТ ДЛЯ АГЕНТА:
+
+  Замени текущую разметку секции "Осмотр" на приведённую выше.
+
+  Обязательно:
+  1. Удали верхний ряд чипов, дублирующий числовые витальные показатели (SpO2/t/АДд/АДс/ЧСС/ЧД
+     в одной строке с "Двустороннее поражение лёгких"/"Шок"/"цианоз") — эти данные уже
+     представлены ниже как labeled attribute row, дублирование убрать полностью.
+  2. Для каждого витального показателя добавь функцию проверки нормы и рендери status badge
+     (bg-danger/text-danger, форма — как в примере) при выходе за референс:
+     SpO2 < 95%; t > 38.0°C; АДс < 90 или > 140 mmHg; АДд < 60 mmHg;
+     ЧСС > 100 или < 60 bpm; ЧД > 20 или < 12 /min.
+     Если badge есть — крестик удаления ставится после него в той же группе (gap:8px),
+     не отдельно в правом углу контейнера.
+  3. Ограничь ширину каждой labeled-row строки (max-width: 420px или через grid-колонку),
+     не растягивай на всю ширину экрана — крестик должен быть рядом со значением.
+  4. "Признаки осмотра" — оставь как removable tag chip, но перекрась в bg-danger/text-danger
+     для всех красных флагов (шок, нарушение сознания, цианоз, поражение лёгких и подобные).
+     Если появятся некритичные категориальные теги — используй нейтральный category tag
+     (surface-2/text-secondary) из отдельного гайда, не путай с этим списком.
+  5. Добавь свёрнутое состояние секции (см. блок "СВЁРНУТОЕ СОСТОЯНИЕ" в начале файла) —
+     при collapse показывать только сводку severity, не значения. Правила:
+     - если все показатели в норме и нет red flags → бейдж не рендерить вовсе, только chevron
+     - если есть хотя бы 1 показатель вне нормы → danger badge "N вне нормы"
+     - если есть хотя бы 1 активный red flag (Шок/цианоз/нарушение сознания и т.п.) →
+       это приоритетнее счётчика: badge должен явно показывать наличие red flag
+       (текстом флага, если он один, или "N вне нормы + red flag", если их несколько)
+     - при разворачивании — тот же принцип "один компонент, два состояния", что и для
+       Encounter header: не пересоздавать заголовок, менять только правую часть строки
+       и раскрывать контент ниже.
+-->

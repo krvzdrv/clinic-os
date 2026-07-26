@@ -183,13 +183,20 @@ def add_patient(family, given, patronymic, gender, birth_date):
 
 def delete_patient(pid):
     """Каскадное удаление пациента и всех его ресурсов (FHIR-подобная модель)."""
+    # encounter_reason: по encounter пациента (нет patient_id)
+    for e in db.fetchall("SELECT id FROM encounter WHERE patient_id = %s", (pid,)) or []:
+        db.execute("DELETE FROM encounter_reason WHERE encounter_id = %s", (e["id"],))
     for tbl in (
+        "cds_override_log",
         "observation", "diagnostic_report", "service_request",
         "medication_request", "condition_", "clinical_flag",
         "allergy_intolerance", "goal", "care_plan", "encounter",
         "pathway", "cap_cache",
     ):
-        db.execute(f"DELETE FROM {tbl} WHERE patient_id = %s", (pid,))
+        try:
+            db.execute(f"DELETE FROM {tbl} WHERE patient_id = %s", (pid,))
+        except Exception:
+            pass
     db.execute("DELETE FROM patient WHERE id = %s", (pid,))
     clear_pid_cache(pid)
 
@@ -253,6 +260,9 @@ def add_condition(pid, code, display, onset_date=None, encounter_id=None,
         "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (cid, pid, encounter_id, code_system, code, display,
          clinical_status, verification_status, onset_date, _today()))
+    if encounter_id:
+        link_encounter_condition(encounter_id, cid)
+    clear_pid_cache(pid)
     return cid
 
 
@@ -373,7 +383,7 @@ def get_all_medications(pid):
 
 def add_medication(pid, code, display, dose=None, frequency=None, period_start=None,
                    period_end=None, med_date=None, encounter_id=None, route=None, status="active",
-                   dose_per_day=None):
+                   dose_per_day=None, cds_override=False, cds_override_detail=None):
     mid = _new_id("m")
     if not med_date:
         med_date = _today()
@@ -381,14 +391,92 @@ def add_medication(pid, code, display, dose=None, frequency=None, period_start=N
         period_start = med_date
     db.execute(
         "INSERT INTO medication_request (id, patient_id, encounter_id, code, display, status, "
-        "dose, frequency, route, period_start, period_end, date, dose_per_day) "
-        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        "dose, frequency, route, period_start, period_end, date, dose_per_day, "
+        "cds_override, cds_override_detail) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (mid, pid, encounter_id, code, display, status, dose, frequency,
-         route, period_start, period_end, med_date, dose_per_day))
+         route, period_start, period_end, med_date, dose_per_day,
+         1 if cds_override else 0, cds_override_detail))
+    clear_pid_cache(pid)
     return mid
 
 def stop_medication(mid):
+    row = db.fetchone("SELECT patient_id FROM medication_request WHERE id=%s", (mid,))
     db.execute("UPDATE medication_request SET status='stopped' WHERE id=%s", (mid,))
+    if row:
+        clear_pid_cache(row["patient_id"])
+
+
+def add_cds_override_log(
+    pid,
+    severity,
+    category=None,
+    issue_message=None,
+    reason=None,
+    encounter_id=None,
+    medication_request_id=None,
+):
+    """Append-only запись осознанного CDS override (без update/delete API)."""
+    from datetime import datetime, timezone
+    oid = _new_id("ov")
+    created = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    db.execute(
+        "INSERT INTO cds_override_log "
+        "(id, patient_id, encounter_id, medication_request_id, severity, category, "
+        "issue_message, reason, created_at) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (
+            oid, pid, encounter_id, medication_request_id, severity,
+            category, issue_message, reason, created,
+        ),
+    )
+    return oid
+
+
+def get_cds_override_logs(pid):
+    return db.fetchall(
+        "SELECT * FROM cds_override_log WHERE patient_id = %s ORDER BY created_at DESC",
+        (pid,),
+    )
+
+
+def link_encounter_condition(encounter_id, condition_id):
+    """reasonReference: encounter ↔ condition (idempotent)."""
+    if not encounter_id or not condition_id:
+        return
+    exists = db.fetchone(
+        "SELECT 1 FROM encounter_reason WHERE encounter_id=%s AND condition_id=%s",
+        (encounter_id, condition_id),
+    )
+    if exists:
+        return
+    db.execute(
+        "INSERT INTO encounter_reason (encounter_id, condition_id) VALUES (%s,%s)",
+        (encounter_id, condition_id),
+    )
+
+
+def get_encounter_reasons(encounter_id):
+    """Condition ids linked to encounter via reasonReference (+ legacy encounter_id)."""
+    rows = db.fetchall(
+        "SELECT condition_id FROM encounter_reason WHERE encounter_id=%s",
+        (encounter_id,),
+    )
+    ids = [r["condition_id"] for r in (rows or [])]
+    if ids:
+        return ids
+    legacy = db.fetchall(
+        "SELECT id FROM condition_ WHERE encounter_id=%s",
+        (encounter_id,),
+    )
+    return [r["id"] for r in (legacy or [])]
+
+
+def get_condition_encounters(condition_id):
+    rows = db.fetchall(
+        "SELECT encounter_id FROM encounter_reason WHERE condition_id=%s",
+        (condition_id,),
+    )
+    return [r["encounter_id"] for r in (rows or [])]
 
 
 def delete_observation(oid):
@@ -622,18 +710,25 @@ def delete_flag(fid):
 # ============ Кэш оценки по протоколу ВП ============
 
 def save_cap_cache(pid, verdict):
-    """Сохраняет сводку CAP-оценки пациента, чтобы дашборд не пересчитывал N+1."""
+    """Сохраняет сводку CAP-оценки + UI-шаг, чтобы дашборд не делал N+1."""
+    from protocol_verdict import verdict_for_ui
+
     applicable = 1 if verdict.get("applicable") else 0
     compliant = 1 if verdict.get("compliant") else 0
     severity = verdict.get("severity")
     setting = verdict.get("setting") if verdict.get("applicable") else None
+    ui = verdict_for_ui(verdict)
+    next_step = (ui.get("next_step") or "")[:240] or None
+    headline = (ui.get("headline") or "")[:160] or None
     db.execute(
-        "INSERT INTO cap_cache (patient_id, applicable, severity, setting, compliant, computed_at) "
-        "VALUES (%s,%s,%s,%s,%s,%s) "
+        "INSERT INTO cap_cache (patient_id, applicable, severity, setting, compliant, "
+        "computed_at, next_step, headline) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
         "ON CONFLICT(patient_id) DO UPDATE SET applicable=EXCLUDED.applicable, "
         "severity=EXCLUDED.severity, setting=EXCLUDED.setting, compliant=EXCLUDED.compliant, "
-        "computed_at=EXCLUDED.computed_at",
-        (pid, applicable, severity, setting, compliant, _today()))
+        "computed_at=EXCLUDED.computed_at, next_step=EXCLUDED.next_step, "
+        "headline=EXCLUDED.headline",
+        (pid, applicable, severity, setting, compliant, _today(), next_step, headline))
 
 
 def get_cap_cache(pid):
@@ -652,7 +747,13 @@ def get_all_pathways():
 # ============ Опциональные демо-данные ============
 
 def seed_demo():
+    """Если БД пуста — быстрый набор Орлов/Б/В (кнопка на дашборде).
+
+    Полные 10 сценариев: `python3 tools/seed_ten.py` (или prepare_demo_db.py).
+    """
     if get_all_patients():
         return
     from _seed_data import seed_all
     seed_all()
+
+

@@ -172,6 +172,20 @@ def init_schema():
     _ensure_column("allergy_intolerance", "reaction_type", "TEXT")
     _ensure_column("medication_request", "route", "TEXT")
     _ensure_column("medication_request", "dose_per_day", "NUMERIC")
+    _ensure_column("medication_request", "cds_override", "INTEGER DEFAULT 0")
+    _ensure_column("medication_request", "cds_override_detail", "TEXT")
+    # Append-only аудит CDS override + reasonReference M2M (idempotent CREATE).
+    db_execute_ddl(
+        "CREATE TABLE IF NOT EXISTS cds_override_log ("
+        "id TEXT PRIMARY KEY, patient_id TEXT NOT NULL, encounter_id TEXT, "
+        "medication_request_id TEXT, severity TEXT NOT NULL, category TEXT, "
+        "issue_message TEXT, reason TEXT, created_at TEXT NOT NULL)"
+    )
+    db_execute_ddl(
+        "CREATE TABLE IF NOT EXISTS encounter_reason ("
+        "encounter_id TEXT NOT NULL, condition_id TEXT NOT NULL, "
+        "PRIMARY KEY (encounter_id, condition_id))"
+    )
     # drug_catalog: поля протокола взрослых (КП №768).
     for col, coltype in (
         ("generic_name", "TEXT"), ("dosage_form", "TEXT"), ("interactions", "TEXT"),
@@ -181,6 +195,9 @@ def init_schema():
         ("category", "TEXT"), ("verify_flag", "INTEGER DEFAULT 0"),
     ):
         _ensure_column("drug_catalog", col, coltype)
+    # Дашборд: аудит «что сделать сейчас» без N+1 evaluate_cap.
+    _ensure_column("cap_cache", "next_step", "TEXT")
+    _ensure_column("cap_cache", "headline", "TEXT")
 
 
 def _ensure_column(table, column, coltype):

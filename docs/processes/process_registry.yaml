@@ -1,5 +1,53 @@
 registry_version: 1
-updated_at: "2026-07-24"
+updated_at: "2026-07-25"
+
+# Политика CDS: сигнал → возможный override → видимость. SSOT-проза:
+# docs/processes/CDS_SIGNALING.md
+cds_policy:
+  doc: docs/processes/CDS_SIGNALING.md
+  principles_ru:
+    - "Сигналим continuously: после клинической записи — protocol_cap.evaluate_cap + cap_cache."
+    - "Soft-stop (протокол): confirm=1 + ack=1; причина опциональна."
+    - "Hard-stop (аллергия/взаимодействие): confirm=1 + обязательный override_reason."
+    - "Override видим: medication_request.cds_override=1 + cds_override_log; эпизод не compliant."
+  order_sign:
+    entrypoints:
+      - app._medication_order_verdict   # UI save/check path (Flask)
+      - cds_service.cds_order_sign      # CDS Hooks card shape / API
+      - protocol_cap.evaluate_abt_choice
+      - drug_service.evaluate_medication
+    soft_stop_severity: warning
+    hard_stop_severity: hard-stop
+    soft_requires: [confirm, ack]
+    hard_requires: [confirm, override_reason]
+    confirm_form_field: confirm
+    persist_on_confirm:
+      - medication_request.cds_override
+      - medication_request.cds_override_detail
+      - cds_override_log
+    ui_soft_label_ru: "Назначить всё равно"
+    ui_hard_label_ru: "Назначить несмотря на риск"
+  continuous_eval:
+    entrypoint: protocol_cap.evaluate_cap
+    ui_wrapper: protocol_verdict.verdict_for_ui
+    persist: cap_cache
+    after_resource_writes:
+      - observation
+      - clinical_flag
+      - condition_
+      - medication_request
+      - allergy_intolerance
+      - service_request
+      - diagnostic_report
+      - encounter
+      - care_plan
+      - goal
+    skip_or_noop:
+      - "clinical_flag.category=anamnesis (свободный текст не оценивается протоколом)"
+  visibility_ru:
+    - "status-strip АБТ: бейдж «осознанно»"
+    - "verdict: headline про осознанное назначение вне протокола"
+    - "gap.cds_override=true на not_first_line_abt / not_inpatient_first_line"
 
 # Cross-process handoffs (SSOT). Артефакт + триггер передачи между процессами.
 process_handoffs:
@@ -48,12 +96,13 @@ processes:
       - "КП МЗ РБ №768 от 05.07.2012 — диагностика и лечение внебольничной пневмонии у взрослого населения."
     reader_intro_ru: |
       Один эпизод ВП у взрослого в амбулаторных условиях — одна «дорожка» от жалобы до выздоровления или передачи в стационар.
-      Канонический порядок приёма (см. canonical_order_ru): Анамнез → Осмотр → Диагноз → сверка с протоколом (тяжесть/госпитализация) → Обследование (если надо) → Лечение. Формы карты пациента (templates/patient.html) построены строго в этом порядке — шаги приёма нумеруются 1..5 соответственно.
+      Канонический порядок приёма (см. canonical_order_ru): Анамнез → Осмотр → Диагноз → сверка с протоколом (тяжесть/госпитализация) → Обследование (если надо) → Лечение. Формы карты пациента (templates/patient.html) — шаги 1..5 (Анамнез…Лечение); сверка и оценка 48–72 ч — в CDS. Мост UI↔шаги: docs/processes/UI_PROCESS_MAP.md.
       Этот раздел описывает шаги так, чтобы человек или агент не смешивали диагноз, измерения и назначения и не угадывали тяжесть: смотрите entry_conditions / exit_conditions и ссылки на таблицы.
       Картинка для людей: docs/bpmn/cap-outpatient-mature.bpmn. Правила статусов: docs/processes/STATUS_SEMANTICS.md.
       Решение о госпитализации (шаг decide_hospitalization) — это gateway: при наличии причин (КП №768) — handoff в процесс cap_inpatient (admit), амбулаторный эпизод закрывается.
       Оценка эффективности АБТ через 48–72 ч (шаг reassess_48_72h): при сохранении лихорадки — смена АБТ или госпитализация (КП №768).
       Регламент (protocol_cap.evaluate_cap) — независимая проверка всей картины; его вердикт — основа и для CDS-карточек, и для метрики качества.
+      Сигналы и осознанный override при назначении АБТ — cds_policy / docs/processes/CDS_SIGNALING.md.
     bpmn_files:
       - docs/bpmn/cap-outpatient-mature.bpmn
     business_owner: "Терапевтическая служба"
@@ -73,6 +122,7 @@ processes:
       - pathway
     links:
       - docs/processes/PROCESS_REGISTRY.md
+      - docs/processes/UI_PROCESS_MAP.md
       - docs/processes/STATUS_SEMANTICS.md
       - docs/processes/BPMN_PRACTICES.md
       - protocol_cap.py
@@ -424,12 +474,13 @@ processes:
       - id: select_and_prescribe_abt
         bpmn_task_id: Task_PrescribeAbt
         lane: clinician
-        intent_ru: "Выбор и назначение АБТ первой линии per os (КП №768): амоксициллин / амокс-клавуланат / макролид (при IgE-аллергии) / цефуроксим (при не-IgE)."
+        intent_ru: "Выбор и назначение АБТ первой линии per os (КП №768): амоксициллин / амокс-клавуланат / макролид (при IgE-аллергии) / цефуроксим (при не-IgE). Order-sign: hard-stop при несоответствии → confirm или смена препарата (см. cds_policy / CDS_SIGNALING.md)."
         entry_conditions:
           - "condition_ active ВП"
           - "setting='outpatient'"
         exit_conditions:
           - "medication_request.status='active', code начинается с J01, route='oral'"
+          - "Если АБТ вне протокола — только с cds_override=1 (осознанно); эпизод остаётся non-compliant"
         signals:
           now_state:
             type: "abt"
@@ -444,8 +495,9 @@ processes:
               recommended_action_ru: "Назначить АБТ первой линии в день диагноза (КП №768)."
         inputs:
           - "severity, возраст, аллергии (allergy_intolerance), факторы риска (clinical_flag)"
+          - "order-sign: evaluate_abt_choice + drug_service (до сохранения)"
         outputs:
-          - "medication_request (J01*, route='oral', period_start/period_end)"
+          - "medication_request (J01*, route='oral', period_start/period_end [, cds_override])"
         data_mapping:
           contract_views: []
           raw_tables:
@@ -459,10 +511,13 @@ processes:
             - medication_request.route
             - medication_request.period_start
             - medication_request.period_end
+            - medication_request.cds_override
+            - medication_request.cds_override_detail
             - allergy_intolerance.reaction_type
           notes_ru:
-            - "Ожидаемая первая линия — protocol_cap.expected_antibiotic(pid). Проверка группы — protocol_cap._evaluate_abt."
+            - "Ожидаемая первая линия — protocol_cap.expected_antibiotic(pid). Проверка группы — protocol_cap._evaluate_abt / evaluate_abt_choice."
             - "Маршрут per os в амбулаторных условиях (КП №768). Парентеральные препараты (PARENTERAL_ONLY) — только стационар."
+            - "CDS: без confirm при hard-stop не сохраняем; confirm=1 → cds_override=1; continuous evaluate_cap после записи (cds_policy)."
         golden_checks_sql:
           - name: "pneumonia_without_active_abt"
             sql: |
@@ -477,6 +532,13 @@ processes:
                 select 1 from medication_request m
                 where m.patient_id = p.id and m.status = 'active' and m.code like 'J01%'
               );
+          - name: "active_abt_with_cds_override"
+            sql: |
+              select m.patient_id, m.code, m.display, m.cds_override_detail
+              from medication_request m
+              where m.status = 'active' and m.code like 'J01%'
+                and coalesce(m.cds_override, 0) = 1
+              order by m.date desc;
 
       - id: prescribe_symptomatic
         bpmn_task_id: Task_PrescribeSymptomatic
@@ -792,6 +854,7 @@ processes:
       ОРИТ (шаг transfer_icu): ≥1 «большой» критерий (шок, ОПН, ИВЛ) или ≥2 «малых» критерия тяжёлого течения (КП №768).
       Step-down: при клиническом ответе — переход в/в → per os. Выписка (КП №768): нормотермия, нормальный ЧД, SpO2 ≥ 95, толерантность per os.
       Регламент (protocol_cap.evaluate_cap) — независимая проверка; его вердикт — основа и для CDS-карточек, и для метрики качества.
+      Сигналы и осознанный override при назначении АБТ — cds_policy / docs/processes/CDS_SIGNALING.md.
     bpmn_files:
       - docs/bpmn/cap-inpatient-mature.bpmn
     business_owner: "Терапевтическая стационарная служба"
@@ -811,6 +874,7 @@ processes:
       - pathway
     links:
       - docs/processes/PROCESS_REGISTRY.md
+      - docs/processes/UI_PROCESS_MAP.md
       - docs/processes/STATUS_SEMANTICS.md
       - docs/processes/BPMN_PRACTICES.md
       - protocol_cap.py
@@ -1055,11 +1119,12 @@ processes:
       - id: prescribe_iv_abt
         bpmn_task_id: Task_PrescribeIvAbt
         lane: clinician
-        intent_ru: "Назначение АБТ внутривенно (КП №768): medication_request, route='iv', code в группе primary."
+        intent_ru: "Назначение АБТ внутривенно (КП №768): medication_request, route='iv', code в группе primary. Order-sign / override — как в cds_policy (CDS_SIGNALING.md)."
         entry_conditions:
           - "expected_regimen определён"
         exit_conditions:
           - "medication_request.status='active', route in ('iv','im'), code в группе primary"
+          - "Если АБТ вне протокола — только с cds_override=1; эпизод остаётся non-compliant"
         signals:
           now_state:
             type: "abt"
@@ -1074,8 +1139,9 @@ processes:
               recommended_action_ru: "Старт АБТ в/в в день поступления (КП №768)."
         inputs:
           - "expected_regimen"
+          - "order-sign: evaluate_abt_choice + drug_service (до сохранения)"
         outputs:
-          - "medication_request (J01*, route='iv', period_start/period_end)"
+          - "medication_request (J01*, route='iv', period_start/period_end [, cds_override])"
         data_mapping:
           contract_views: []
           raw_tables:
@@ -1087,8 +1153,11 @@ processes:
             - medication_request.route
             - medication_request.period_start
             - medication_request.period_end
+            - medication_request.cds_override
+            - medication_request.cds_override_detail
           notes_ru:
             - "protocol_cap._evaluate_abt (стационар): проверка группы, маршрута в/в, аддонов, длительности курса."
+            - "CDS: hard-stop → confirm → cds_override; continuous evaluate_cap после записи (cds_policy)."
         golden_checks_sql:
           - name: "inpatient_without_iv_abt"
             sql: |

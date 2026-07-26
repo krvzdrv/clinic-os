@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Сверка ДемоА/Б/В с КП №768 + ClinicalVerdict (без техкодов в UI)."""
+"""Сверка Орлов/Б/В с КП №768 + ClinicalVerdict (без техкодов в UI)."""
 from __future__ import annotations
 
 import os
@@ -62,20 +62,26 @@ def main() -> int:
     seed_all()
     by = {p["family"]: p for p in fs.get_all_patients()}
     print("=" * 70)
-    print("PROTOCOL AUDIT — ДемоА/Б/В vs КП №768")
+    print("PROTOCOL AUDIT — Орлов/Б/В vs КП №768")
     print("=" * 70)
 
-    # --- ДемоА ---
-    print("\n[ДемоА] эталон: нетяжёлая амбулаторно, амоксициллин")
-    a = pcap.evaluate_cap(by["ДемоА"]["id"])
+    # --- Орлов ---
+    print("\n[Орлов] эталон: нетяжёлая амбулаторно, амоксициллин")
+    a = pcap.evaluate_cap(by["Орлов"]["id"])
     va = pv.verdict_for_ui(a)
     check(a.get("applicable") is True, "applicable")
     check(a.get("severity") == "mild", f"severity=mild (got {a.get('severity')})")
     check(a.get("setting") == "outpatient", f"setting=outpatient (got {a.get('setting')})")
     check(a.get("compliant") is True, "compliant=True")
     check(va.get("ok") is True, "verdict.ok=True")
-    check("амоксициллин" in (va.get("expected_therapy") or {}).get("title", "").lower(),
-          f"therapy title has амоксициллин: {va.get('expected_therapy')}")
+    # Терапию в отдельном блоке не дублируем — для compliant достаточно next_step.
+    check(va.get("show_therapy") is False, "compliant: show_therapy=False")
+    exp_a = a.get("expected_regimen") or {}
+    check(
+        "амоксициллин" in (exp_a.get("name") or "").lower()
+        or exp_a.get("atc_code") == "J01CA04",
+        f"движок: эталон амоксициллин: {exp_a}",
+    )
     check(not any(g.get("severity") == "warning" for g in a.get("gaps") or []),
           f"no warning gaps (got {[g.get('code') for g in a.get('gaps') or []]})")
     ns = (va.get("next_step") or "").lower()
@@ -88,9 +94,9 @@ def main() -> int:
     check(not ATC_RE.search(ui_blob(va)), "UI без ATC")
     check(not GAP_RE.search(ui_blob(va)), "UI без gap-кодов")
 
-    # --- ДемоБ ---
-    print("\n[ДемоБ] азитромицин вместо амоксициллина (нет факторов риска)")
-    b = pcap.evaluate_cap(by["ДемоБ"]["id"])
+    # --- Соколов ---
+    print("\n[Соколов] азитромицин вместо амоксициллина (нет факторов риска)")
+    b = pcap.evaluate_cap(by["Соколов"]["id"])
     vb = pv.verdict_for_ui(b)
     check(b.get("applicable") is True, "applicable")
     check(b.get("severity") == "mild", f"severity=mild (got {b.get('severity')})")
@@ -103,13 +109,16 @@ def main() -> int:
     warn = [g for g in b.get("gaps") or [] if g.get("severity") == "warning"]
     check(any(g.get("code") == "not_first_line_abt" for g in warn), "warning про неверную АБТ")
     check("амоксициллин" in (vb.get("next_step") or "").lower()
+          or "амоксициллин" in (vb.get("reason") or "").lower()
           or "амоксициллин" in ui_blob(vb).lower(),
           f"next_step/UI про амоксициллин: {vb.get('next_step')}")
-    check("азитромицин" in ui_blob(vb).lower() or "Азитромицин" in ui_blob(vb),
-          "в проверке видно назначенный азитромицин")
+    # Текущий неверный АБТ — в карточке (active_abt), не в тексте ClinicalVerdict.
+    meds_b = [m.get("display", "").lower() for m in fs.get_medications(by["Соколов"]["id"], status="active")]
+    check(any("азитромицин" in m for m in meds_b), f"активен азитромицин: {meds_b}")
     check("клавулан" not in ui_blob(vb).lower(), "не амокс/клав (нет факторов риска)")
     check(vb.get("focus_stage") == "med", f"focus_stage=med (got {vb.get('focus_stage')})")
-    check(vb.get("cta_label") == "К назначениям", f"cta={vb.get('cta_label')}")
+    check(vb.get("cta_label") == "Заменить АБТ", f"cta кнопки замены: {vb.get('cta_label')}")
+    check(vb.get("suggest_atc") == "J01CA04", f"suggest_atc=J01CA04 (got {vb.get('suggest_atc')})")
     check(not ATC_RE.search(ui_blob(vb)), "UI без ATC")
     check(not GAP_RE.search(ui_blob(vb)), "UI без gap-кодов")
     # YAML: outpatient default → J01CA04
@@ -117,9 +126,9 @@ def main() -> int:
     check(exp.get("atc_code") == "J01CA04" or (exp.get("name") or "").lower().startswith("амоксициллин"),
           f"expected regimen amoxicillin: {exp}")
 
-    # --- ДемоВ ---
-    print("\n[ДемоВ] тяжёлая амбулаторно, нет АБТ → госпитализация + ОРИТ критерии")
-    c = pcap.evaluate_cap(by["ДемоВ"]["id"])
+    # --- Морозов ---
+    print("\n[Морозов] тяжёлая амбулаторно, нет АБТ → госпитализация + ОРИТ критерии")
+    c = pcap.evaluate_cap(by["Морозов"]["id"])
     vc = pv.verdict_for_ui(c)
     check(c.get("applicable") is True, "applicable")
     check(c.get("severity") == "severe", f"severity=severe (got {c.get('severity')})")
@@ -133,7 +142,8 @@ def main() -> int:
     check(any(x in blob_c.lower() for x in ("госпитал", "орит", "антибиот", "цефтриак")),
           f"UI clinical language: {vc.get('next_step')}")
     check(vc.get("focus_stage") == "actions", f"focus_stage=actions (got {vc.get('focus_stage')})")
-    check(vc.get("cta_label") == "К госпитализации", f"cta={vc.get('cta_label')}")
+    check(vc.get("cta_label") == "Госпитализировать в ОРИТ", f"cta ОРИТ: {vc.get('cta_label')}")
+    check(vc.get("tier") == "critical", f"tier=critical (got {vc.get('tier')})")
     check(not ATC_RE.search(blob_c), "UI без ATC")
     check(not GAP_RE.search(blob_c), "UI без gap-кодов")
     # тяжёлая → цефтриаксон III (+ макролид addon)

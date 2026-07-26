@@ -115,7 +115,30 @@ CREATE TABLE IF NOT EXISTS medication_request (
     period_start  TEXT,
     period_end    TEXT,
     date          TEXT,
-    dose_per_day  NUMERIC  -- суточная доза в мг (для сверки с протоколом)
+    dose_per_day  NUMERIC,  -- суточная доза в мг (для сверки с протоколом)
+    -- Осознанное назначение вопреки CDS/протоколу (soft/hard override)
+    cds_override  INTEGER DEFAULT 0,
+    cds_override_detail TEXT  -- тексты issues, которые врач подтвердил
+);
+
+-- ===== CDS override log (append-only аудит) =====
+CREATE TABLE IF NOT EXISTS cds_override_log (
+    id                     TEXT PRIMARY KEY,
+    patient_id             TEXT NOT NULL,
+    encounter_id           TEXT,
+    medication_request_id  TEXT,
+    severity               TEXT NOT NULL,  -- soft-stop | hard-stop
+    category               TEXT,
+    issue_message          TEXT,
+    reason                 TEXT,           -- текст врача; hard-stop обязателен на уровне API
+    created_at             TEXT NOT NULL
+);
+
+-- Encounter → Condition (reasonReference, M2M)
+CREATE TABLE IF NOT EXISTS encounter_reason (
+    encounter_id  TEXT NOT NULL,
+    condition_id  TEXT NOT NULL,
+    PRIMARY KEY (encounter_id, condition_id)
 );
 
 -- ===== Справочник лекарств (кэш из openFDA) =====
@@ -232,7 +255,9 @@ CREATE TABLE IF NOT EXISTS cap_cache (
     severity    TEXT,      -- moderate / severe / NULL
     setting     TEXT,      -- outpatient / inpatient / NULL
     compliant   INTEGER,   -- 0/1
-    computed_at TEXT
+    computed_at TEXT,
+    next_step   TEXT,      -- главный шаг для UI/дашборда
+    headline    TEXT       -- клинический заголовок вердикта
 );
 
 -- ===== Индексы =====
@@ -245,3 +270,6 @@ CREATE INDEX IF NOT EXISTS idx_servicereq_patient   ON service_request (patient_
 CREATE INDEX IF NOT EXISTS idx_medreq_patient       ON medication_request (patient_id, status);
 CREATE INDEX IF NOT EXISTS idx_allergy_patient      ON allergy_intolerance (patient_id);
 CREATE INDEX IF NOT EXISTS idx_goal_patient         ON goal (patient_id, status);
+CREATE INDEX IF NOT EXISTS idx_cds_override_patient ON cds_override_log (patient_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_enc_reason_enc       ON encounter_reason (encounter_id);
+CREATE INDEX IF NOT EXISTS idx_enc_reason_cond      ON encounter_reason (condition_id);

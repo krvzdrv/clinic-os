@@ -55,9 +55,9 @@ if __name__ == "__main__":
             sys.argv = argv
 
     if not fs.get_all_patients():
-        from _seed_data import seed_all
+        import runpy
 
-        seed_all()
+        runpy.run_path(os.path.join(REPO, "tools", "seed_ten.py"), run_name="__main__")
 
     for p in fs.get_all_patients():
         fs.save_cap_cache(p["id"], pcap.evaluate_cap(p["id"]))

@@ -92,6 +92,8 @@ Healthcare реализовали guideline-driven CDS, но у них кома�
 - **Single source of truth** — одни правила для подсказок и метрик.
 - **FHIR-подобная модель** — миграция на настоящий FHIR без боли.
 - **CDS Hooks концепция** — карточки в момент работы врача (info / suggestion / hard-stop).
+  Политика сигналов (continuous eval + осознанный override + эпизод не «зелёный»):
+  [`docs/processes/CDS_SIGNALING.md`](./processes/CDS_SIGNALING.md) / `process_registry.yaml` → `cds_policy`.
 - **Слои** — данные, правила, сервис, UI разделены, даже если в одном процессе.
 - **Alert fatigue управление** — мало карточек, только релевантные.
 

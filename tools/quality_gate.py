@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Quality gate перед передачей демо человеку.
-Проверяет: протокол, ClinicalVerdict (без техкодов), сиды ДемоА/Б/В, UI-контракт.
+Проверяет: протокол, ClinicalVerdict (без техкодов), сиды Орлов/Б/В, UI-контракт.
 
 Запуск (изолированная SQLite, прод не трогает):
   python3 tools/quality_gate.py
@@ -83,22 +83,22 @@ def main():
     print("=" * 70)
 
     # 1. Seed demo patients
-    print("\n[1] Сид ДемоА/Б/В")
+    print("\n[1] Сид Орлов/Б/В")
     seed_all()
     patients = fs.get_all_patients()
     by_fam = {p["family"]: p for p in patients}
-    for fam in ("ДемоА", "ДемоБ", "ДемоВ"):
+    for fam in ("Орлов", "Соколов", "Морозов"):
         step(fam in by_fam, f"пациент {fam} создан")
 
     # 2. Protocol + verdict expectations
     print("\n[2] Протокол и ClinicalVerdict")
     expectations = {
-        "ДемоА": {"applicable": True, "ok": True, "need_substr": []},
-        "ДемоБ": {
+        "Орлов": {"applicable": True, "ok": True, "need_substr": []},
+        "Соколов": {
             "applicable": True, "ok": False, "need_substr": ["амоксициллин"],
             "next_step_substr": ["амоксициллин", "антибиот"],
         },
-        "ДемоВ": {"applicable": True, "ok": False, "need_substr": []},
+        "Морозов": {"applicable": True, "ok": False, "need_substr": []},
     }
     for fam, exp in expectations.items():
         p = by_fam.get(fam)
@@ -128,10 +128,10 @@ def main():
             step(any(s in ns for s in needles),
                  f"{fam}: next_step про АБТ (got {v.get('next_step')!r})")
         # raw cap still has codes for engine — fine
-        if fam == "ДемоБ":
+        if fam == "Соколов":
             codes = {g["code"] for g in cap.get("gaps", []) if g.get("severity") == "warning"}
             step("not_first_line_abt" in codes, f"{fam}: движок видит not_first_line_abt")
-        if fam == "ДемоВ":
+        if fam == "Морозов":
             codes = {g["code"] for g in cap.get("gaps", []) if g.get("severity") == "warning"}
             step(
                 "hospitalization_indicated" in codes or "no_abt" in codes,
@@ -140,7 +140,7 @@ def main():
 
     # 3. Persistence: add observation and re-read
     print("\n[3] Сохранение данных (observation)")
-    p = by_fam["ДемоА"]
+    p = by_fam["Орлов"]
     pid = p["id"]
     encs = fs.get_encounters(pid)
     eid = encs[0]["id"] if encs else None
@@ -164,13 +164,22 @@ def main():
     print("\n[5] Структура UI (статическая)")
     html_path = os.path.join(REPO, "templates", "patient.html")
     html = open(html_path, encoding="utf-8").read()
-    step("Сейчас по протоколу" in html, "блок «Сейчас по протоколу» в шаблоне")
     step("verdict-panel" in html, "CSS/класс verdict-panel")
-    step("Осмотр" in html and "Диагноз" in html and "Назначения" in html,
-         "группы Осмотр / Диагноз / Назначения")
+    step('id="now-action"' in html, "один экран #now-action")
+    step("history-fold" in html, "история свёрнута в history-fold")
+    step("suggest_atc" in html, "предвыбор препарата (suggest_atc)")
+    step("Осмотр" in html and "Диагноз" in html and "Лечение" in html,
+         "группы Осмотр / Диагноз / Лечение")
+    step("К назначениям" not in html.split("verdict-work")[0] if "verdict-work" in html else True,
+         "в вердикте нет CTA «К назначениям»")
     # should not display gap codes as visible labels in verdict section
     step("g.code" not in html.split("verdict-panel")[1][:2000] if "verdict-panel" in html else True,
          "в вердикте нет вывода g.code")
+
+    # 6. Напоминание: полный путь врача — doctor_gate (с нуля)
+    print("\n[6] Напоминание")
+    step(os.path.isfile(os.path.join(REPO, "tools", "doctor_gate.py")),
+         "tools/doctor_gate.py существует (полный прогон с нуля)")
 
     print("\n" + "=" * 70)
     print(f"ИТОГ quality_gate: {passed} ok, {failed} fail")
