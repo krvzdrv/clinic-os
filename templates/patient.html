@@ -963,13 +963,26 @@
   </div>
   {% endmacro %}
 
+  {# Жалоба сегодняшнего приёма — тот же паттерн ввода, что запись анамнеза
+     (секция «Анамнез», не кнопка в тулбаре). #}
+  {% macro complaint_form(pid, eid, current='') %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}">
+      <div class="field field-full"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label>
+        <textarea name="complaint" rows="3" maxlength="300" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+    </form>
+  </div>
+  {% endmacro %}
+
   {# Анамнез в свободной форме: текстовая запись, не оценивается протоколом. #}
   {% macro anam_form(pid, eid, chip_target='') %}
   <div class="fform">
     <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <div class="field field-full"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез (свободной формой)</label>
-        <textarea name="text" rows="4" placeholder="Жалобы, анамнез заболевания и жизни — произвольным текстом"></textarea>
+        <textarea name="text" rows="4" placeholder="Анамнез заболевания и жизни — произвольным текстом"></textarea>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить запись</button></div>
     </form>
@@ -1415,15 +1428,6 @@
               <div class="cds-confirm" style="display:none;"></div>
             </span>
             {% endif %}
-            <details class="add-panel add-panel--inline enc-complaint-edit">
-              <summary title="{{ 'Изменить жалобу' if e.complaint else 'Добавить жалобу' }}">Жалоба</summary>
-              <div class="add-panel-b">
-                <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=patient.id, eid=e.id) }}" class="fform">
-                  <div class="field grow"><input type="text" name="complaint" value="{{ e.complaint or '' }}" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»" maxlength="300"></div>
-                  <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
-                </form>
-              </div>
-            </details>
             <details class="add-panel">
               <summary>Новый приём</summary>
               <div class="add-panel-b">
@@ -1447,8 +1451,6 @@
           {% if reason_conds %}
           <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
           {% endif %}
-          {% if e.complaint %}<p class="enc-complaint"><span class="enc-k">Жалоба</span> {{ e.complaint }}</p>
-          {% else %}<p class="enc-complaint none"><span class="enc-k">Жалоба</span> не указана</p>{% endif %}
         </div>
       </div>
       <div class="enc-body dx-rail">
@@ -1464,7 +1466,7 @@
         {% set exam_obs = [] %}
         {% set lab_obs = [] %}
         {% for o in ed.obs %}{% if is_lab_loinc(o.code) %}{% set _ = lab_obs.append(o) %}{% else %}{% set _ = exam_obs.append(o) %}{% endif %}{% endfor %}
-        {% set anam_done = anam_notes|length > 0 or anam_risk|length > 0 %}
+        {% set anam_done = e.complaint or anam_notes|length > 0 or anam_risk|length > 0 %}
         {% set exam_done = exam_obs|length > 0 or exam_flags|length > 0 or gc_flag %}
         {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 %}
         {% set cond_done = ed.cond|length > 0 %}
@@ -1594,6 +1596,21 @@
         <div class="flow">
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
                open=st_anam in ('active','attention')) %}
+            <p class="section-label">Жалоба</p>
+            <div class="chips" id="chips-complaint-{{ e.id }}">
+              {% if e.complaint %}
+              <div class="anam-note">{{ e.complaint }}</div>
+              {% else %}
+              <span class="none" style="padding:0;font-style:normal;">Жалоба не указана</span>
+              {% endif %}
+            </div>
+            <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
+              {% call add_panel('Жалоба' if not e.complaint else 'Изменить',
+                   st_anam in ('active','attention') and not e.complaint) %}
+                {{ complaint_form(patient.id, e.id, e.complaint or '') }}
+              {% endcall %}
+            </div>
+            <p class="section-label">Записи анамнеза</p>
             <div class="chips" id="chips-anam-{{ e.id }}">
               {% for f in anam_notes %}
               <div class="anam-note">{{ f.key }}
@@ -1605,7 +1622,7 @@
               {% if not anam_notes %}<span class="none" style="padding:0;font-style:normal;">Записей пока нет</span>{% endif %}
             </div>
             <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('Запись', st_anam in ('active','attention') and not anam_notes) %}
+              {% call add_panel('Запись', st_anam in ('active','attention') and not anam_notes and e.complaint) %}
                 {{ anam_form(patient.id, e.id, 'chips-anam-' ~ e.id) }}
               {% endcall %}
             </div>
