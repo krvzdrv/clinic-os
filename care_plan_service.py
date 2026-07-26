@@ -34,7 +34,7 @@ def create_cap_plan(pid, condition_id=None):
     cp_id = fs.add_care_plan(pid, condition_id=condition_id)
     fs.add_goal(
         pid, cp_id,
-        description="Клиническое выздоровление: t° <38 °C, SpO2 ≥95%, нет тахипноэ.",
+        description="Клиническое выздоровление: t° <38 °C · SpO2 ≥95% · нет тахипноэ",
         target_metric="cap_recovery", target_value=1, target_unit="flag",
     )
     fs.set_pathway(pid, "treatment", "Терапия ВП")
