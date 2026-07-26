@@ -289,19 +289,6 @@ CAP_IMAGING_FLAG_KEYS = (
     "cavity",
     "pleural_effusion",
 )
-# Факторы риска (social_risk) — порядок в toggle-чипах анамнеза.
-SOCIAL_RISK_FLAG_KEYS = (
-    "hospitalized_3mo",
-    "abt_3mo",
-    "recent_travel",
-    "immunosuppression",
-    "glucocorticoids",
-    "no_pneumo_vaccine",
-    "alcoholism",
-    "drug_addiction",
-    "malnutrition",
-    "pregnancy",
-)
 # Красный chip у физикальных: критерии тяжести / госпитализации / ОРИТ.
 EXAM_RED_FLAG_KEYS = frozenset({
     "shock",

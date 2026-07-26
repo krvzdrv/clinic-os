@@ -2,8 +2,7 @@
 
 > **SSOT процессов:** `docs/processes/process_registry.yaml`.  
 > Этот файл — мост к UI (`templates/patient.html` + `protocol_verdict.verdict_for_ui`).  
-> При расхождении с прозой BPMN приоритет у YAML, затем у этой карты для интерфейса.  
-> **Паттерны ввода** (тип данных → контрол): [`docs/ui/ENCOUNTER_INPUT_PATTERNS.md`](../ui/ENCOUNTER_INPUT_PATTERNS.md).
+> При расхождении с прозой BPMN приоритет у YAML, затем у этой карты для интерфейса.
 
 ## Канонический порядок приёма (амбулаторно)
 

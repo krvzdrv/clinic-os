@@ -893,11 +893,8 @@
       <input type="hidden" name="source_label" value="{{ source_label }}">
       <p class="src-hint" style="flex:1 1 100%;"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
-      <div class="field field-full"><label class="sr-only">Найти диагноз</label>
-        <input type="search" data-catalog-filter="cond-code-{{ eid }}{% if source_id %}-{{ source_id }}{% endif %}" placeholder="Поиск по коду или названию МКБ" aria-label="Поиск диагноза" autocomplete="off">
-      </div>
       <div class="field"><label class="sr-only">Диагноз (МКБ-10)</label>
-        <select name="code" id="cond-code-{{ eid }}{% if source_id %}-{{ source_id }}{% endif %}" required aria-label="Диагноз (МКБ-10)">
+        <select name="code" required aria-label="Диагноз (МКБ-10)">
           <option value="">— не выбран —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
              Новый протокол в YAML появляется здесь сам; процесс постановки один. #}
@@ -960,9 +957,6 @@
       <input type="hidden" name="override_reason" id="med-reason-{{ uid }}" value="">
       {% if replace_abt %}<input type="hidden" name="replace_abt" value="1">{% endif %}
       <div class="med-linked">
-        <div class="field field-full"><label class="sr-only">Найти препарат</label>
-          <input type="search" data-catalog-filter="med-code-{{ uid }}" placeholder="Поиск препарата" aria-label="Поиск препарата" autocomplete="off">
-        </div>
         <div class="field"><label class="sr-only">Препарат</label>
           <select name="code" id="med-code-{{ uid }}" required aria-label="Препарат">
             <option value="">— не выбран —</option>
@@ -1004,75 +998,54 @@
   </div>
   {% endmacro %}
 
-  {# Множество из словаря: все ключи видны; клик = add или clear (без select/Добавить).
-     selected_flags — список flag dict с .key/.id; red_keys — frozenset/list для is-severe. #}
-  {% macro flag_toggle_group(pid, eid, keys, selected_flags, aria_label, red_keys=None) %}
-  {% set red_keys = red_keys or [] %}
-  {% set by_key = {} %}
-  {% for f in selected_flags %}{% set _ = by_key.update({f.key: f}) %}{% endfor %}
-  <div class="flag-toggles" role="group" aria-label="{{ aria_label }}">
-    {% for key in keys if key in flag_options %}
-    {% set f = by_key.get(key) %}
-    {% set is_on = f is not none %}
-    {% set is_red = key in red_keys %}
-    {% if is_on %}
-    <form class="flag-toggle-form" method="POST" action="{{ url_for('clear_flag_route', pid=pid, fid=f.id) }}" data-ajax="1">
-      <button type="submit" class="flag-toggle is-on{% if is_red %} is-severe{% endif %}" aria-pressed="true">{{ flag_options[key][0] }}</button>
+  {% macro flag_form(pid, eid, chip_target='', exclude_keys=None) %}
+  {% set exclude_keys = exclude_keys or [] %}
+  {% set _opts = [] %}
+  {% for key, (label, cat) in flag_options.items() if cat == 'social_risk' and key not in exclude_keys %}
+    {% set _ = _opts.append((key, label)) %}
+  {% endfor %}
+  <div class="fform">
+    {% if _opts %}
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field"><label class="sr-only">Фактор риска</label>
+        <select name="key" required aria-label="Фактор риска">
+          <option value="">— не выбран —</option>
+          {% for key, label in _opts %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
     {% else %}
-    <form class="flag-toggle-form" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
-      <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <input type="hidden" name="key" value="{{ key }}">
-      <button type="submit" class="flag-toggle{% if is_red %} is-severe{% endif %}" aria-pressed="false">{{ flag_options[key][0] }}</button>
-    </form>
+    <p class="enc-sub-empty">Все факторы из списка уже отмечены</p>
     {% endif %}
-    {% endfor %}
   </div>
   {% endmacro %}
 
-  {# Сетка виталов: одно поле на показатель; POST replace same code@encounter.
-     Сохранение — Enter или blur (data-vital-auto). #}
-  {% macro vital_field(pid, eid, code, obs) %}
-  {% set unit = loinc_unit(code) %}
-  {% set sr = sane_range(code) %}
-  {% set vlabel = vital_status_label(code, obs.value_numeric) if obs else none %}
-  <div class="vital-cell">
-    <form class="vital-cell-form" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-vital-auto="1">
+  {# Клинические флаги из allowlist (чистые названия; значимость — chip + CDS). #}
+  {% macro flag_keys_form(pid, eid, keys, aria_label, exclude_keys=None) %}
+  {% set exclude_keys = exclude_keys or [] %}
+  {% set _opts = [] %}
+  {% for key in keys if key not in exclude_keys and key in flag_options %}
+    {% set _ = _opts.append((key, flag_options[key][0])) %}
+  {% endfor %}
+  <div class="fform">
+    {% if _opts %}
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <input type="hidden" name="code" value="{{ code }}">
-      <input type="hidden" name="date" value="{{ today }}">
-      <label for="vital-{{ eid }}-{{ code }}">{{ loinc_display(code) }}</label>
-      <div class="vital-input-row">
-        <input type="text" inputmode="decimal" name="value_numeric" id="vital-{{ eid }}-{{ code }}"
-               value="{{ obs.value_numeric if obs else '' }}"
-               placeholder="—"
-               aria-label="{{ loinc_display(code) }}"
-               data-sane-low="{{ sr[0] if sr else '' }}" data-sane-high="{{ sr[1] if sr else '' }}"
-               data-unit="{{ unit }}" data-last="{{ obs.value_numeric if obs else '' }}">
-        <span class="vital-unit">{{ unit }}</span>
+      <div class="field"><label class="sr-only">{{ aria_label }}</label>
+        <select name="key" required aria-label="{{ aria_label }}">
+          <option value="">— не выбран —</option>
+          {% for key, label in _opts %}
+          <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
-    <div class="vital-meta">
-      {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
-      {% if obs %}
-      <span class="vital-actions">
-        <form method="POST" action="{{ url_for('delete_observation_route', pid=pid, oid=obs.id) }}">
-          <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить {{ loinc_display(code) }}">×</button>
-        </form>
-      </span>
-      {% endif %}
-    </div>
-  </div>
-  {% endmacro %}
-
-  {% macro vitals_grid(pid, eid, by_code) %}
-  <div class="vitals-grid" aria-label="Показатели осмотра">
-    {{ vital_field(pid, eid, SPO2_CODE, by_code.get(SPO2_CODE)) }}
-    {{ vital_field(pid, eid, TEMP_CODE, by_code.get(TEMP_CODE)) }}
-    {{ vital_field(pid, eid, SBP_CODE, by_code.get(SBP_CODE)) }}
-    {{ vital_field(pid, eid, DBP_CODE, by_code.get(DBP_CODE)) }}
-    {{ vital_field(pid, eid, HR_CODE, by_code.get(HR_CODE)) }}
-    {{ vital_field(pid, eid, RR_CODE, by_code.get(RR_CODE)) }}
+    {% else %}
+    <p class="enc-sub-empty">Все признаки из списка уже отмечены</p>
+    {% endif %}
   </div>
   {% endmacro %}
 
@@ -1150,25 +1123,26 @@
   </details>
   {% endmacro %}
 
-  {# Обследование: Заказать → Результат (сегменты, не три кнопки). #}
+  {# Обследование: одна кнопка «Добавить», внутри — выбор типа записи
+     (заказ / число / заключение), а не три кнопки подряд. #}
   {% macro study_add(pid, eid, cat, dlist_id, orders=None) %}
   {% call add_panel('Добавить') %}
-    <div class="study-add" data-study-add data-study-cat="{{ cat }}">
-      <div class="study-kind-seg" role="group" aria-label="Тип записи">
-        <button type="button" data-study-kind-btn="order" class="is-on">Заказать</button>
-        <button type="button" data-study-kind-btn="result">Внести результат</button>
+    <div class="study-add" data-study-add>
+      <div class="fform study-add-kind">
+        <div class="field">
+          <label class="sr-only">Что добавить</label>
+          <select data-study-kind aria-label="Что добавить">
+            <option value="order">Заказ исследования</option>
+            {% if cat == 'lab' %}<option value="numeric">Числовой результат</option>{% endif %}
+            <option value="report">Текстовое заключение</option>
+          </select>
+        </div>
       </div>
-      <input type="hidden" data-study-kind value="order">
       <div data-study-pane="order">{{ sr_form(pid, eid, cat, dlist_id) }}</div>
       {% if cat == 'lab' %}
-      <div data-study-pane="result" hidden>
-        <p class="enc-sub-empty" style="margin:0 0 8px;">Числовой результат или текстовое заключение</p>
-        {{ lab_obs_form(pid, eid, dlist_id, orders) }}
-        <div style="margin-top:10px;">{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
-      </div>
-      {% else %}
-      <div data-study-pane="result" hidden>{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
+      <div data-study-pane="numeric" hidden>{{ lab_obs_form(pid, eid, dlist_id, orders) }}</div>
       {% endif %}
+      <div data-study-pane="report" hidden>{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
     </div>
   {% endcall %}
   {% endmacro %}
@@ -1771,9 +1745,19 @@
               <h3 class="section-label">Описание</h3>
               {{ anam_form(patient.id, e.id, anam_text) }}
             </section>
+            {% set risk_keys = anam_risk|map(attribute='key')|list %}
             <section class="enc-sub" id="sub-risk-{{ e.id }}">
               <h3 class="section-label">Факторы риска</h3>
-              {{ flag_toggle_group(patient.id, e.id, SOCIAL_RISK_FLAG_KEYS, anam_risk, 'Факторы риска') }}
+              <div class="chips" id="chips-risk-{{ e.id }}">
+                {% for f in anam_risk %}
+                <span class="tag-chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                  <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ flag_form(patient.id, e.id, exclude_keys=risk_keys) }}
             </section>
           {% endcall %}
 
@@ -1783,16 +1767,94 @@
               <h3 class="section-label">Общее состояние</h3>
               {{ gc_form(patient.id, e.id, gc_flag or '') }}
             </section>
+            {# Виталы: labeled row max 420px; АДс+АДд одной строкой; red flags — danger chip.
+               Название показателя — из loinc_display (единый источник: то же имя, что в
+               форме выбора показателя), не отдельный локальный словарь. #}
+            {% set OBS_ICO = {
+              '8310-5': 'ti-thermometer', '59408-5': 'ti-activity', '9279-1': 'ti-lungs',
+              '8867-4': 'ti-heartbeat', '8480-6': 'ti-heart-rate-monitor', '8462-4': 'ti-heart-rate-monitor',
+              '8302-2': 'ti-ruler', '29463-7': 'ti-scale'
+            } %}
+            {% set bp = namespace(sbp=none, dbp=none) %}
             {% set by_code = {} %}
-            {% for o in exam_obs %}{% set _ = by_code.update({o.code: o}) %}{% endfor %}
+            {% for o in exam_obs %}
+              {% if o.code == SBP_CODE %}{% set bp.sbp = o %}
+              {% elif o.code == DBP_CODE %}{% set bp.dbp = o %}
+              {% else %}{% set _ = by_code.update({o.code: o}) %}{% endif %}
+            {% endfor %}
+            {# Порядок как в form: SpO2 → t → АД → ЧСС → ЧД #}
+            {% set VITAL_ORDER = [SPO2_CODE, TEMP_CODE, '__bp__', HR_CODE, RR_CODE] %}
             <section class="enc-sub" id="sub-vitals-{{ e.id }}">
               <h3 class="section-label">Показатели</h3>
-              {{ vitals_grid(patient.id, e.id, by_code) }}
+              <div class="obs-attrs" id="chips-obs-{{ e.id }}">
+                {% for code in VITAL_ORDER %}
+                  {% if code == '__bp__' and (bp.sbp or bp.dbp) %}
+                    {% set bp_label = bp_status_label(bp.sbp.value_numeric if bp.sbp else none, bp.dbp.value_numeric if bp.dbp else none) %}
+                    <div class="attr-row">
+                      <p class="attr-label"><i class="ti ti-heart-rate-monitor" aria-hidden="true"></i>АД систолическое / диастолическое</p>
+                      <div class="attr-value-row">
+                        <p class="attr-value">{% if bp.sbp and bp.dbp %}{{ bp.sbp.value_numeric }} / {{ bp.dbp.value_numeric }} mmHg{% elif bp.sbp %}{{ bp.sbp.value_numeric }} mmHg{% else %}{{ bp.dbp.value_numeric }} mmHg{% endif %}</p>
+                        <div class="attr-actions">
+                          {% if bp_label %}<span class="badge red">{{ bp_label }}</span>{% endif %}
+                          <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=(bp.sbp.id if bp.sbp else bp.dbp.id)) }}">
+                            {% if bp.sbp and bp.dbp %}<input type="hidden" name="also" value="{{ bp.dbp.id }}">{% endif %}
+                            <button class="chip-x" type="submit" title="Удалить АД" aria-label="Удалить АД">×</button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  {% elif code != '__bp__' and code in by_code %}
+                    {% set o = by_code[code] %}
+                    {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
+                    {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
+                    <div class="attr-row">
+                      <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
+                      <div class="attr-value-row">
+                        <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
+                        <div class="attr-actions">
+                          {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                          <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
+                            <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  {% endif %}
+                {% endfor %}
+                {% for code, o in by_code.items() if code not in [SPO2_CODE, TEMP_CODE, HR_CODE, RR_CODE] %}
+                {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
+                {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
+                <div class="attr-row">
+                  <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
+                  <div class="attr-value-row">
+                    <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
+                    <div class="attr-actions">
+                      {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                      <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
+                        <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {{ obs_form(patient.id, e.id) }}
             </section>
 
+            {% set exam_keys = exam_flags|map(attribute='key')|list %}
             <section class="enc-sub" id="sub-exam-flags-{{ e.id }}">
               <h3 class="section-label">Данные физического обследования</h3>
-              {{ flag_toggle_group(patient.id, e.id, CAP_PHYSICAL_FLAG_KEYS, exam_flags, 'Данные физического обследования', EXAM_RED_FLAG_KEYS) }}
+              <div class="chips" id="chips-exam-flags-{{ e.id }}">
+                {% for f in exam_flags %}
+                {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
+                <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                  <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ flag_keys_form(patient.id, e.id, CAP_PHYSICAL_FLAG_KEYS, 'Данные физического обследования', exam_keys) }}
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
@@ -1827,8 +1889,7 @@
                 <div class="dlist record-list" id="dlist-lab-{{ e.id }}">
                   {% if not lab_sr and not lab_rep and not lab_obs %}<span class="none">Нет заказов и результатов</span>{% endif %}
                   {% for s in lab_sr %}<div class="it"><span class="st ord">Заказ</span><span>{{ study_display(s.code) }}</span>{% if s.occurrence_date %}<span class="chip-sub">{{ s.occurrence_date }}</span>{% endif %}
-                    {% if s.status != 'completed' %}<button type="button" class="order-result-link" data-open-study-result="lab" data-sr-id="{{ s.id }}">Результат</button>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;{% if s.status == 'completed' %}margin-left:auto;{% endif %}"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                   {% for r in lab_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
                     {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
@@ -1854,8 +1915,7 @@
                 <div class="dlist record-list" id="dlist-ins-{{ e.id }}">
                   {% if not ins_sr and not ins_rep %}<span class="none">Нет заказов и результатов</span>{% endif %}
                   {% for s in ins_sr %}<div class="it"><span class="st ord">Заказ</span><span>{{ study_display(s.code) }}</span>{% if s.occurrence_date %}<span class="chip-sub">{{ s.occurrence_date }}</span>{% endif %}
-                    {% if s.status != 'completed' %}<button type="button" class="order-result-link" data-open-study-result="instr" data-sr-id="{{ s.id }}">Результат</button>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;{% if s.status == 'completed' %}margin-left:auto;{% endif %}"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                   {% for r in ins_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
                     {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
@@ -1868,9 +1928,21 @@
                 <div class="add-bar">
                   {{ study_add(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id, ins_sr) }}
                 </div>
+                {# Рентген-критерии КП №768 — у инструментальных, не в осмотре. #}
+                {% set imaging_keys = imaging_flags|map(attribute='key')|list %}
                 <section class="enc-sub" id="sub-imaging-flags-{{ e.id }}">
                   <h3 class="section-label">Рентгенологические признаки</h3>
-                  {{ flag_toggle_group(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, imaging_flags, 'Рентгенологические признаки', IMAGING_RED_FLAG_KEYS) }}
+                  <div class="chips" id="chips-imaging-flags-{{ e.id }}">
+                    {% for f in imaging_flags %}
+                    {% set is_red = f.key in IMAGING_RED_FLAG_KEYS %}
+                    <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                      <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                        <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                      </form>
+                    </span>
+                    {% endfor %}
+                  </div>
+                  {{ flag_keys_form(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, 'Рентгенологические признаки', imaging_keys) }}
                 </section>
               </div>
             </div>
@@ -1993,78 +2065,15 @@
 </main>
 <script>
 (function(){
-  // Обследование: Заказать | Внести результат.
-  function _setStudyKind(root, kind){
+  // Обследование: одна «Добавить» → выбор типа (заказ / число / заключение).
+  document.addEventListener('change', function(e){
+    var sel = e.target;
+    if(!sel || !sel.matches || !sel.matches('[data-study-kind]')) return;
+    var root = sel.closest('[data-study-add]');
     if(!root) return;
-    var hidden = root.querySelector('[data-study-kind]');
-    if(hidden) hidden.value = kind;
-    root.querySelectorAll('[data-study-kind-btn]').forEach(function(btn){
-      btn.classList.toggle('is-on', btn.getAttribute('data-study-kind-btn') === kind);
-    });
+    var kind = sel.value;
     root.querySelectorAll('[data-study-pane]').forEach(function(pane){
       pane.hidden = pane.getAttribute('data-study-pane') !== kind;
-    });
-  }
-  document.addEventListener('click', function(e){
-    var btn = e.target && e.target.closest && e.target.closest('[data-study-kind-btn]');
-    if(btn){
-      var root = btn.closest('[data-study-add]');
-      _setStudyKind(root, btn.getAttribute('data-study-kind-btn'));
-      return;
-    }
-    var openRes = e.target && e.target.closest && e.target.closest('[data-open-study-result]');
-    if(!openRes) return;
-    var cat = openRes.getAttribute('data-open-study-result');
-    var srId = openRes.getAttribute('data-sr-id');
-    var col = openRes.closest('.diag-sub');
-    if(!col) return;
-    var panel = col.querySelector('.add-bar details.add-panel');
-    var root = col.querySelector('[data-study-add]');
-    if(panel) panel.open = true;
-    _setStudyKind(root, 'result');
-    if(srId && root){
-      root.querySelectorAll('select[name="service_request_id"]').forEach(function(sel){
-        sel.value = srId;
-      });
-    }
-  });
-
-  // Виталы: Enter / blur с изменением → сохранить.
-  function _vitalMaybeSubmit(input){
-    if(!input || !input.name) return;
-    var form = input.form;
-    if(!form || form.getAttribute('data-vital-auto') !== '1') return;
-    var v = (input.value || '').trim();
-    var last = input.getAttribute('data-last') || '';
-    if(!v || v === last) return;
-    if(typeof form.requestSubmit === 'function') form.requestSubmit();
-    else form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true}));
-  }
-  document.addEventListener('keydown', function(e){
-    if(e.key !== 'Enter') return;
-    var input = e.target;
-    if(!input || !input.matches || !input.matches('.vital-cell-form input[name="value_numeric"]')) return;
-    e.preventDefault();
-    _vitalMaybeSubmit(input);
-  });
-  document.addEventListener('focusout', function(e){
-    var input = e.target;
-    if(!input || !input.matches || !input.matches('.vital-cell-form input[name="value_numeric"]')) return;
-    _vitalMaybeSubmit(input);
-  });
-
-  // Каталог (МКБ / препарат): фильтр option по вводу в data-catalog-filter.
-  document.addEventListener('input', function(e){
-    var q = e.target;
-    if(!q || !q.matches || !q.matches('[data-catalog-filter]')) return;
-    var selId = q.getAttribute('data-catalog-filter');
-    var sel = selId ? document.getElementById(selId) : null;
-    if(!sel) return;
-    var needle = (q.value || '').toLowerCase().trim();
-    Array.prototype.forEach.call(sel.options, function(opt){
-      if(!opt.value){ opt.hidden = false; return; }
-      var t = (opt.textContent || '').toLowerCase();
-      opt.hidden = !!(needle && t.indexOf(needle) === -1);
     });
   });
 
@@ -2400,26 +2409,16 @@
     if(form.getAttribute('action').indexOf('/observation')!==-1){
       var sel=form.querySelector('select[name="code"]');
       var inp=form.querySelector('input[name="value_numeric"]');
-      if(inp&&inp.value){
-        var slo, shi, unit;
-        if(sel && sel.selectedIndex >= 0){
-          var o=sel.options[sel.selectedIndex];
-          slo=o.getAttribute('data-sane-low'); shi=o.getAttribute('data-sane-high');
-          unit=o.getAttribute('data-unit')||'';
-        } else {
-          slo=inp.getAttribute('data-sane-low'); shi=inp.getAttribute('data-sane-high');
-          unit=inp.getAttribute('data-unit')||'';
-        }
+      if(sel&&inp&&inp.value){
+        var o=sel.options[sel.selectedIndex];
+        var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
         if(slo&&shi){
           var v=parseFloat(inp.value.replace(',','.'));
           if(isNaN(v)||v<parseFloat(slo)||v>parseFloat(shi)){
-            if(note){ note.innerHTML='<span style="color:var(--text-danger)">Недопустимое значение. Допустимо: '+slo+'–'+shi+' '+unit+'</span>'; }
-            else { inp.setCustomValidity('Допустимо: '+slo+'–'+shi+' '+unit); inp.reportValidity(); inp.setCustomValidity(''); }
+            if(note){ note.innerHTML='<span style="color:var(--text-danger)">Недопустимое значение. Допустимо: '+slo+'–'+shi+' '+o.getAttribute('data-unit')+'</span>'; }
             return;
           }
         }
-      } else if(form.getAttribute('data-vital-auto')==='1'){
-        return; // пустой vital — не слать
       }
     }
 
