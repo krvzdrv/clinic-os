@@ -1100,9 +1100,9 @@
       {% set proto_id = protocol_id_for_icd(c.code) if protocol_id_for_icd is defined else none %}
       {% set cond_verdict = verdict_by_condition.get(c.id) %}
       {% set therapy_meds = active_therapy_by_protocol.get(proto_id, []) if proto_id else [] %}
-      {# Активные — выше истории; по умолчанию свёрнуты. Дата = начало заболевания.
+      {# Пока обычно один активный диагноз — открыт сразу, быстрее ввод.
          Лечение/CDS — по протоколу этого МКБ (ВП, ЖДА, …), не только пневмония. #}
-      <details class="dx-card" id="condition-{{ c.id }}">
+      <details class="dx-card" id="condition-{{ c.id }}" open>
         <summary class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
@@ -1258,8 +1258,8 @@
      конкретного приёма — в его собственной карточке (enc-toolbar) ниже. #}
   {% set enc_total_n = encounters_total if encounters_total is defined and encounters_total else (encounters_data|length if encounters_data else (1 if current_ed else 0)) %}
   {% set enc_multi = enc_total_n > 1 %}
-  {# По умолчанию свёрнут — как диагнозы; разворачивается кликом по заголовку. #}
-  <details class="history-fold">
+  {# Пока у пациента обычно один приём — открыт сразу, быстрее ввод. #}
+  <details class="history-fold" open>
     <summary class="enc-summary">
       <div class="icon-avatar{% if enc_open %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
       {% if enc_multi %}
