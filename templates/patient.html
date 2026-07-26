@@ -1687,14 +1687,22 @@
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
                open=true) %}
-            {{ complaint_form(patient.id, e.id, e.complaint or '') }}
+            {# Тот же .enc-sub, что у подразделов осмотра — не «голое» поле. #}
+            <section class="enc-sub enc-sub--main">
+              <h3 class="section-label">Описание</h3>
+              {{ complaint_form(patient.id, e.id, e.complaint or '') }}
+            </section>
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
                open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
-            {{ anam_form(patient.id, e.id, anam_text) }}
-            {# Подраздел анамнеза (не соседняя секция приёма): rail = вложенность. #}
+            {# Главный блок + подраздел (rail). Без id=sub-* на textarea —
+               soft-refresh не должен сбрасывать несохранённый текст. #}
+            <section class="enc-sub enc-sub--main">
+              <h3 class="section-label">Описание</h3>
+              {{ anam_form(patient.id, e.id, anam_text) }}
+            </section>
             {% set risk_keys = anam_risk|map(attribute='key')|list %}
             <div class="fstep-nested">
               <section class="enc-sub enc-sub--nested" id="sub-risk-{{ e.id }}" aria-label="Подраздел анамнеза: факторы риска">
@@ -1715,7 +1723,7 @@
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
                open=true) %}
-            <section class="enc-sub" id="sub-gc-{{ e.id }}">
+            <section class="enc-sub enc-sub--main" id="sub-gc-{{ e.id }}">
               <h3 class="section-label">Общее состояние</h3>
               <div class="obs-attrs" id="chips-gc-{{ e.id }}">
                 {% if gc_flag %}
@@ -1829,21 +1837,24 @@
                open=true) %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
-            <div class="diag-support {{ 'ok' if (diag_anam or diag_exam) else 'warn' }}">
-              <span class="ds-h">Основание:</span>
-              <span class="ds-i">{{ '✓' if diag_anam else '○' }} анамнез</span>
-              <span class="ds-i">{{ '✓' if diag_exam else '○' }} осмотр</span>
-            </div>
-            <div class="chips" id="chips-cond-{{ e.id }}">
-              {% for c in ed.cond %}
-              <span class="tag-chip">{{ c.display }}<span class="chip-sub">{{ c.code }}</span>{% if c.source_label %}<span class="chip-sub" title="Поставлен по результату исследования">← {{ c.source_label }}</span>{% endif %}
-                <form method="POST" action="{{ url_for('delete_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
-                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
-                </form>
-              </span>
-              {% endfor %}
-            </div>
-            {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
+            <section class="enc-sub enc-sub--main">
+              <h3 class="section-label">Код МКБ</h3>
+              <div class="diag-support {{ 'ok' if (diag_anam or diag_exam) else 'warn' }}">
+                <span class="ds-h">Основание:</span>
+                <span class="ds-i">{{ '✓' if diag_anam else '○' }} анамнез</span>
+                <span class="ds-i">{{ '✓' if diag_exam else '○' }} осмотр</span>
+              </div>
+              <div class="chips" id="chips-cond-{{ e.id }}">
+                {% for c in ed.cond %}
+                <span class="tag-chip">{{ c.display }}<span class="chip-sub">{{ c.code }}</span>{% if c.source_label %}<span class="chip-sub" title="Поставлен по результату исследования">← {{ c.source_label }}</span>{% endif %}
+                  <form method="POST" action="{{ url_for('delete_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
+            </section>
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
@@ -1912,6 +1923,8 @@
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
                open=true) %}
+            <section class="enc-sub enc-sub--main">
+              <h3 class="section-label">Препараты</h3>
             <div class="chips" id="chips-med-{{ e.id }}">
               {% for m in ed.med %}
               <span class="tag-chip">{{ m.display }}{% if m.dose %}: {{ m.dose }}{% endif %}{% if m.frequency %} · {{ m.frequency }}{% endif %}{% if m.route %} · {{ {'oral':'внутрь','iv':'в/в','im':'в/м','inh':'ингаляционно'}.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}
@@ -1931,6 +1944,7 @@
               {% endcall %}
             </div>
             {% endif %}
+            </section>
           {% endcall %}
         </div>
       </div>

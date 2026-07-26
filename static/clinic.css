@@ -383,6 +383,18 @@ button.btn-small.primary:hover {
   border-top: none;
   padding-top: 2px;
 }
+/* Главный блок секции (описание жалобы/анамнеза) — тот же атом, что подразделы. */
+.enc-sub--main {
+  border-top: none;
+  padding-top: 4px;
+}
+.enc-sub .anam-text-form {
+  margin: 0;
+}
+.enc-sub .anam-text-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
 .enc-sub .chips {
   display: flex;
   flex-wrap: wrap;
