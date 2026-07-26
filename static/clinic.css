@@ -366,13 +366,14 @@ button.btn-small {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Primary CTA протокола (не вложенные add-panel формы) */
+/* Primary CTA протокола (не вложенные add-panel формы). Компактная кнопка —
+   выделяется цветом (fill-danger/accent), а не размером; это не баннер. */
 .cds-action > form > .btn,
 .cds-action > .fform > form > .btn {
-  min-width: 220px;
-  height: 46px;
-  font-size: 15px;
-  font-weight: 650;
+  height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
   box-shadow: none;
 }
 /* Несоответствие / критично → fill-danger; ok / плановый контроль → fill-accent */

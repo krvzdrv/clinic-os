@@ -414,6 +414,14 @@
   }
   .enc-toolbar .enc-complaint{flex:1;min-width:12em;font-size:13px;color:var(--text-secondary);margin:0;}
   .enc-toolbar .btn-small{height:32px;}
+  /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost),
+     не отдельный визуальный стиль чипа add-panel, иначе рядом смотрится «слепленным». */
+  .enc-toolbar .add-panel{flex:0 0 auto;min-width:auto;border:1px solid var(--coral);border-radius:7px;background:#fff;}
+  .enc-toolbar .add-panel > summary{
+    height:32px;display:flex;align-items:center;
+    padding:0 16px;font-size:13px;font-weight:600;color:var(--coral-deep);
+  }
+  .enc-toolbar .add-panel[open] > summary{border-radius:7px 7px 0 0;}
   .visit-list{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
   .visit-row{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -1136,7 +1144,7 @@
     <div class="enc-card">
       <div class="enc-toolbar">
         {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
-        <details class="add-panel" style="flex:0 0 auto;min-width:auto;">
+        <details class="add-panel">
           <summary>Новый приём</summary>
           <div class="add-panel-b">
             <div class="fform">
@@ -1544,7 +1552,7 @@
   {% else %}
   <div class="enc-toolbar">
     <p class="enc-complaint">Приёмов пока нет</p>
-    <details class="add-panel" open style="flex:0 0 auto;min-width:auto;">
+    <details class="add-panel" open>
       <summary>Новый приём</summary>
       <div class="add-panel-b">
         <div class="fform">
