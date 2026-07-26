@@ -239,9 +239,10 @@ def evaluate_abt_choice(pid, atc_code):
         return [{
             "severity": "warning",
             "category": "not_first_line_abt",
+            "protocol_id": "cap_adult_768",
             "message": (
-                f"Препарат {atc_drug_display(code)} не соответствует протоколу "
-                f"для этого пациента. Ожидается: {expect_txt}."
+                f"Препарат {atc_drug_display(code)} не соответствует протоколу ВП "
+                f"(КП №768) для этого пациента. Ожидается: {expect_txt}."
             ),
         }]
 
@@ -254,9 +255,10 @@ def evaluate_abt_choice(pid, atc_code):
     return [{
         "severity": "warning",
         "category": "not_first_line_abt",
+        "protocol_id": "cap_adult_768",
         "message": (
-            f"Препарат {atc_drug_display(code)} не соответствует протоколу "
-            f"для этого пациента. По КП №768 ожидается {exp_name}."
+            f"Препарат {atc_drug_display(code)} не соответствует протоколу ВП "
+            f"(КП №768) для этого пациента. Ожидается {exp_name}."
         ),
     }]
 

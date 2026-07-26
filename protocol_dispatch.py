@@ -20,6 +20,26 @@ PROTOCOL_EVALUATORS = {
     "ida_adult_23": protocol_anemia.evaluate_ida,
 }
 
+# Реалтайм-проверка выбранного препарата в момент назначения (order-sign),
+# симметрично PROTOCOL_EVALUATORS. Каждый evaluate_*_choice сам решает,
+# применим ли он (по ATC-префиксу своего класса препарата и активному
+# диагнозу) — добавление протокола с новым классом терапии не требует
+# правок в app.py/cds_service.py, только регистрации здесь.
+DRUG_CHOICE_EVALUATORS = {
+    "cap_adult_768": protocol_cap.evaluate_abt_choice,
+    "ida_adult_23": protocol_anemia.evaluate_iron_choice,
+}
+
+
+def evaluate_drug_choice(pid, atc_code):
+    """Issues (drug_service-совместимые) от всех зарегистрированных протоколов
+    для выбранного препарата — используется в order-sign (см. app.py,
+    cds_service.cds_order_sign)."""
+    issues = []
+    for evaluator in DRUG_CHOICE_EVALUATORS.values():
+        issues.extend(evaluator(pid, atc_code) or [])
+    return issues
+
 
 def _primary_condition_id(pid, protocol_id):
     """Первый активный Condition с кодом из этого протокола — к нему привязывается

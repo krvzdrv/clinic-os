@@ -104,6 +104,41 @@ def expected_iron_therapy(pid):
     return pri.select_therapy(pid)
 
 
+def evaluate_iron_choice(pid, atc_code):
+    """
+    Проверка выбираемого препарата железа ДО сохранения (order-sign) — тот же
+    момент и та же форма ответа, что protocol_cap.evaluate_abt_choice для АБТ,
+    только для класса B03A и диагноза ЖДА. Регистрируется в
+    protocol_dispatch.DRUG_CHOICE_EVALUATORS — новый протокол со своим классом
+    препарата подключается там же, без правок в app.py/cds_service.py.
+
+    Возвращает список issues (как drug_service): пусто — можно сохранять;
+    warning not_first_line_iron — soft-stop (чекбокс + опц. причина).
+    Не-B03A и пациенты без ЖДА — без замечаний.
+    """
+    code = (atc_code or "").strip().upper()
+    if not code.startswith("B03A"):
+        return []
+    if not re.has_ida(pid):
+        return []
+
+    expected = expected_iron_therapy(pid)
+    exp_grp = expected.get("atc_group")
+    grp_sel, _ = atc_group(code)
+    if exp_grp and grp_sel == exp_grp:
+        return []
+    exp_name = expected.get("name") or atc_drug_display(expected.get("atc_code") or "")
+    return [{
+        "severity": "warning",
+        "category": "not_first_line_iron",
+        "protocol_id": "ida_adult_23",
+        "message": (
+            f"Препарат {atc_drug_display(code)} не соответствует протоколу ЖДА "
+            f"(КП №23) для этого пациента. Ожидается {exp_name}."
+        ),
+    }]
+
+
 # ---- Вспомогательные ----
 
 def _has_service_request(pid, code):

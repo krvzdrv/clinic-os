@@ -232,10 +232,12 @@ def new_patient():
 
 
 def _order_encounters(encounters):
-    """Открытые приёмы первыми, затем закрытые (start DESC внутри групп)."""
-    open_e = [e for e in encounters if e.get("status") != "finished"]
-    closed = [e for e in encounters if e.get("status") == "finished"]
-    return open_e + closed
+    """Сверху самый свежий по дате start (DESC). Статус open/closed на порядок не влияет."""
+    return sorted(
+        encounters or [],
+        key=lambda e: e.get("start") or "",
+        reverse=True,
+    )
 
 
 def _triage_from_verdict(conditions, verdict, pn_codes):
@@ -313,7 +315,8 @@ def patient_detail(pid):
         if current_eid and current_eid not in page_ids:
             cur = next((e for e in all_encounters if e["id"] == current_eid), None)
             if cur:
-                page = [cur] + page
+                page.append(cur)
+                page = _order_encounters(page)
                 page_ids.add(current_eid)
 
         buckets = {
@@ -370,11 +373,14 @@ def patient_detail(pid):
         # для старых приёмов: history-fold + компактная строка вместо карточки).
         active_conditions = [c for c in conditions if (c.get("clinical_status") or "active") == "active"]
         history_conditions = [c for c in conditions if (c.get("clinical_status") or "active") != "active"]
-        # Кому нужно внимание (вердикт не ok) — наверх; conditions уже
-        # ORDER BY onset_date DESC, стабильная сортировка сохранит порядок по
-        # дате внутри каждой из двух групп (срочные / остальные активные).
+        # Сверху самый свежий диагноз по дате начала / записи.
         active_conditions.sort(
-            key=lambda c: 0 if (verdict_by_condition.get(c["id"]) or {}).get("ok") is False else 1
+            key=lambda c: c.get("onset_date") or c.get("recorded_date") or "",
+            reverse=True,
+        )
+        history_conditions.sort(
+            key=lambda c: c.get("onset_date") or c.get("recorded_date") or "",
+            reverse=True,
         )
         # Цель терапии — по конкретному диагнозу (через care_plan.condition_id),
         # не все цели пациента под каждой карточкой: иначе цель прошлого,
@@ -799,10 +805,11 @@ def _cds_summary(verdict):
 
 
 def _medication_order_verdict(pid, code):
-    """drug_service + protocol_cap.evaluate_abt_choice (order-sign)."""
+    """drug_service + сверка выбора препарата по всем применимым протоколам
+    (order-sign) — protocol_dispatch.evaluate_drug_choice, не только ВП."""
     verdict = drug_service.evaluate_medication(pid, code)
     issues = list(verdict.get("issues") or [])
-    issues.extend(pcap.evaluate_abt_choice(pid, code))
+    issues.extend(pdisp.evaluate_drug_choice(pid, code))
     hard = any(i.get("severity") == "hard-stop" for i in issues)
     soft = any(i.get("severity") == "warning" for i in issues)
     out = dict(verdict)

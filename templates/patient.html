@@ -329,9 +329,23 @@
 
   .dx-card{
     border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-1);
-    padding:14px 16px 12px;margin:0 0 12px;
+    padding:0;margin:0 0 12px;
   }
   .dx-card:last-child{margin-bottom:0;}
+  /* Диагноз сворачивается так же, как блок приёмов (history-fold).
+     display:flex у .dx-rail иначе оставляет тело видимым в закрытом <details>. */
+  details.dx-card > summary.dx-head{
+    cursor:pointer;list-style:none;
+    display:flex;align-items:center;gap:10px;
+    padding:14px 16px 12px;margin:0;
+  }
+  details.dx-card > summary.dx-head::-webkit-details-marker{display:none;}
+  details.dx-card:not([open]) > :not(summary){display:none !important;}
+  details.dx-card .dx-body{padding:0 16px 12px;}
+  details.dx-card:not([open]) > summary.dx-head .dx-chev-down{display:none;}
+  details.dx-card[open] > summary.dx-head .dx-chev-right{display:none;}
+  .dx-head .dx-end{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
+  .dx-head .dx-chev{font-size:18px;color:var(--text-muted);flex:none;}
   .dx-head{display:flex;align-items:center;gap:10px;margin:0 0 4px;}
   .dx-card .dx-issue.cds-warn{border-color:var(--border-warning);}
   .dx-card .dx-issue.cds-warn .cds-tier{color:var(--text-warning);}
@@ -919,7 +933,7 @@
            class="cds verdict-panel {{ 'dx-issue' if nested else '' }} {{ 'cds-ok verdict-ok' if v.ok else ('cds-critical verdict-warn' if tier == 'critical' else ('cds-warn verdict-warn' if v.applicable else 'cds')) }}"
            aria-label="Подсказка по протоколу">
     {% if v.ok %}
-      <div class="cds-tier">По протоколу</div>
+      <div class="cds-tier">По протоколу{% if v.protocol_title %}<span class="cds-tier-proto"> · {{ v.protocol_title }}</span>{% endif %}</div>
       <h2 class="cds-title verdict-headline">{{ v.headline }}</h2>
       {% if v.next_step %}<p class="cds-reason verdict-why">{{ v.next_step }}</p>{% endif %}
       {% if focus_now == 'repeat_cxr' or v.suggest_repeat_cxr %}
@@ -931,7 +945,7 @@
       </div>
       {% endif %}
     {% else %}
-      <div class="cds-tier">{% if nested and tier != 'critical' %}Несоответствие протоколу{% elif tier == 'critical' %}Критично{% else %}Нужно действие{% endif %}</div>
+      <div class="cds-tier">{% if nested and tier != 'critical' %}Несоответствие протоколу{% elif tier == 'critical' %}Критично{% else %}Нужно действие{% endif %}{% if v.protocol_title %}<span class="cds-tier-proto"> · {{ v.protocol_title }}</span>{% endif %}</div>
       <h2 class="cds-title verdict-headline">{{ v.headline }}</h2>
       {% if reason %}<p class="cds-reason verdict-why">{{ reason }}</p>{% endif %}
 
@@ -1053,88 +1067,107 @@
       {% for c in active_conditions %}
       {% set is_cap = c.code in PN_CODES %}
       {% set cond_verdict = verdict_by_condition.get(c.id) %}
-      <article class="dx-card" id="condition-{{ c.id }}">
-        <div class="dx-head">
+      {# Сверху свежие; по умолчанию все свёрнуты (как блок приёмов). #}
+      <details class="dx-card" id="condition-{{ c.id }}">
+        <summary class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
-          <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
-          <span class="badge green">активный</span>
-          <form method="POST" action="{{ url_for('resolve_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
-            <button class="btn ghost btn-small" type="submit" title="Эпизод болезни клинически закончен — отдельно от закрытия приёма">Разрешить диагноз</button>
-          </form>
-        </div>
-        {% if c.source_label %}
-        <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
-        {% endif %}
-        {% if is_cap or cond_verdict %}
-        <div class="dx-rail">
-          {% if is_cap %}
-          <div class="attr-row">
-            <p class="attr-label"><i class="ti ti-pill" aria-hidden="true"></i>Лечение</p>
-            <div class="attr-value-row">
-              <p class="attr-value">
-                {% if active_abt %}
-                  {% for m in active_abt %}
-                  <span class="k">{{ m.display }}</span>{% if m.dose %} · {{ m.dose }}{% endif %}{% if m.route %} · {{ ROUTE_RU.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}{% if not loop.last %}; {% endif %}
-                  {% endfor %}
-                {% else %}
-                  <span class="none">нет активной АБТ</span>
-                {% endif %}
-              </p>
-              {% if active_abt and active_abt|selectattr('cds_override')|list %}
-              <span class="badge grey" title="Врач подтвердил назначение вопреки CDS">осознанно</span>
-              {% endif %}
-            </div>
+          <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span>{% if c.onset_date %}<span class="dx-code">{{ c.onset_date }}</span>{% endif %}</h2>
+          <span class="dx-end">
+            <span class="badge green">активный</span>
+            <i class="ti ti-chevron-right dx-chev dx-chev-right" aria-hidden="true"></i>
+            <i class="ti ti-chevron-down dx-chev dx-chev-down" aria-hidden="true"></i>
+          </span>
+        </summary>
+        <div class="dx-body">
+          <div style="margin:0 0 8px;">
+            <form method="POST" action="{{ url_for('resolve_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
+              <button class="btn ghost btn-small" type="submit" title="Эпизод болезни клинически закончен — отдельно от закрытия приёма">Разрешить диагноз</button>
+            </form>
           </div>
-          {% set cond_goals = goals_by_condition.get(c.id, []) %}
-          {% if cond_goals %}
-            {% for g in cond_goals %}
+          {% if c.source_label %}
+          <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
+          {% endif %}
+          {% if is_cap or cond_verdict %}
+          <div class="dx-rail">
+            {% if is_cap %}
             <div class="attr-row">
-              <p class="attr-label"><i class="ti ti-target-arrow" aria-hidden="true"></i>Цель терапии</p>
+              <p class="attr-label"><i class="ti ti-pill" aria-hidden="true"></i>Лечение</p>
               <div class="attr-value-row">
-                <p class="attr-value">{{ g.description }}</p>
-                {% if g.status == 'achieved' %}<span class="badge green">достигнута</span>
-                {% elif g.status == 'not-achieved' %}<span class="badge red">не достигнута</span>
-                {% else %}<span class="badge grey">в работе</span>{% endif %}
+                <p class="attr-value">
+                  {% if active_abt %}
+                    {% for m in active_abt %}
+                    <span class="k">{{ m.display }}</span>{% if m.dose %} · {{ m.dose }}{% endif %}{% if m.route %} · {{ ROUTE_RU.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}{% if not loop.last %}; {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    <span class="none">нет активной АБТ</span>
+                  {% endif %}
+                </p>
+                {% if active_abt and active_abt|selectattr('cds_override')|list %}
+                <span class="badge grey" title="Врач подтвердил назначение вопреки CDS">осознанно</span>
+                {% endif %}
               </div>
             </div>
-            {% endfor %}
-          {% endif %}
-          {% endif %}
-          {% if cond_verdict %}
-            {{ render_now_action(cond_verdict, true) }}
-          {% elif is_cap and nest_cds %}
-            {# Защитный откат: диспетчер не нашёл этот Condition, но ВП применима у пациента —
-               не оставлять карточку ВП без подсказки. #}
-            {{ render_now_action(v, true) }}
+            {% set cond_goals = goals_by_condition.get(c.id, []) %}
+            {% if cond_goals %}
+              {% for g in cond_goals %}
+              <div class="attr-row">
+                <p class="attr-label"><i class="ti ti-target-arrow" aria-hidden="true"></i>Цель терапии</p>
+                <div class="attr-value-row">
+                  <p class="attr-value">{{ g.description }}</p>
+                  {% if g.status == 'achieved' %}<span class="badge green">достигнута</span>
+                  {% elif g.status == 'not-achieved' %}<span class="badge red">не достигнута</span>
+                  {% else %}<span class="badge grey">в работе</span>{% endif %}
+                </div>
+              </div>
+              {% endfor %}
+            {% endif %}
+            {% endif %}
+            {% if cond_verdict %}
+              {{ render_now_action(cond_verdict, true) }}
+            {% elif is_cap and nest_cds %}
+              {{ render_now_action(v, true) }}
+            {% endif %}
+          </div>
           {% endif %}
         </div>
-        {% endif %}
-      </article>
+      </details>
       {% endfor %}
     {% elif history_conditions %}
-      <article class="dx-card" id="condition-empty">
-        <div class="dx-head">
+      <details class="dx-card" id="condition-empty" open>
+        <summary class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">Нет активного диагноза</h2>
+          <span class="dx-end">
+            <i class="ti ti-chevron-right dx-chev dx-chev-right" aria-hidden="true"></i>
+            <i class="ti ti-chevron-down dx-chev dx-chev-down" aria-hidden="true"></i>
+          </span>
+        </summary>
+        <div class="dx-body">
+          <div class="dx-rail">
+            <p class="attr-value"><span class="none">Все диагнозы разрешены — история ниже</span></p>
+          </div>
         </div>
-        <div class="dx-rail">
-          <p class="attr-value"><span class="none">Все диагнозы разрешены — история ниже</span></p>
-        </div>
-      </article>
+      </details>
     {% else %}
-      <article class="dx-card" id="condition-empty">
-        <div class="dx-head">
+      <details class="dx-card" id="condition-empty" open>
+        <summary class="dx-head">
           <div class="icon-avatar warning" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">Диагноз не установлен</h2>
+          <span class="dx-end">
+            <i class="ti ti-chevron-right dx-chev dx-chev-right" aria-hidden="true"></i>
+            <i class="ti ti-chevron-down dx-chev dx-chev-down" aria-hidden="true"></i>
+          </span>
+        </summary>
+        <div class="dx-body">
+          <div class="dx-rail">
+            {% if not current_ed %}
+            <p class="attr-value"><span class="none">Диагноз ставится в рамках приёма — откройте «Новый приём» и укажите диагноз на вкладке «Диагноз».</span></p>
+            {% else %}
+            {{ render_now_action(v, true) }}
+            {% endif %}
+          </div>
         </div>
-        <div class="dx-rail">
-          {% if not current_ed %}
-          <p class="attr-value"><span class="none">Диагноз ставится в рамках приёма — откройте «Новый приём» и укажите диагноз на вкладке «Диагноз».</span></p>
-          {% else %}
-          {{ render_now_action(v, true) }}
-          {% endif %}
-        </div>
-      </article>
+      </details>
     {% endif %}
     {% if history_conditions %}
     <details class="history-fold" id="dx-history">
@@ -1189,7 +1222,8 @@
      конкретного приёма — в его собственной карточке (enc-toolbar) ниже. #}
   {% set enc_total_n = encounters_total if encounters_total is defined and encounters_total else (encounters_data|length if encounters_data else (1 if current_ed else 0)) %}
   {% set enc_multi = enc_total_n > 1 %}
-  <details class="history-fold"{% if current_ed %} open{% endif %}>
+  {# По умолчанию свёрнут — как диагнозы; разворачивается кликом по заголовку. #}
+  <details class="history-fold">
     <summary class="enc-summary">
       <div class="icon-avatar{% if enc_open %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
       {% if enc_multi %}
@@ -2170,7 +2204,10 @@
       var target=allIssues.length===1
         ? document.getElementById('condition-'+allIssues[0].conditionId)
         : document.getElementById('conditions-list');
-      if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+      if(target){
+        if(target.tagName==='DETAILS') target.open=true;
+        target.scrollIntoView({behavior:'smooth', block:'start'});
+      }
     }
     panel.addEventListener('click', go);
     panel.addEventListener('keydown', function(e){

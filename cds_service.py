@@ -24,7 +24,6 @@ CDS использует правила (Слой 3), проверку лека�
 import fhir_store as fs
 import rules_engine as re
 import drug_service
-import protocol_cap as pcap
 import protocol_verdict as pverdict
 import protocol_dispatch as pdisp
 
@@ -131,10 +130,11 @@ def cds_patient_view(pid):
 
 
 def cds_order_sign(pid, medication_code):
-    """Хук order-sign: drug_service + соответствие АБТ протоколу ВП."""
+    """Хук order-sign: drug_service + соответствие препарата протоколу (любому
+    применимому — ВП/ЖДА/…, см. protocol_dispatch.evaluate_drug_choice)."""
     verdict = drug_service.evaluate_medication(pid, medication_code)
     issues = list(verdict.get("issues") or [])
-    issues.extend(pcap.evaluate_abt_choice(pid, medication_code))
+    issues.extend(pdisp.evaluate_drug_choice(pid, medication_code))
 
     cards = []
     hard_stops = [i for i in issues if i["severity"] == "hard-stop"]
@@ -152,7 +152,7 @@ def cds_order_sign(pid, medication_code):
         })
 
     if warnings:
-        proto = any(i.get("category") == "not_first_line_abt" for i in warnings)
+        proto_id = next((i.get("protocol_id") for i in warnings if i.get("protocol_id")), None)
         detail = "\n".join(f"• {i['message']}" for i in warnings)
         cards.append({
             "uuid": f"card-warn-{pid}-{medication_code}",
@@ -164,7 +164,7 @@ def cds_order_sign(pid, medication_code):
             "indicator": "warning",
             "source": {
                 "label": (
-                    "Регламент ВП (КП №768)" if proto
+                    _protocol_label(proto_id) if proto_id
                     else "Проверка лекарств (drug_service)"
                 )
             },

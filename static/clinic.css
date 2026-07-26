@@ -369,6 +369,16 @@ button.btn-small {
 .cds-critical .cds-tier { color: var(--critical); }
 .cds-warn .cds-tier { color: var(--accent); }
 .cds-ok .cds-tier { color: var(--green); }
+/* Какой протокол сформировал подсказку — обязательно рядом с меткой, а не
+   только в тексте заголовка: у пациента может быть несколько активных
+   протоколов (ВП + ЖДА), и «не соответствует протоколу» без имени протокола
+   неоднозначно (см. AGENTS.md — «серьёзное медицинское приложение»). */
+.cds-tier-proto {
+  color: var(--faint);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
 .cds-title {
   font-size: 1.05rem;
   font-weight: 600;
@@ -469,5 +479,6 @@ button.btn-small {
 .cds-alt:not([open]) > :not(summary) { display: none !important; }
 
 .history-fold:not([open]) > :not(summary) { display: none !important; }
+details.dx-card:not([open]) > :not(summary) { display: none !important; }
 
 /* guest-banner class retained for doctor_gate; styles from .page-banner */
