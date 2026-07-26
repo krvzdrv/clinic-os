@@ -250,16 +250,22 @@ def get_conditions(pid):
 
 def add_condition(pid, code, display, onset_date=None, encounter_id=None,
                   code_system="ICD-10", clinical_status="active",
-                  verification_status="confirmed"):
+                  verification_status="confirmed",
+                  source_kind=None, source_id=None, source_label=None):
+    """source_kind/source_id/source_label — провенанс: диагноз поставлен по
+    конкретному результату (report/observation), а не «просто так». Используется
+    для подсказки в UI, откуда взялся диагноз."""
     cid = _new_id("c")
     if not onset_date:
         onset_date = _today()
     db.execute(
         "INSERT INTO condition_ (id, patient_id, encounter_id, code_system, code, display, "
-        "clinical_status, verification_status, onset_date, recorded_date) "
-        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        "clinical_status, verification_status, onset_date, recorded_date, "
+        "source_kind, source_id, source_label) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
         (cid, pid, encounter_id, code_system, code, display,
-         clinical_status, verification_status, onset_date, _today()))
+         clinical_status, verification_status, onset_date, _today(),
+         source_kind, source_id, source_label))
     if encounter_id:
         link_encounter_condition(encounter_id, cid)
     clear_pid_cache(pid)

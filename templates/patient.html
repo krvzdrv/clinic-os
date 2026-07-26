@@ -237,6 +237,18 @@
   .add-panel-b{overflow:hidden;transition:height .18s ease;}
   .add-panel .fform{margin:0;padding:10px;}
   .add-panel .fform .form-actions{justify-content:flex-start;}
+
+  /* Диагноз прямо из результата: компактный триггер внутри строки .it,
+     разворачивается в форму на всю ширину, как обычный add-panel. */
+  .add-panel--inline{flex:0 0 auto;min-width:auto;margin-left:auto;}
+  .add-panel--inline > summary{padding:3px 8px;font-size:11px;color:var(--steel);
+    background:var(--accent-soft);border-radius:6px;}
+  .add-panel--inline > summary::before{content:"+ ";}
+  .add-panel--inline[open]{flex:1 1 100%;margin-left:0;}
+  .add-panel--inline[open] > summary{border-radius:6px 6px 0 0;}
+  .src-hint{margin:0 0 8px;font-size:12px;color:var(--soft);display:flex;align-items:center;gap:4px;}
+  .src-hint b{color:var(--ink);font-weight:600;}
+  .dx-provenance{font-size:11px;color:var(--faint);}
   .chart-rail{display:flex;flex-wrap:wrap;gap:4px;margin:0 0 12px;padding:0;}
   .chart-rail a{font-size:12px;font-weight:600;color:var(--soft);text-decoration:none;
     padding:5px 10px;border-radius:6px;background:transparent;}
@@ -649,10 +661,16 @@
   </div>
   {% endmacro %}
 
-  {% macro cond_form(pid, eid, chip_target='') %}
+  {% macro cond_form(pid, eid, chip_target='', source_kind=none, source_id=none, source_label=none) %}
   <div class="fform">
     <form method="POST" action="{{ url_for('add_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
+      {% if source_kind and source_id %}
+      <input type="hidden" name="source_kind" value="{{ source_kind }}">
+      <input type="hidden" name="source_id" value="{{ source_id }}">
+      <input type="hidden" name="source_label" value="{{ source_label }}">
+      <p class="src-hint"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
+      {% endif %}
       <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>Диагноз (МКБ-10)</label>
         <select name="code" required>
           <option value="">— выберите диагноз —</option>
@@ -961,6 +979,9 @@
           <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
           <span class="badge {{ 'green' if (c.clinical_status or 'active') == 'active' else 'grey' }}">{{ 'активный' if (c.clinical_status or 'active') == 'active' else (c.clinical_status or '') }}</span>
         </div>
+        {% if c.source_label %}
+        <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
+        {% endif %}
         {% if is_cap %}
         <div class="dx-rail">
           <div class="attr-row">
@@ -1417,7 +1438,7 @@
             </div>
             <div class="chips" id="chips-cond-{{ e.id }}">
               {% for c in ed.cond %}
-              <span class="tag-chip">{{ c.display }}<span class="chip-sub">{{ c.code }}</span>
+              <span class="tag-chip">{{ c.display }}<span class="chip-sub">{{ c.code }}</span>{% if c.source_label %}<span class="chip-sub" title="Поставлен по результату исследования">← {{ c.source_label }}</span>{% endif %}
                 <form method="POST" action="{{ url_for('delete_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
                   <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
                 </form>
@@ -1442,10 +1463,18 @@
                     <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                   {% for r in lab_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                    {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
+                    <details class="add-panel add-panel--inline"><summary title="Поставить диагноз по этому результату">Диагноз</summary>
+                      <div class="add-panel-b">{{ cond_form(patient.id, e.id, '', 'report', r.id, r_label) }}</div>
+                    </details>
+                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                   {% for o in lab_obs %}<div class="it"><span class="st done">Результат</span><span>{{ loinc_display(o.code) }}</span><span class="res"><b>{{ o.value_numeric }}</b> {{ o.value_unit or '' }}{% if o.interpretation=='high' %}<span class="flag-up"> ↑</span>{% elif o.interpretation=='low' %}<span class="flag-up"> ↓</span>{% endif %}</span>
-                    <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                    {% set o_label = loinc_display(o.code) ~ ': ' ~ o.value_numeric ~ ' ' ~ (o.value_unit or '') %}
+                    <details class="add-panel add-panel--inline"><summary title="Поставить диагноз по этому результату">Диагноз</summary>
+                      <div class="add-panel-b">{{ cond_form(patient.id, e.id, '', 'observation', o.id, o_label) }}</div>
+                    </details>
+                    <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                 </div>
                 <div class="add-bar">
@@ -1468,7 +1497,11 @@
                     <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                   {% for r in ins_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
+                    {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
+                    <details class="add-panel add-panel--inline"><summary title="Поставить диагноз по этому результату">Диагноз</summary>
+                      <div class="add-panel-b">{{ cond_form(patient.id, e.id, '', 'report', r.id, r_label) }}</div>
+                    </details>
+                    <form method="POST" action="{{ url_for('delete_report_route', pid=patient.id, rid=r.id) }}" style="display:inline;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
                   </div>{% endfor %}
                 </div>
                 <div class="add-bar">

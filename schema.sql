@@ -47,7 +47,13 @@ CREATE TABLE IF NOT EXISTS condition_ (
     clinical_status  TEXT,   -- active / resolved
     verification_status TEXT, -- provisional / confirmed
     onset_date       TEXT,
-    recorded_date    TEXT
+    recorded_date    TEXT,
+    -- Провенанс: диагноз поставлен по конкретному результату исследования/анализа
+    -- (а не «просто так») — 'report' | 'observation', id ресурса, короткая подпись
+    -- для UI (денормализовано, чтобы не джойнить diagnostic_report/observation).
+    source_kind      TEXT,
+    source_id        TEXT,
+    source_label     TEXT
 );
 
 -- ===== Измерения и анализы (числовые) =====

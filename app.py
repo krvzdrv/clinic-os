@@ -814,6 +814,9 @@ def add_condition_route(pid):
         pid, code, display,
         onset_date=request.form.get("onset_date") or None,
         encounter_id=request.form.get("encounter_id") or None,
+        source_kind=request.form.get("source_kind") or None,
+        source_id=request.form.get("source_id") or None,
+        source_label=request.form.get("source_label") or None,
     )
     if _wants_json():
         return _json_after_clinical(pid, reload_ui=True, id=cid)

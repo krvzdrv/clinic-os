@@ -174,6 +174,10 @@ def init_schema():
     _ensure_column("medication_request", "dose_per_day", "NUMERIC")
     _ensure_column("medication_request", "cds_override", "INTEGER DEFAULT 0")
     _ensure_column("medication_request", "cds_override_detail", "TEXT")
+    # Провенанс диагноза: поставлен по результату конкретного исследования/анализа.
+    _ensure_column("condition_", "source_kind", "TEXT")
+    _ensure_column("condition_", "source_id", "TEXT")
+    _ensure_column("condition_", "source_label", "TEXT")
     # Append-only аудит CDS override + reasonReference M2M (idempotent CREATE).
     db_execute_ddl(
         "CREATE TABLE IF NOT EXISTS cds_override_log ("
