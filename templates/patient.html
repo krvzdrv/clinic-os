@@ -118,6 +118,13 @@
     font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
+  /* Два бейджа (текст + аллергия): текст ужимается с …, аллергия остаётся рядом. */
+  .section-header__right:has(.section-header__badge ~ .section-header__badge) .section-header__badge:first-of-type{
+    flex:1 1 auto;max-width:min(52%, 18em);
+  }
+  .section-header__right:has(.section-header__badge ~ .section-header__badge) .section-header__badge:last-of-type{
+    flex:0 1 auto;max-width:min(40%, 14em);
+  }
   .section-badge--danger{background:var(--bg-danger);color:var(--text-danger);}
   .section-badge--neutral{background:var(--surface-1);color:var(--text-secondary);border:0.5px solid var(--border);}
   .section-badge--accent{background:var(--bg-accent);color:var(--text-accent);}
@@ -859,7 +866,7 @@
       {% endif %}
       <div class="field"><label class="sr-only">Диагноз (МКБ-10)</label>
         <select name="code" required aria-label="Диагноз (МКБ-10)">
-          <option value="">— выберите диагноз —</option>
+          <option value="">— не выбран —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
              Новый протокол в YAML появляется здесь сам; процесс постановки один. #}
           {% for g in diagnosis_groups %}
@@ -921,9 +928,9 @@
       <input type="hidden" name="override_reason" id="med-reason-{{ uid }}" value="">
       {% if replace_abt %}<input type="hidden" name="replace_abt" value="1">{% endif %}
       <div class="med-linked">
-        <div class="field"><label><i class="ti ti-pill" aria-hidden="true"></i>Препарат</label>
-          <select name="code" id="med-code-{{ uid }}" required>
-            <option value="">— выберите препарат —</option>
+        <div class="field"><label class="sr-only">Препарат</label>
+          <select name="code" id="med-code-{{ uid }}" required aria-label="Препарат">
+            <option value="">— не выбран —</option>
             {# В option — только имя; группа — optgroup (без энциклопедии в каждой строке). #}
             {% set og = namespace(cur='') %}
             {% for d in drug_catalog %}
@@ -1024,24 +1031,29 @@
   {% endmacro %}
 
   {# Секция визита = единый section-header (icon + title + summary-badge + chevron). #}
-  {% macro fstep(title, icon, state, badge_kind, badge_text, anchor='', open=false) %}
+  {% macro _section_badge(kind, text) %}
+    {% if kind == 'danger' and text %}
+    <span class="section-badge section-badge--danger section-header__badge">
+      <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
+      {{ text }}
+    </span>
+    {% elif kind == 'accent' and text %}
+    <span class="section-badge section-badge--accent section-header__badge">{{ text }}</span>
+    {% elif kind == 'neutral' and text %}
+    <span class="section-badge section-badge--neutral section-header__badge">{{ text }}</span>
+    {% elif kind == 'placeholder' and text %}
+    <span class="section-placeholder section-header__badge">{{ text }}</span>
+    {% endif %}
+  {% endmacro %}
+
+  {% macro fstep(title, icon, state, badge_kind, badge_text, anchor='', open=false, badge2_kind='', badge2_text='') %}
   <details class="fstep {{ state }}" {% if anchor %}id="{{ anchor }}"{% endif %}{% if open %} open{% endif %}>
     <summary class="section-header">
       <i class="ti {{ icon }} section-header__icon" aria-hidden="true"></i>
       <span class="section-header__title">{{ title }}</span>
       <div class="section-header__right">
-        {% if badge_kind == 'danger' and badge_text %}
-        <span class="section-badge section-badge--danger section-header__badge">
-          <i class="ti ti-circle-filled" style="font-size:7px;" aria-hidden="true"></i>
-          {{ badge_text }}
-        </span>
-        {% elif badge_kind == 'accent' and badge_text %}
-        <span class="section-badge section-badge--accent section-header__badge">{{ badge_text }}</span>
-        {% elif badge_kind == 'neutral' and badge_text %}
-        <span class="section-badge section-badge--neutral section-header__badge">{{ badge_text }}</span>
-        {% elif badge_kind == 'placeholder' and badge_text %}
-        <span class="section-placeholder section-header__badge">{{ badge_text }}</span>
-        {% endif %}
+        {{ _section_badge(badge_kind, badge_text) }}
+        {{ _section_badge(badge2_kind, badge2_text) }}
         <i class="ti ti-chevron-right chevron section-chev-right" aria-hidden="true"></i>
         <i class="ti ti-chevron-down chevron section-chev-down" aria-hidden="true"></i>
       </div>
@@ -1469,9 +1481,11 @@
         {% for f in ed.flag %}{% if f.category == 'anamnesis' %}{% set _ = anam_notes.append(f) %}{% elif f.category == 'social_risk' %}{% set _ = anam_risk.append(f) %}{% endif %}{% endfor %}
         {% set exam_flags = [] %}
         {% for f in ed.flag if f.category == 'exam' %}{% set _ = exam_flags.append(f) %}{% endfor %}
-        {% set gc_flag = None %}
-        {% set gc_flag_id = None %}
-        {% for f in ed.flag if f.category == 'general_condition' %}{% set gc_flag = f.key %}{% set gc_flag_id = f.id %}{% endfor %}
+        {# Не {% set %} внутри for — в Jinja это не обновляет внешнюю переменную
+           (оценка сохранялась в БД, а UI всегда показывал «Оценить»). #}
+        {% set _gc_list = ed.flag|selectattr('category', 'equalto', 'general_condition')|list %}
+        {% set gc_flag = _gc_list[0].key if _gc_list else none %}
+        {% set gc_flag_id = _gc_list[0].id if _gc_list else none %}
         {# Разделяем наблюдения: витальные (осмотр) и лабораторные (обследование). #}
         {% set exam_obs = [] %}
         {% set lab_obs = [] %}
@@ -1552,13 +1566,26 @@
           {% set bj.text = (e.complaint[:42] ~ '…') if e.complaint|length > 42 else e.complaint %}
         {% endif %}
 
+        {# Свёрнутый Анамнез: выжимка текста (как у Жалобы) + отдельно аллергия.
+           Раньше allergies[0] полностью подменял текст — при свёртке не было видно анамнеза. #}
         {% set ba = namespace(kind='placeholder', text='Не заполнено') %}
-        {% if focus == 'anam' and cds_short %}{% set ba.kind = 'danger' %}{% set ba.text = cds_short %}
-        {% elif allergies %}{% set ba.kind = 'danger' %}{% set ba.text = allergies[0].display %}
+        {% set ba2 = namespace(kind='', text='') %}
+        {% set _anam_snip = '' %}
+        {% if anam_notes %}
+          {% set _anam_snip = (anam_notes[0].key[:36] ~ '…') if anam_notes[0].key|length > 36 else anam_notes[0].key %}
+        {% elif anam_risk %}
+          {% set _anam_snip = flag_options[anam_risk[0].key][0] if anam_risk[0].key in flag_options else 'Заполнено' %}
+        {% endif %}
+        {% if focus == 'anam' and cds_short %}
+          {% set ba.kind = 'danger' %}{% set ba.text = cds_short %}
+          {% if allergies %}{% set ba2.kind = 'danger' %}{% set ba2.text = allergies[0].display %}{% endif %}
+        {% elif _anam_snip and allergies %}
+          {% set ba.kind = 'neutral' %}{% set ba.text = _anam_snip %}
+          {% set ba2.kind = 'danger' %}{% set ba2.text = allergies[0].display %}
+        {% elif allergies %}
+          {% set ba.kind = 'danger' %}{% set ba.text = allergies[0].display %}
         {% elif anam_done %}
-          {% set ba.kind = 'neutral' %}
-          {% if anam_notes %}{% set ba.text = (anam_notes[0].key[:42] ~ '…') if anam_notes[0].key|length > 42 else anam_notes[0].key %}
-          {% else %}{% set ba.text = flag_options[anam_risk[0].key][0] if anam_risk and anam_risk[0].key in flag_options else 'Заполнено' %}{% endif %}
+          {% set ba.kind = 'neutral' %}{% set ba.text = _anam_snip or 'Заполнено' %}
         {% endif %}
 
         {# Свёрнутый Осмотр: red flag > N вне нормы; норма без бейджа (form-2) #}
@@ -1615,7 +1642,7 @@
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=true) %}
+               open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {{ anam_form(patient.id, e.id, anam_text) }}
             <p class="section-label">Факторы риска</p>
