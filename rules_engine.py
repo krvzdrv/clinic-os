@@ -20,7 +20,8 @@ from fhir_store import (
 from terminology import (PNEUMONIA_CODES, IDA_CODES, TEMP_CODE, SPO2_CODE, RR_CODE, HR_CODE,
                          WBC_CODE, CRP_CODE, PCT_CODE, SBP_CODE, DBP_CODE,
                          CREAT_CODE, UREA_CODE, HB_CODE,
-                         FERRITIN_CODE, IRON_CODE, MCV_CODE, MCH_CODE, MCHC_CODE, TSAT_CODE)
+                         FERRITIN_CODE, IRON_CODE, MCV_CODE, MCH_CODE, MCHC_CODE, TSAT_CODE,
+                         CLINICAL_FLAGS)
 
 
 # --- Ко-морбидность: диабет (влияет на выбор АБТ и тяжесть фона) ---
@@ -259,7 +260,7 @@ def small_severe_criteria(pid):
     if rr is not None and rr >= TACHYPNEA_THRESHOLD:
         crit.append(f"ЧД {rr} ≥30/мин")
     if has_clinical_flag(pid, "consciousness_disorder"):
-        crit.append("нарушение сознания")
+        crit.append(flag_criterion_text("consciousness_disorder"))
     s = worst_spo2(pid)
     if s is not None and s < SEVERE_SPO2_THRESHOLD:
         crit.append(f"SaO2 {s}% (<90%)")
@@ -269,11 +270,11 @@ def small_severe_criteria(pid):
     if has_hypotension(pid):
         crit.append(f"САД {worst_sbp(pid)} <90 мм рт.ст.")
     if has_clinical_flag(pid, "bilateral_infiltration"):
-        crit.append("двустороннее/многоочаговое поражение лёгких")
+        crit.append(flag_criterion_text("bilateral_infiltration"))
     if has_clinical_flag(pid, "cavity"):
-        crit.append("полости распада")
+        crit.append(flag_criterion_text("cavity"))
     if has_clinical_flag(pid, "pleural_effusion"):
-        crit.append("плевральный выпот")
+        crit.append(flag_criterion_text("pleural_effusion"))
     return crit
 
 
@@ -305,6 +306,17 @@ def has_clinical_flag(pid, key, value="true"):
     """Обёртка над fhir_store.has_flag (здесь — чтобы держать все предикаты в одном слое)."""
     from fhir_store import has_flag
     return has_flag(pid, key, value)
+
+
+def flag_criterion_text(flag_code):
+    """Единый доктор-текст критерия по клиническому флагу — из terminology.CLINICAL_FLAGS
+    (та же подпись, что у чекбокса в форме осмотра), а не отдельная строка на каждый
+    список причин. Раньше один и тот же флаг (напр. bilateral_infiltration) описывался
+    по-разному в разных списках («двусторонняя/многодолевая» в одном месте против
+    «двустороннее/многоочаговое» в другом) — источник путаницы и разъезда «/» без пробелов.
+    Возвращает текст со строчной буквы (для фрагмента в списке причин, не заголовка)."""
+    label = CLINICAL_FLAGS.get(flag_code, (flag_code, None))[0]
+    return label[0].lower() + label[1:] if label else flag_code
 
 
 def general_condition(pid):

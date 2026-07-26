@@ -97,7 +97,7 @@ def hospitalization_reasons(pid):
     if t is not None and (t < 35.5 or t >= 39.9):
         reasons.append(f"температура {t}°C (<35,5 или ≥39,9)")
     if re.has_clinical_flag(pid, "consciousness_disorder"):
-        reasons.append("нарушение сознания")
+        reasons.append(re.flag_criterion_text("consciousness_disorder"))
 
     # 2. Лабораторные и рентгенологические данные (острые значения)
     wbc = re.worst_wbc(pid)
@@ -116,19 +116,19 @@ def hospitalization_reasons(pid):
     if hb is not None and hb < 90:
         reasons.append(f"гемоглобин {hb} г/л (<90)")
     if re.has_clinical_flag(pid, "bilateral_infiltration"):
-        reasons.append("двусторонняя/многодолевая инфильтрация")
+        reasons.append(re.flag_criterion_text("bilateral_infiltration"))
     if re.has_clinical_flag(pid, "cavity"):
-        reasons.append("полости распада")
+        reasons.append(re.flag_criterion_text("cavity"))
     if re.has_clinical_flag(pid, "pleural_effusion"):
-        reasons.append("плевральный выпот")
+        reasons.append(re.flag_criterion_text("pleural_effusion"))
 
     # 3. Невозможность адекватного ухода дома — по социальным флагам
     if re.has_clinical_flag(pid, "alcoholism") or re.has_clinical_flag(pid, "drug_addiction"):
-        reasons.append("невозможность адекватного ухода дома (алкоголизм/наркомания)")
+        reasons.append("невозможность адекватного ухода дома (алкоголизм или наркомания)")
 
     # Экстренные/неотложные признаки
     if re.has_clinical_flag(pid, "shock"):
-        reasons.append("шок / сепсис")
+        reasons.append(re.flag_criterion_text("shock"))
 
     # Общее состояние по оценке врача: тяжёлое/крайне тяжёлое — показание к госпитализации.
     gc = re.general_condition(pid)
@@ -155,7 +155,7 @@ def prefer_inpatient_reasons(pid):
     if re.age_years(pid) > 60:
         pref.append(f"возраст старше 60 лет ({re.age_years(pid)})")
     if re.has_chronic_lung_disease(pid):
-        pref.append("сопутствующее: хронические болезни лёгких/ХОБЛ")
+        pref.append("сопутствующее: хронические болезни лёгких (в т.ч. ХОБЛ)")
     if re.has_diabetes(pid):
         pref.append("сопутствующее: сахарный диабет")
     if re.has_ckd(pid):
@@ -175,7 +175,7 @@ def _risk_factors(pid):
     if re.has_clinical_flag(pid, "hospitalized_3mo"):
         factors.append("госпитализация в предшествующие 3 мес")
     if re.has_chronic_lung_disease(pid):
-        factors.append("хронические болезни лёгких/ХОБЛ")
+        factors.append("хронические болезни лёгких (в т.ч. ХОБЛ)")
     if re.has_diabetes(pid):
         factors.append("сахарный диабет")
     if re.has_clinical_flag(pid, "immunosuppression"):
@@ -262,16 +262,19 @@ def evaluate_abt_choice(pid, atc_code):
 
 
 def icu_criteria(pid):
-    """Показания к переводу в ОРИТ (КП №768). Возвращает список причин."""
+    """Показания к переводу в ОРИТ (КП №768). Возвращает список причин.
+
+    Большие/малые критерии (шок, ОПН, ЧД/сознание/SaO2 и т.д.) целиком приходят
+    из rules_engine.{large,small}_severe_criteria — единственного места, где
+    формулируется их текст. Не дублировать критерий по флагу "shock" здесь: он
+    уже входит в large_severe_criteria с формулировкой КП №768 (вазопрессоры ≥4 ч).
+    """
     crit = []
     large = re.large_severe_criteria(pid)
     crit.extend(large)
     small = re.small_severe_criteria(pid)
     if len(small) >= 2 and not large:
         crit.append("≥2 «малых» критерия тяжёлого течения")
-    if re.has_clinical_flag(pid, "shock"):
-        if not any("шок" in c for c in crit):
-            crit.append("септический шок / вазопрессоры ≥4 ч")
     return crit
 
 
@@ -375,7 +378,7 @@ def evaluate_cap(pid):
         gaps.append({
             "severity": "warning",
             "code": "diagnosis_unsupported",
-            "message": "Диагноз ВП не подтверждён данными: нет записей анамнеза/жалоб и объективного осмотра.",
+            "message": "Диагноз ВП не подтверждён данными: нет записей анамнеза, жалоб и объективного осмотра.",
             "recommendation": "Заполните анамнез (жалобы, анамнез заболевания) или объективный осмотр (t, SpO2, ЧД, ЧСС, локальные знаки).",
         })
 
@@ -452,11 +455,11 @@ def evaluate_cap(pid):
                 "message": "В стационаре не назначены ОАМ / ЭКГ.",
                 "recommendation": "ОАМ, ЭКГ, по показаниям ПКТ и посевы (КП №768).",
             })
-        # Посевы (гемокультура/мокрота) — при тяжёлом течении.
+        # Посевы (гемокультура или мокрота) — при тяжёлом течении.
         if severity == "severe" and not (_has_service_request(pid, "BLOOD_CULT") or _has_service_request(pid, "SPUTUM_CULT")):
             gaps.append({
                 "severity": "info", "code": "missing_cultures",
-                "message": "Не взяты посевы (гемокультура/мокрота).",
+                "message": "Не взяты посевы (гемокультура или мокрота).",
                 "recommendation": "До старта АБТ — посевы при тяжёлом течении (КП №768).",
             })
 
@@ -473,7 +476,7 @@ def evaluate_cap(pid):
     if re.has_local_signs(pid) and not cxr_ordered:
         gaps.append({
             "severity": "info", "code": "cxr_local_signs",
-            "message": "Локальные/асимметричные знаки в лёгких — показание к R-графии ОГК.",
+            "message": "Локальные или асимметричные знаки в лёгких — показание к R-графии ОГК.",
             "recommendation": "Назначить R-графию ОГК (КП №768).",
         })
 
@@ -648,7 +651,7 @@ def _check_course(abt, gaps):
             gaps.append({
                 "severity": "info", "code": "course_too_long",
                 "message": f"Курс АБТ {dur} дн. — длиннее 14 дней.",
-                "recommendation": "Обосновать продление (осложнённая/тяжёлая ВП).",
+                "recommendation": "Обосновать продление (осложнённая или тяжёлая ВП).",
             })
     else:
         gaps.append({
@@ -664,7 +667,7 @@ def _evaluate_symptomatic(pid, gaps):
     if _has_med_class(pid, "R05CB") and not re.has_bronchial_obstruction(pid):
         gaps.append({
             "severity": "info", "code": "mucolytic_optional",
-            "message": "Муколитик назначен без бронхообструкции/показаний.",
+            "message": "Муколитик назначен без бронхообструкции или других показаний.",
             "recommendation": "Муколитики по показаниям — при продуктивном кашле (КП №768).",
         })
     # Бронхолитик без бронхообструкции — warning
@@ -681,7 +684,7 @@ def _evaluate_symptomatic(pid, gaps):
             gaps.append({
                 "severity": "warning", "code": "steroid_not_indicated",
                 "message": "Системный глюкокортикоид назначен без показаний.",
-                "recommendation": "ГКС — при тяжёлой ВП с бронхообструкцией/сепсисом (КП №768).",
+                "recommendation": "ГКС — при тяжёлой ВП с бронхообструкцией или сепсисом (КП №768).",
             })
     # Осельтамивир без подозрения на грипп — info
     if _has_med_class(pid, "J05AH") and not re.has_influenza_suspicion(pid):

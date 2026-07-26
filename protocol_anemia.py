@@ -157,7 +157,7 @@ def evaluate_ida(pid):
         gaps.append({
             "severity": "warning",
             "code": "diagnosis_unsupported",
-            "message": "Диагноз ЖДА не подтверждён данными: нет записей анамнеза/жалоб и объективного осмотра.",
+            "message": "Диагноз ЖДА не подтверждён данными: нет записей анамнеза, жалоб и объективного осмотра.",
             "recommendation": "Заполните анамнез (жалобы, причина кровопотери) или объективный осмотр.",
         })
 
@@ -264,13 +264,13 @@ def _evaluate_iron_therapy(pid, expected, gaps):
             "severity": "info", "code": "route_mismatch_iron",
             "message": (f"{atc_drug_display(med['code'])} назначен парентерально — "
                         "по умолчанию КП №23 предполагает приём внутрь без противопоказаний."),
-            "recommendation": "Уточнить показания к парентеральному железу (мальабсорбция/ЖКТ/непереносимость).",
+            "recommendation": "Уточнить показания к парентеральному железу (мальабсорбция, заболевание ЖКТ или непереносимость).",
         })
     elif expected["route"] == "iv" and route == "oral":
         gaps.append({
             "severity": "warning", "code": "route_mismatch_iron",
             "message": (f"{atc_drug_display(med['code'])} назначен внутрь, но по указанным факторам "
-                        "(мальабсорбция/заболевание ЖКТ/непереносимость) показано внутривенное железо."),
+                        "(мальабсорбция, заболевание ЖКТ или непереносимость) показано внутривенное железо."),
             "recommendation": f"{expected['rationale']} ({expected['ref']}).",
         })
 

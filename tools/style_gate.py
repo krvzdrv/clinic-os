@@ -159,6 +159,48 @@ def check_double_submit_guard_coverage():
         ok("все страницы с POST-формой подключают _double_submit_guard.html")
 
 
+# ---------------------------------------------------------------------------
+# 5) «Слипшийся» слэш между клиническими терминами — X/Y читается неоднозначно
+#    (AND? OR? синоним?) и на практике расползается по написанию (было:
+#    «двусторонняя/многодолевая» в одном файле и «двустороннее/многоочаговое»
+#    в другом — тот же клинический флаг, два текста). Разрешено только для
+#    коротких доменных аббревиатур (в/в, р/сут, мг/кг) — порог в 3+ буквы с
+#    каждой стороны их не задевает.
+# ---------------------------------------------------------------------------
+
+SLASH_WORDS_RE = re.compile(r"[а-яА-ЯёЁ]{3,}/[а-яА-ЯёЁ]{3,}")
+TRIPLE_QUOTE_RE = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'')
+STRING_LIT_RE = re.compile(r'"([^"\\]|\\.)*"')
+
+# Только файлы, где текст в строковых литералах реально показывается врачу
+# (docstring/комментарии — не в счёт, поэтому вырезаются отдельно).
+DOCTOR_TEXT_FILES = [
+    "protocol_cap.py", "protocol_anemia.py", "protocol_rules.py",
+    "protocol_rules_ida.py", "rules_engine.py", "cds_service.py",
+    "care_plan_service.py", "protocol_verdict.py", "drug_service.py",
+    "terminology.py",
+]
+
+
+def check_slash_between_words():
+    print("\n[5] Врачебный текст — без «слипшегося» X/Y (см. STYLE_GUIDE §4.5): или « / », или «или»/«, »")
+    any_bad = False
+    for name in DOCTOR_TEXT_FILES:
+        path = os.path.join(REPO, name)
+        if not os.path.isfile(path):
+            continue
+        text = open(path, encoding="utf-8").read()
+        text_no_docstrings = TRIPLE_QUOTE_RE.sub("", text)
+        for lit in STRING_LIT_RE.finditer(text_no_docstrings):
+            s = lit.group(0)
+            if SLASH_WORDS_RE.search(s):
+                line_no = text_no_docstrings[: lit.start()].count("\n") + 1
+                fail(f"{name}:~{line_no}: слэш между словами без пробелов — {s[:100]!r}")
+                any_bad = True
+    if not any_bad:
+        ok("нет X/Y без пробелов в строковых литералах врачебного текста")
+
+
 def main() -> int:
     print("=" * 70)
     print("STYLE GATE — clinic-os (offline, без БД/сервера)")
@@ -167,6 +209,7 @@ def main() -> int:
     check_button_inline_style()
     check_raw_status_leak()
     check_double_submit_guard_coverage()
+    check_slash_between_words()
     print("\n" + "=" * 70)
     print(f"ИТОГ style_gate: {OK} ok, {FAIL} fail")
     print("=" * 70)
