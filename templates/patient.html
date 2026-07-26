@@ -106,17 +106,26 @@
   .fstep > summary.section-header::-webkit-details-marker{display:none;}
   .fstep > summary.section-header::before{content:none;}
   .section-header__icon{font-size:16px;color:var(--text-secondary);flex:none;}
-  .section-header__title{font-size:14px;font-weight:500;color:var(--text-primary);}
-  .section-header__right{margin-left:auto;display:flex;align-items:center;gap:8px;flex:none;}
+  .section-header__title{font-size:14px;font-weight:500;color:var(--text-primary);flex:none;}
+  /* Правый кластер забирает всё свободное место между заголовком и шевроном —
+     иначе бейдж с диагнозом режется при max-width, а середина строки пустует. */
+  .section-header__right{
+    margin-left:auto;display:flex;align-items:center;gap:8px;
+    flex:1 1 auto;min-width:0;justify-content:flex-end;
+  }
   .section-badge{
-    display:inline-flex;align-items:center;gap:4px;
-    font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;white-space:nowrap;max-width:16em;overflow:hidden;text-overflow:ellipsis;
+    display:inline-flex;align-items:center;gap:4px;min-width:0;max-width:100%;
+    font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
   .section-badge--danger{background:var(--bg-danger);color:var(--text-danger);}
   .section-badge--neutral{background:var(--surface-1);color:var(--text-secondary);border:0.5px solid var(--border);}
   .section-badge--accent{background:var(--bg-accent);color:var(--text-accent);}
-  .section-placeholder{font-size:13px;color:var(--text-muted);}
-  .section-header .chevron{font-size:14px;color:var(--text-muted);}
+  .section-placeholder{
+    font-size:13px;color:var(--text-muted);min-width:0;max-width:100%;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .section-header .chevron{font-size:14px;color:var(--text-muted);flex:none;}
   .fstep[open] > summary.section-header .section-header__badge{display:none;}
   .fstep:not([open]) > summary.section-header .section-chev-down{display:none;}
   .fstep[open] > summary.section-header .section-chev-right{display:none;}
@@ -338,21 +347,39 @@
     cursor:pointer;list-style:none;
     display:flex;align-items:center;gap:10px;
     padding:14px 16px 12px;margin:0;
+    /* Одна строка: название режется, дата+статус+шеврон не переезжают друг на друга. */
+    flex-wrap:nowrap;min-width:0;
   }
   details.dx-card > summary.dx-head::-webkit-details-marker{display:none;}
   details.dx-card:not([open]) > :not(summary){display:none !important;}
   details.dx-card .dx-body{padding:0 16px 12px;}
   details.dx-card:not([open]) > summary.dx-head .dx-chev-down{display:none;}
   details.dx-card[open] > summary.dx-head .dx-chev-right{display:none;}
-  .dx-head .dx-end{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
+  .dx-head .dx-end{display:flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto;min-width:0;}
   .dx-head .dx-chev{font-size:18px;color:var(--text-muted);flex:none;}
   .dx-head{display:flex;align-items:center;gap:10px;margin:0 0 4px;}
   .dx-card .dx-issue.cds-warn{border-color:var(--border-warning);}
   .dx-card .dx-issue.cds-warn .cds-tier{color:var(--text-warning);}
-  .dx-head .dx-title{flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--text-primary);line-height:1.35;margin:0;}
+  .dx-head .dx-title{
+    flex:1 1 auto;min-width:0;font-size:15px;font-weight:500;color:var(--text-primary);
+    line-height:1.35;margin:0;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
   .dx-head .dx-code, .vs .dx-code{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:6px;}
+  /* Дата начала — короткий якорь в правом кластере, не отдельный «бабл». */
+  .dx-head .dx-onset{flex:none;font-size:12px;font-weight:500;color:var(--text-secondary);white-space:nowrap;}
   .dx-head .badge{margin:0;flex:none;border-radius:6px;white-space:nowrap;}
   .dx-empty{font-size:13px;color:var(--text-muted);padding:4px 0 8px;}
+  /* История диагнозов — компактные строки в одну линию, без wrap-наложений. */
+  #dx-history .visit-row{
+    flex-wrap:nowrap;padding:6px 10px;background:var(--tint, #f7f6f4);border-color:var(--line);
+    min-width:0;
+  }
+  #dx-history .visit-row .vd{flex:0 0 auto;min-width:0;color:var(--text-secondary);font-weight:500;}
+  #dx-history .visit-row .vs{
+    flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  #dx-history .visit-row .badge{flex:0 0 auto;}
 
   .dx-rail{
     margin:10px 0 0 7px;padding:2px 0 0 16px;
@@ -439,7 +466,14 @@
   /* Дата/тип/статус ЭТОГО приёма — здесь, а не в общем summary списка приёмов,
      чтобы не выглядело так, будто один приём вложен внутрь другого. */
   .enc-id{display:flex;align-items:center;gap:8px;flex:0 0 auto;font-size:13px;color:var(--text-primary);}
-  .enc-toolbar .enc-complaint{flex:1;min-width:12em;font-size:13px;color:var(--text-secondary);margin:0;}
+  .enc-toolbar .enc-complaint{font-size:13px;color:var(--text-secondary);margin:0;}
+  /* Жалобу могли не знать в момент открытия приёма — редактируемая и после
+     создания (не только при первом вводе), тот же inline add-panel, что и
+     «Диагноз по результату» (dlist .add-panel--inline). */
+  .enc-complaint-wrap{display:flex;align-items:baseline;gap:6px;flex:1;min-width:12em;}
+  .enc-complaint-wrap .enc-complaint{flex:0 1 auto;}
+  .enc-toolbar .enc-complaint-wrap .add-panel--inline{margin-left:0;flex:0 0 auto;}
+  .enc-complaint-edit input[type=text]{min-width:22em;}
   /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost) и тот же
      размер, что .btn/.btn-small (static/clinic.css), иначе рядом смотрится «слепленным». */
   .enc-toolbar .add-panel{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
@@ -725,21 +759,18 @@
       <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>Диагноз (МКБ-10)</label>
         <select name="code" required>
           <option value="">— выберите диагноз —</option>
-          <optgroup label="Внебольничная пневмония">
-            {% for c, d in icd10.items() if c in ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
+          {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
+             Новый протокол в YAML появляется здесь сам; процесс постановки один. #}
+          {% for g in diagnosis_groups %}
+          <optgroup label="{{ g.label }}">
+            {% for c in g.codes %}
+            {% set d = icd10.get(c, c) %}
             <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
           </optgroup>
-          <optgroup label="Железодефицитная анемия">
-            {% for c, d in icd10.items() if c in ['D50','D50.0','D50.8','D50.9'] %}
-            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
-          </optgroup>
-          <optgroup label="Фоновые / ко-морбидность (влияют на выбор АБТ и госпитализацию)">
-            {% for c, d in icd10.items() if c in ['E10','E11','N18','J44','J45','J46','J84'] %}
-            <option value="{{ c }}" data-display="{{ d }}">{{ c }} — {{ d }}</option>{% endfor %}
-          </optgroup>
+          {% endfor %}
         </select>
       </div>
-      <div class="field"><label><i class="ti ti-tag" aria-hidden="true"></i>Название</label><input type="text" name="display" placeholder="Пневмония неуточненная" required></div>
+      <div class="field"><label><i class="ti ti-tag" aria-hidden="true"></i>Название</label><input type="text" name="display" placeholder="Название по выбранному коду МКБ" required></div>
       <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="onset_date" value="{{ today }}"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Поставить диагноз</button></div>
     </form>
@@ -850,7 +881,7 @@
     <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <div class="field"><label><i class="ti ti-eye" aria-hidden="true"></i>Признак осмотра</label>
-        <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — red flag' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
+        <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
@@ -908,17 +939,18 @@
   {# —— Эпизод: диагноз-контейнер → лечение / цель / CDS (CLINICAL_HIERARCHY) —— #}
   {% set ed0 = current_ed if current_ed is defined and current_ed else (encounters_data[0] if encounters_data else none) %}
   {% set e0 = ed0.encounter if ed0 else none %}
-  {% set PN_CODES = ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
   {% set ROUTE_RU = {'oral':'внутрь','iv':'в/в','im':'в/м','inh':'ингаляционно'} %}
   {# У пациента может быть несколько протоколов (ВП + ЖДА и т.д.) — каждый со своей
-     вложенной CDS-карточкой под «своим» диагнозом (verdict_by_condition из protocol_dispatch),
-     а не только у ВП (единственное число nest.primary_id — легаси, больше не используется). #}
+     вложенной CDS-карточкой под «своим» диагнозом (verdict_by_condition из protocol_dispatch).
+     МКБ → protocol_id — из реестра, не хардкод списков в шаблоне. #}
   {% set verdict_by_condition = verdict_by_condition if verdict_by_condition is defined else {} %}
+  {% set active_therapy_by_protocol = active_therapy_by_protocol if active_therapy_by_protocol is defined else {} %}
+  {% set diagnosis_groups = diagnosis_groups if diagnosis_groups is defined else [] %}
+  {# CDS вложена под диагноз(ы), если есть вердикты по протоколам или диагнозов ещё нет
+     (тогда подсказка «поставить диагноз» — в пустой карточке). Иначе — сверху. #}
   {% set nest_cds = (verdict_by_condition|length > 0) or (not conditions) %}
   {# Модульные alias'ы к CAP-вердикту (v) — только для CAP-специфичных блоков ниже
-     («Лечение»/АБТ, «Планирование и выписка»/R-графия и выписка), которые не участвуют
-     в обобщении на несколько протоколов. Внутри render_now_action(v, ...) те же имена
-     пересчитываются локально от переданного verdict — макро-scope их не путает. #}
+     («Планирование и выписка»/R-графия), не для строки «Лечение» у диагноза. #}
   {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
   {% set tier = v.tier if v.tier is defined else ('ok' if v.ok else 'warn') %}
   {% set reason = v.reason if v.reason is defined else none %}
@@ -1065,15 +1097,18 @@
   <section class="status-strip" id="conditions-list" aria-label="Клинический статус">
     {% if active_conditions %}
       {% for c in active_conditions %}
-      {% set is_cap = c.code in PN_CODES %}
+      {% set proto_id = protocol_id_for_icd(c.code) if protocol_id_for_icd is defined else none %}
       {% set cond_verdict = verdict_by_condition.get(c.id) %}
-      {# Сверху свежие; по умолчанию все свёрнуты (как блок приёмов). #}
+      {% set therapy_meds = active_therapy_by_protocol.get(proto_id, []) if proto_id else [] %}
+      {# Активные — выше истории; по умолчанию свёрнуты. Дата = начало заболевания.
+         Лечение/CDS — по протоколу этого МКБ (ВП, ЖДА, …), не только пневмония. #}
       <details class="dx-card" id="condition-{{ c.id }}">
         <summary class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
-          <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span>{% if c.onset_date %}<span class="dx-code">{{ c.onset_date }}</span>{% endif %}</h2>
+          <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
           <span class="dx-end">
-            <span class="badge green">активный</span>
+            {% if c.onset_date %}<span class="dx-onset" title="Дата начала заболевания">{{ c.onset_date }}</span>{% endif %}
+            <span class="badge green" title="Активный диагноз">активный</span>
             <i class="ti ti-chevron-right dx-chev dx-chev-right" aria-hidden="true"></i>
             <i class="ti ti-chevron-down dx-chev dx-chev-down" aria-hidden="true"></i>
           </span>
@@ -1081,28 +1116,28 @@
         <div class="dx-body">
           <div style="margin:0 0 8px;">
             <form method="POST" action="{{ url_for('resolve_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
-              <button class="btn ghost btn-small" type="submit" title="Эпизод болезни клинически закончен — отдельно от закрытия приёма">Разрешить диагноз</button>
+              <button class="btn ghost btn-small" type="submit" title="Эпизод болезни клинически закончен — отдельно от закрытия приёма">Отметить выздоровление</button>
             </form>
           </div>
           {% if c.source_label %}
           <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
           {% endif %}
-          {% if is_cap or cond_verdict %}
+          {% if proto_id or cond_verdict %}
           <div class="dx-rail">
-            {% if is_cap %}
+            {% if proto_id %}
             <div class="attr-row">
               <p class="attr-label"><i class="ti ti-pill" aria-hidden="true"></i>Лечение</p>
               <div class="attr-value-row">
                 <p class="attr-value">
-                  {% if active_abt %}
-                    {% for m in active_abt %}
+                  {% if therapy_meds %}
+                    {% for m in therapy_meds %}
                     <span class="k">{{ m.display }}</span>{% if m.dose %} · {{ m.dose }}{% endif %}{% if m.route %} · {{ ROUTE_RU.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}{% if not loop.last %}; {% endif %}
                     {% endfor %}
                   {% else %}
-                    <span class="none">нет активной АБТ</span>
+                    <span class="none">нет активной терапии</span>
                   {% endif %}
                 </p>
-                {% if active_abt and active_abt|selectattr('cds_override')|list %}
+                {% if therapy_meds and therapy_meds|selectattr('cds_override')|list %}
                 <span class="badge grey" title="Врач подтвердил назначение вопреки CDS">осознанно</span>
                 {% endif %}
               </div>
@@ -1124,8 +1159,6 @@
             {% endif %}
             {% if cond_verdict %}
               {{ render_now_action(cond_verdict, true) }}
-            {% elif is_cap and nest_cds %}
-              {{ render_now_action(v, true) }}
             {% endif %}
           </div>
           {% endif %}
@@ -1144,7 +1177,7 @@
         </summary>
         <div class="dx-body">
           <div class="dx-rail">
-            <p class="attr-value"><span class="none">Все диагнозы разрешены — история ниже</span></p>
+            <p class="attr-value"><span class="none">Нет активных диагнозов — история ниже</span></p>
           </div>
         </div>
       </details>
@@ -1182,17 +1215,20 @@
       <div class="enc-panel">
         <div class="visit-list">
           {% for c in history_conditions %}
+          {# Короткий бейдж в строке (не «выздоровление» — длинный бабл наезжает на дату/название).
+             Полный смысл — в title. Дата = начало заболевания, без префикса «с». #}
           {% set cstat = c.clinical_status or 'active' %}
-          {% set cstat_ru = {'resolved': 'разрешён', 'remission': 'ремиссия', 'inactive': 'неактивный'}.get(cstat, cstat) %}
+          {% set cstat_ru = {'resolved': 'закрыт', 'remission': 'ремиссия', 'inactive': 'неактивн.'}.get(cstat, cstat) %}
+          {% set cstat_tip = {'resolved': 'Выздоровление · эпизод закрыт', 'remission': 'Ремиссия', 'inactive': 'Неактивный'}.get(cstat, cstat) %}
           {% if c.encounter_id %}
           <a class="visit-row" href="{{ url_for('patient_detail', pid=patient.id, e=c.encounter_id) }}">
           {% else %}
           <span class="visit-row visit-row-static">
           {% endif %}
             <div class="icon-avatar sm" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
-            <span class="vd">{{ c.onset_date or '—' }}</span>
+            <span class="vd" title="Дата начала заболевания">{{ c.onset_date or '—' }}</span>
             <span class="vs">{{ c.display }}<span class="dx-code">{{ c.code }}</span></span>
-            <span class="badge grey">{{ cstat_ru }}</span>
+            <span class="badge grey" title="{{ cstat_tip }}">{{ cstat_ru }}</span>
           {% if c.encounter_id %}</a>{% else %}</span>{% endif %}
           {% endfor %}
         </div>
@@ -1294,7 +1330,18 @@
         {% else %}
         <p class="enc-reason new">Новая жалоба — диагноз ещё не поставлен</p>
         {% endif %}
-        {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
+        <div class="enc-complaint-wrap">
+          {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
+          <details class="add-panel add-panel--inline enc-complaint-edit">
+            <summary title="{{ 'Изменить жалобу' if e.complaint else 'Добавить жалобу' }}">Жалоба</summary>
+            <div class="add-panel-b">
+              <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=patient.id, eid=e.id) }}" class="fform">
+                <div class="field grow"><input type="text" name="complaint" value="{{ e.complaint or '' }}" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»" maxlength="300"></div>
+                <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+              </form>
+            </div>
+          </details>
+        </div>
         <details class="add-panel">
           <summary>Новый приём</summary>
           <div class="add-panel-b">
@@ -1405,23 +1452,35 @@
         {% elif exam_red %}
           {% set be.kind = 'danger' %}
           {% set _rf = flag_options[exam_red[0].key][0] if exam_red[0].key in flag_options else exam_red[0].key %}
+          {# «Тревожный признак» — принятый в проекте перевод red flag (см. docs/ui/encounter-sections-collapsed.html);
+             для нескольких сразу склоняем по числу (2-4 «признака», 5+ «признаков» — EXAM_RED_FLAG_KEYS не превышает 8). #}
+          {% set _rf_word = 'признака' if exam_red|length % 10 in (2, 3, 4) else 'признаков' %}
           {% if exam_red|length == 1 and not exam_abn_n %}{% set be.text = _rf %}
           {% elif exam_red|length == 1 and exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + ' ~ _rf %}
-          {% elif exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + red flag' %}
-          {% else %}{% set be.text = exam_red|length ~ ' red flag' %}{% endif %}
+          {% elif exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + ' ~ exam_red|length ~ ' тревожных ' ~ _rf_word %}
+          {% else %}{% set be.text = exam_red|length ~ ' тревожных ' ~ _rf_word %}{% endif %}
         {% elif gc_flag and general_condition_needs_inpatient(gc_flag) %}{% set be.kind = 'danger' %}{% set be.text = general_condition_display(gc_flag) %}
         {% elif exam_abn_n %}{% set be.kind = 'danger' %}{% set be.text = exam_abn_n ~ ' вне нормы' %}
         {% elif not exam_done %}{% set be.kind = 'placeholder' %}{% set be.text = 'Не заполнено' %}
         {% endif %}
 
+        {# Свёрнутый «Диагноз»: НЕ полное имя МКБ — оно уже в карточке сверху
+           (#conditions-list). Иначе дубль и длинный бейдж. Как у «Лечение» —
+           короткий статус/счётчик; имя видно при раскрытии секции. #}
         {% set bc = namespace(kind='placeholder', text='Не установлен') %}
         {% if focus == 'cond' and cds_short %}{% set bc.kind = 'danger' %}{% set bc.text = cds_short %}
-        {% elif cond_done %}{% set bc.kind = 'neutral' %}{% set bc.text = ed.cond[0].display %}
+        {% elif cond_done %}
+          {% set bc.kind = 'neutral' %}
+          {% set _cn = ed.cond|length %}
+          {% if _cn == 1 %}{% set bc.text = 'Установлен' %}
+          {% elif _cn % 10 in (2, 3, 4) and _cn % 100 not in (12, 13, 14) %}{% set bc.text = _cn ~ ' диагноза' %}
+          {% else %}{% set bc.text = _cn ~ ' диагнозов' %}{% endif %}
         {% endif %}
 
         {% set bd = namespace(kind='placeholder', text='Не назначено') %}
-        {% if focus == 'diag' and cds_short %}{% set bd.kind = 'danger' %}{% set bd.text = cds_short %}
-        {% elif lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
+        {# Приоритет бейджа «Обследование» — docs/ui/encounter-sections-collapsed.html §3.
+           CDS (missing_cbc и т.п.) — только в карточке диагноза сверху, не в бейдже секции. #}
+        {% if lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
         {% elif pending_list and result_n == 0 %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
         {% elif result_n %}{% set bd.kind = 'neutral' %}{% set bd.text = (ok_lab_n ~ ' в норме') if ok_lab_n > 0 else (result_n|string ~ ' рез.') %}
         {% elif diag_done %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
@@ -2052,6 +2111,10 @@
     level=level||'soft';
     var hard=level==='hard'||cds.some(function(c){return c.severity==='hard-stop';});
     var msgs=cds.map(function(c){return c.message;}).filter(Boolean);
+    // Какой протокол сработал — обязательно в заголовке (не только в тексте сообщения):
+    // у пациента может быть ВП и ЖДА одновременно.
+    var protoLabel=(cds.find(function(c){return c.protocol_label;})||{}).protocol_label||'';
+    var softTier=protoLabel?('Отклонение от протокола · '+protoLabel):'Отклонение от протокола';
     var html='';
     if(hard){
       html+='<div class="cds-ov cds-ov-hard">';
@@ -2067,11 +2130,11 @@
       html+='</div></div>';
     } else {
       html+='<div class="cds-ov cds-ov-soft">';
-      html+='<p class="cds-ov-tier"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Отклонение от протокола</p>';
-      html+='<p class="cds-ov-msg">'+(msgs[0]||'Выбранный препарат не соответствует протоколу')+'</p>';
+      html+='<p class="cds-ov-tier"><i class="ti ti-alert-triangle" aria-hidden="true"></i> '+softTier+'</p>';
+      html+='<p class="cds-ov-msg">'+(msgs[0]||('Выбранный препарат не соответствует протоколу'+(protoLabel?(' '+protoLabel):'')))+'</p>';
       if(msgs.length>1){ html+='<ul class="cds-ov-list">'+msgs.slice(1).map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'; }
-      html+='<label class="cds-ov-check"><input type="checkbox" id="cds-ack-live"> Понимаю, что это отклонение от протокола, и назначаю на своё усмотрение</label>';
-      html+='<label class="cds-ov-label">Причина отклонения от протокола <span class="req">*</span></label>';
+      html+='<label class="cds-ov-check"><input type="checkbox" id="cds-ack-live"> Понимаю, что это отклонение от протокола'+(protoLabel?(' '+protoLabel):'')+', и назначаю на своё усмотрение</label>';
+      html+='<label class="cds-ov-label">Причина отклонения'+(protoLabel?(' от '+protoLabel):' от протокола')+' <span class="req">*</span></label>';
       html+='<textarea class="cds-ov-reason" id="cds-reason-live" required placeholder="Обязательно к заполнению"></textarea>';
       if(errMsg){ html+='<p class="cds-ov-err">'+errMsg+'</p>'; }
       html+='<div class="cds-ov-actions">';
@@ -2168,6 +2231,12 @@
         .then(function(r){return r.json();})
         .then(function(data){
           if(data && data.ok){
+            // Удаление влияет на протокол и summary-badge секций — сервер отдаёт
+            // reload:true; без reload бейдж «Обследование» залипает («N в норме»).
+            if(data.reload){
+              location.reload();
+              return;
+            }
             if(chip) chip.remove();
           }
         }).catch(function(){});

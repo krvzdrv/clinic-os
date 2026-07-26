@@ -373,15 +373,21 @@ def patient_detail(pid):
         # для старых приёмов: history-fold + компактная строка вместо карточки).
         active_conditions = [c for c in conditions if (c.get("clinical_status") or "active") == "active"]
         history_conditions = [c for c in conditions if (c.get("clinical_status") or "active") != "active"]
-        # Сверху самый свежий диагноз по дате начала / записи.
-        active_conditions.sort(
-            key=lambda c: c.get("onset_date") or c.get("recorded_date") or "",
-            reverse=True,
-        )
-        history_conditions.sort(
-            key=lambda c: c.get("onset_date") or c.get("recorded_date") or "",
-            reverse=True,
-        )
+        # Порядок на карте: активные всегда выше блока «История диагнозов».
+        # Среди активных — сначала те, где вердикт «нужно действие», затем по дате
+        # начала заболевания (onset_date, свежие сверху). История — тоже по onset.
+        # Дата ориентации = начало болезни, не дата записи в систему.
+        def _dx_date(c):
+            return c.get("onset_date") or c.get("recorded_date") or ""
+
+        _attn = [c for c in active_conditions
+                 if (verdict_by_condition.get(c["id"]) or {}).get("ok") is False]
+        _rest = [c for c in active_conditions
+                 if (verdict_by_condition.get(c["id"]) or {}).get("ok") is not False]
+        _attn.sort(key=_dx_date, reverse=True)
+        _rest.sort(key=_dx_date, reverse=True)
+        active_conditions = _attn + _rest
+        history_conditions.sort(key=_dx_date, reverse=True)
         # Цель терапии — по конкретному диагнозу (через care_plan.condition_id),
         # не все цели пациента под каждой карточкой: иначе цель прошлого,
         # давно разрешённого эпизода ВП всплывала бы и под новым диагнозом.
@@ -417,6 +423,18 @@ def patient_detail(pid):
                 m for m in fs.get_medications(pid, status="active")
                 if (m.get("code") or "").upper().startswith("J01")
             ],
+            # Активная терапия по протоколу (АБТ / железо / …) — карточка диагноза
+            # не завязана на «только ВП».
+            active_therapy_by_protocol={
+                proto_id: [
+                    m for m in fs.get_medications(pid, status="active")
+                    if (m.get("code") or "").upper().startswith(prefix)
+                ]
+                for proto_id, prefix in pdisp.THERAPY_ATC_PREFIX.items()
+            },
+            # Группы МКБ в форме диагноза — из реестра протоколов, не хардкод ВП.
+            diagnosis_groups=protocol_rules.diagnosis_select_groups(),
+            protocol_id_for_icd=protocol_rules.protocol_id_for_icd,
             allergies=fs.get_allergies(pid),
             flags=fs.get_flags(pid),
             encounters=page,
@@ -540,6 +558,21 @@ def add_encounter_route(pid):
     )
     for cid in reason_condition_ids:
         fs.link_encounter_condition(eid, cid)
+    _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid, e=eid))
+
+
+# ---------- Жалоба приёма (добавить/изменить после создания) ----------
+@app.route("/patient/<pid>/encounter/<eid>/complaint", methods=["POST"])
+def update_encounter_complaint_route(pid, eid):
+    """Жалобу могли не знать/забыть в момент открытия приёма (add_encounter_route) —
+    даём внести или поправить её позже, а не только при создании."""
+    if not fs.get_patient(pid):
+        return "Пациент не найден", 404
+    enc = fs.get_encounter(eid)
+    if not enc or enc.get("patient_id") != pid:
+        return "Приём не найден", 404
+    fs.update_encounter_complaint(eid, request.form.get("complaint", "").strip() or None)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid, e=eid))
 
@@ -796,12 +829,20 @@ def add_medication_route(pid):
 
 
 def _cds_summary(verdict):
-    """Сводка CDS-вердикта для UI: список замечаний с уровнем и текстом."""
-    return [{
-        "severity": i["severity"],
-        "category": i.get("category", ""),
-        "message": i["message"],
-    } for i in verdict.get("issues", [])]
+    """Сводка CDS-вердикта для UI: список замечаний с уровнем, текстом и
+    коротким именем протокола — чтобы soft-stop не говорил «отклонение от
+    протокола» без указания, какого именно (ВП / ЖДА)."""
+    out = []
+    for i in verdict.get("issues", []):
+        pid_proto = i.get("protocol_id") or ""
+        out.append({
+            "severity": i["severity"],
+            "category": i.get("category", ""),
+            "message": i["message"],
+            "protocol_id": pid_proto,
+            "protocol_label": pdisp.short_protocol_label(pid_proto),
+        })
+    return out
 
 
 def _medication_order_verdict(pid, code):
@@ -885,7 +926,7 @@ def delete_report_route(pid, rid):
 # ---------- Диагноз ----------
 @app.route("/patient/<pid>/condition/<cid>/resolve", methods=["POST"])
 def resolve_condition_route(pid, cid):
-    """Разрешить диагноз — отдельное клиническое решение врача, не совпадает
+    """Отметить выздоровление (clinical_status→resolved) — отдельное решение врача, не совпадает
     по времени с закрытием приёма (STATUS_SEMANTICS.md §0, «Два переключателя»)."""
     if not fs.get_patient(pid):
         return "Пациент не найден", 404

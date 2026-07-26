@@ -272,6 +272,17 @@ def main() -> int:
         ),
         "Пустова: cds category not_first_line_abt",
     )
+    # Soft-stop обязан назвать протокол: в message и в protocol_label
+    # (титул окна «Отклонение от протокола · ВП (КП №768)»).
+    soft_cds = [c for c in (data.get("cds") or []) if c.get("category") == "not_first_line_abt"]
+    check(
+        soft_cds and "ВП (КП №768)" in (soft_cds[0].get("message") or ""),
+        "Пустова: soft message называет протокол ВП (КП №768)",
+    )
+    check(
+        soft_cds and soft_cds[0].get("protocol_label") == "ВП (КП №768)",
+        f"Пустова: protocol_label для soft-stop (got {soft_cds[0].get('protocol_label') if soft_cds else None})",
+    )
     after = {m["id"] for m in fs.get_medications(pid_p, status="active")}
     check(after == before, "Пустова: без confirm АБТ не сохранена")
     # Soft: confirm + ack, но без причины — как и hard-stop, чекбокса
@@ -457,16 +468,59 @@ def main() -> int:
         html_new = client.get(f"/patient/{pid_v}?e={new_enc['id']}").data.decode("utf-8", "replace")
         check("Повод:" in html_new, "Морозов: «Повод приёма» виден в карточке контрольного визита")
 
-    print("\n[7] Разрешить диагноз — отдельно от закрытия приёма (STATUS_SEMANTICS §0)")
+    print("\n[6.2] Жалоба приёма: добавить/изменить и после создания приёма")
+    r = client.post(
+        f"/patient/{pid_v}/encounter",
+        data={"class": "ambulatory", "start": "2026-07-27"},  # без complaint
+        follow_redirects=True,
+    )
+    check(r.status_code == 200, f"Морозов: открыть приём без жалобы → {r.status_code}")
+    enc_no_complaint = next(
+        (e for e in fs.get_encounters(pid_v)
+         if e["id"] not in enc_ids_before and e["id"] != (new_enc or {}).get("id") and not e.get("complaint")),
+        None,
+    )
+    check(bool(enc_no_complaint), "Морозов: создан приём без жалобы")
+    if enc_no_complaint:
+        html_empty = client.get(f"/patient/{pid_v}?e={enc_no_complaint['id']}").data.decode("utf-8", "replace")
+        check("Жалоба не указана" in html_empty, "Морозов: «Жалоба не указана» видна без жалобы")
+        r = client.post(
+            f"/patient/{pid_v}/encounter/{enc_no_complaint['id']}/complaint",
+            data={"complaint": "Кашель, температура 2 дня"},
+            follow_redirects=True,
+        )
+        check(r.status_code == 200, f"Морозов: сохранить жалобу после создания приёма → {r.status_code}")
+        enc_after = fs.get_encounter(enc_no_complaint["id"])
+        check(enc_after.get("complaint") == "Кашель, температура 2 дня",
+              "Морозов: жалоба записана в encounter.complaint")
+        html_filled = client.get(f"/patient/{pid_v}?e={enc_no_complaint['id']}").data.decode("utf-8", "replace")
+        check("Кашель, температура 2 дня" in html_filled, "Морозов: жалоба видна в карточке приёма")
+        # Повторное изменение — редактирование уже заполненной жалобы, не только первый ввод.
+        r = client.post(
+            f"/patient/{pid_v}/encounter/{enc_no_complaint['id']}/complaint",
+            data={"complaint": "Кашель прошёл, жалоб нет"},
+            follow_redirects=True,
+        )
+        check(r.status_code == 200, "Морозов: повторно изменить уже заполненную жалобу → 200")
+        enc_edited = fs.get_encounter(enc_no_complaint["id"])
+        check(enc_edited.get("complaint") == "Кашель прошёл, жалоб нет",
+              "Морозов: жалоба перезаписана, а не продублирована")
+
+    print("\n[7] Отметить выздоровление — отдельно от закрытия приёма (STATUS_SEMANTICS §0)")
     r = client.post(f"/patient/{pid_v}/condition/{cond_v['id']}/resolve", follow_redirects=True)
     check(r.status_code == 200, f"Морозов: resolve → {r.status_code}")
     conds_after = fs.get_conditions(pid_v)
     resolved = next((c for c in conds_after if c["id"] == cond_v["id"]), None)
     check(bool(resolved) and resolved.get("clinical_status") == "resolved",
-          "Морозов: clinical_status=resolved после разрешения")
+          "Морозов: clinical_status=resolved после выздоровления")
     html_v = client.get(f"/patient/{pid_v}").data.decode("utf-8", "replace")
-    check("История диагнозов" in html_v, "Морозов: разрешённый диагноз ушёл в историю")
-    check("разрешён" in html_v, "Морозов: бейдж «разрешён» виден в UI")
+    check("История диагнозов" in html_v, "Морозов: закрытый эпизод ушёл в историю")
+    check(">закрыт<" in html_v or "badge grey\">закрыт" in html_v,
+          "Морозов: короткий бейдж «закрыт» виден в истории")
+    check("Выздоровление" in html_v, "Морозов: полный смысл статуса — в title/кнопке")
+    if resolved and resolved.get("onset_date"):
+        check(resolved["onset_date"] in html_v,
+              "Морозов: в истории видна дата начала заболевания")
 
     print("\n" + "=" * 70)
     print(f"ИТОГ doctor_gate: {PASS} ok, {FAIL} fail")

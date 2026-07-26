@@ -10,7 +10,7 @@
 
   <bpmn:process id="encounter_reason" name="Повод приёма: новая жалоба или продолжение по диагнозу" isExecutable="false">
 
-    <bpmn:startEvent id="Start_ER" name="Пациент обращается">
+    <bpmn:startEvent id="Start_ER" name="Обращение">
       <bpmn:outgoing>Flow_er1</bpmn:outgoing>
     </bpmn:startEvent>
 
@@ -32,7 +32,7 @@
       <bpmn:outgoing>Flow_er6</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <bpmn:task id="Task_Continue" name="Открыть приём: отметить диагноз(ы), к которым он относится">
+    <bpmn:task id="Task_Continue" name="Открыть приём по активному диагнозу">
       <bpmn:incoming>Flow_er4</bpmn:incoming>
       <bpmn:outgoing>Flow_er7</bpmn:outgoing>
     </bpmn:task>
@@ -48,12 +48,12 @@
       <bpmn:outgoing>Flow_er9</bpmn:outgoing>
     </bpmn:exclusiveGateway>
 
-    <bpmn:task id="Task_Conduct" name="Вести приём: осмотр, диагноз, назначения, проверка">
+    <bpmn:task id="Task_Conduct" name="Провести приём">
       <bpmn:incoming>Flow_er9</bpmn:incoming>
       <bpmn:outgoing>Flow_er10</bpmn:outgoing>
     </bpmn:task>
 
-    <bpmn:endEvent id="End_ER" name="Приём открыт — повод виден в карточке">
+    <bpmn:endEvent id="End_ER" name="Приём открыт">
       <bpmn:incoming>Flow_er10</bpmn:incoming>
     </bpmn:endEvent>
 

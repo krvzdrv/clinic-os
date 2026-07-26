@@ -159,6 +159,15 @@ def main():
     step("cap_adult_768" in (reg.get("protocols") or reg), "protocol_registry загружается")
     codes = pr.protocol_icd_codes("cap_adult_768")
     step("J18.9" in codes, "J18.9 в inclusion-наборе")
+    # Форма диагноза строится из реестра: ВП + ЖДА (+ фон) — не хардкод в шаблоне.
+    groups = pr.diagnosis_select_groups()
+    labels = [g["label"] for g in groups]
+    step(any("пневмония" in (lb or "").lower() for lb in labels),
+         "diagnosis_select_groups: группа ВП")
+    step(any("анемия" in (lb or "").lower() for lb in labels),
+         "diagnosis_select_groups: группа ЖДА")
+    ida_codes = next((g["codes"] for g in groups if "анемия" in (g["label"] or "").lower()), [])
+    step("D50.9" in ida_codes, "diagnosis_select_groups: D50.9 в группе ЖДА")
 
     # 5. Template structure smoke (static file checks)
     print("\n[5] Структура UI (статическая)")
@@ -167,6 +176,8 @@ def main():
     step("verdict-panel" in html, "CSS/класс verdict-panel")
     step('id="now-action"' in html, "один экран #now-action")
     step("history-fold" in html, "история свёрнута в history-fold")
+    step("diagnosis_groups" in html and "for g in diagnosis_groups" in html,
+         "форма диагноза рендерит diagnosis_groups из реестра")
     step("suggest_atc" in html, "предвыбор препарата (suggest_atc)")
     step("Осмотр" in html and "Диагноз" in html and "Лечение" in html,
          "группы Осмотр / Диагноз / Лечение")
@@ -175,9 +186,61 @@ def main():
     # should not display gap codes as visible labels in verdict section
     step("g.code" not in html.split("verdict-panel")[1][:2000] if "verdict-panel" in html else True,
          "в вердикте нет вывода g.code")
+    step("data.reload" in html and "бейдж «Обследование» залипает" in html,
+         "chip-x delete: reload после удаления (бейдж секций)")
 
-    # 6. Напоминание: полный путь врача — doctor_gate (с нуля)
-    print("\n[6] Напоминание")
+    # 7. Бейдж «Обследование» после удаления заказов/результатов
+    print("\n[7] Бейдж секции «Обследование»")
+    os.environ["DATABASE_URL"] = ""  # app.py load_dotenv не должен увести в Postgres
+    from app import app as flask_app
+
+    def _diag_badge(page_html: str) -> str | None:
+        idx = page_html.find('id="flow-diag"')
+        if idx < 0:
+            return None
+        chunk = page_html[idx:idx + 2500]
+        for pat in (
+            r'section-placeholder section-header__badge">\s*([^<]+?)\s*<',
+            r'section-badge[^"]* section-header__badge">\s*(?:<i[^>]*></i>\s*)?([^<]+?)\s*<',
+        ):
+            m = re.search(pat, chunk, re.S)
+            if m:
+                return re.sub(r"\s+", " ", m.group(1)).strip()
+        return None
+
+    orlov = by_fam["Орлов"]
+    pid_o = orlov["id"]
+    enc_o = fs.get_encounters(pid_o)[0]["id"]
+    with flask_app.test_client() as client:
+        before = _diag_badge(client.get(f"/patient/{pid_o}").data.decode())
+        step(before is not None and before != "Не назначено",
+             f"Орлов: до удаления бейдж не пустой (got {before!r})")
+        for o in list(fs.get_observations(pid_o)):
+            if o.get("encounter_id") == enc_o and o["code"] in ("30522-7", "6690-2"):
+                fs.delete_observation(o["id"])
+        for sr in list(fs.get_service_requests(pid_o)):
+            if sr.get("encounter_id") == enc_o:
+                fs.delete_service_request(sr["id"])
+        for rep in list(fs.get_diagnostic_reports(pid_o)):
+            if rep.get("encounter_id") == enc_o:
+                fs.delete_report(rep["id"])
+        empty = _diag_badge(client.get(f"/patient/{pid_o}").data.decode())
+        step(empty == "Не назначено",
+             f"Орлов: после удаления всего → «Не назначено» (got {empty!r})")
+        sid = fs.add_service_request(pid_o, "CBC", "ОАК", encounter_id=enc_o, status="active")
+        pending = _diag_badge(client.get(f"/patient/{pid_o}").data.decode())
+        step(pending == "Ожидает результатов",
+             f"Орлов: заказ без результата → «Ожидает результатов» (got {pending!r})")
+        r_del = client.post(
+            f"/patient/{pid_o}/service_request/{sid}/delete",
+            headers={"X-Requested-With": "XMLHttpRequest", "Accept": "application/json"},
+        )
+        payload = r_del.get_json(silent=True) or {}
+        step(payload.get("ok") is True and payload.get("reload") is True,
+             f"delete service_request → ok+reload (got {payload})")
+
+    # 8. Напоминание: полный путь врача — doctor_gate (с нуля)
+    print("\n[8] Напоминание")
     step(os.path.isfile(os.path.join(REPO, "tools", "doctor_gate.py")),
          "tools/doctor_gate.py существует (полный прогон с нуля)")
 

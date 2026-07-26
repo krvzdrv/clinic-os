@@ -30,6 +30,28 @@ DRUG_CHOICE_EVALUATORS = {
     "ida_adult_23": protocol_anemia.evaluate_iron_choice,
 }
 
+# Короткое имя для UI (soft-stop, заголовки) — не полное title из реестра.
+SHORT_PROTOCOL_LABELS = {
+    "cap_adult_768": "ВП (КП №768)",
+    "ida_adult_23": "ЖДА (КП №23)",
+}
+
+# Класс терапии протокола (ATC-префикс) — для строки «Лечение» в карточке диагноза.
+THERAPY_ATC_PREFIX = {
+    "cap_adult_768": "J01",
+    "ida_adult_23": "B03A",
+}
+
+
+def short_protocol_label(protocol_id):
+    """«ВП (КП №768)» / «ЖДА (КП №23)» — для титула окна CDS и headline."""
+    if not protocol_id:
+        return ""
+    if protocol_id in SHORT_PROTOCOL_LABELS:
+        return SHORT_PROTOCOL_LABELS[protocol_id]
+    proto = protocol_rules.get_protocol(protocol_id) or {}
+    return proto.get("title") or protocol_id
+
 
 def evaluate_drug_choice(pid, atc_code):
     """Issues (drug_service-совместимые) от всех зарегистрированных протоколов

@@ -228,6 +228,11 @@ def finish_encounter(eid, end=None):
         end = _today()
     db.execute("UPDATE encounter SET status='finished', ended_at=%s WHERE id=%s", (end, eid))
 
+def update_encounter_complaint(eid, complaint):
+    """Жалоба приёма — редактируема и после создания (её могли не знать в
+    момент открытия приёма, см. add_encounter_route/update_encounter_complaint_route)."""
+    db.execute("UPDATE encounter SET complaint=%s WHERE id=%s", (complaint, eid))
+
 
 def delete_encounter(pid, eid):
     """Удалить приём (случайное создание / ошибочная запись).

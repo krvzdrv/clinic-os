@@ -378,18 +378,27 @@ def _focus_stage(gaps: list[dict], primary: dict | None = None) -> str | None:
     return None
 
 
-def _clinical_headline(gaps: list[dict], ok: bool, primary: dict | None) -> str:
+def _clinical_headline(gaps: list[dict], ok: bool, primary: dict | None,
+                       protocol_id: str = DEFAULT_PROTOCOL_ID) -> str:
+    # Короткое имя протокола в заголовке — у пациента может быть несколько
+    # (ВП + ЖДА), «отклонение от протокола» без уточнения путает.
+    short = {
+        "cap_adult_768": "ВП (КП №768)",
+        "ida_adult_23": "ЖДА (КП №23)",
+    }.get(protocol_id or "", "")
+    proto_suffix = f" · {short}" if short else ""
     if ok:
-        return "Соответствует протоколу"
+        return f"Соответствует протоколу{proto_suffix}" if short else "Соответствует протоколу"
     if primary:
         code = primary.get("code")
         if primary.get("cds_override") and code in _NOT_FIRST_LINE_CODES:
-            return ("Препарат железа назначен осознанно вне протокола" if code == "not_first_line_iron"
+            base = ("Препарат железа назначен осознанно вне протокола" if code == "not_first_line_iron"
                     else "АБТ назначена осознанно вне протокола")
+            return f"{base}{proto_suffix}" if short else base
         for c, title in _CLINICAL_PRIORITY:
             if c == code:
-                return title
-    return "Есть отклонения от протокола"
+                return f"{title}{proto_suffix}" if short else title
+    return f"Есть отклонения от протокола{proto_suffix}" if short else "Есть отклонения от протокола"
 
 
 def _short_reason(assessment: dict, primary_gap: dict | None, expected: dict | None, setting: str,
@@ -561,7 +570,7 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
 
     reason = _ui_sentence(reason) if reason else None
     next_step = _ui_sentence(next_step) if next_step else None
-    headline = _ui_sentence(_clinical_headline(gaps, ok, primary_gap))
+    headline = _ui_sentence(_clinical_headline(gaps, ok, primary_gap, protocol_id))
     if reason and reason.lower() == headline.lower():
         reason = None
 

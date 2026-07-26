@@ -1,34 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_cap_outpatient" targetNamespace="http://clinic-os/processes/cap_outpatient" exporter="Camunda Modeler" exporterVersion="5.46.1">
   <bpmn:error id="Error_NoAbtEffect" name="Нет эффекта терапии" errorCode="NO_ABT_EFFECT" />
-  <bpmn:error id="Error_AdjustTherapy" name="Нужна коррекция лечения" errorCode="ADJUST_THERAPY" />
+  <bpmn:error id="Error_AdjustTherapy" name="Скорректировать лечение" errorCode="ADJUST_THERAPY" />
   <bpmn:process id="cap_outpatient" name="Амбулаторное лечение внебольничной пневмонии (КП №768)" isExecutable="false">
     <bpmn:startEvent id="Start_Complaint" name="Обращение">
       <bpmn:outgoing>Flow_Top_Start_Primary</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:subProcess id="SubProcess_PrimaryVisit" name="Первичный приём">
+    <bpmn:subProcess id="SubProcess_PrimaryVisit" name="Провести первичный приём">
       <bpmn:incoming>Flow_Top_Start_Primary</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Primary_To_Hosp</bpmn:outgoing>
       <bpmn:startEvent id="Start_Primary" name="Начало">
         <bpmn:outgoing>Flow_p1</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:task id="Task_Intake" name="Приём обращения">
+      <bpmn:task id="Task_Intake" name="Принять обращение">
         <bpmn:incoming>Flow_p1</bpmn:incoming>
         <bpmn:outgoing>Flow_p2</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_VitalsExam" name="Осмотр">
+      <bpmn:task id="Task_VitalsExam" name="Провести осмотр">
         <bpmn:incoming>Flow_p2</bpmn:incoming>
         <bpmn:outgoing>Flow_p3</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_SetDiagnosis" name="Диагноз внебольничной пневмонии">
+      <bpmn:task id="Task_SetDiagnosis" name="Поставить диагноз ВП">
         <bpmn:incoming>Flow_p3</bpmn:incoming>
         <bpmn:outgoing>Flow_p4</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_AssessSeverity" name="Оценка тяжести">
+      <bpmn:task id="Task_AssessSeverity" name="Оценить тяжесть">
         <bpmn:incoming>Flow_p4</bpmn:incoming>
         <bpmn:outgoing>Flow_p5</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:endEvent id="End_Primary" name="Готово к решению о месте лечения">
+      <bpmn:endEvent id="End_Primary" name="Решение о месте лечения возможно">
         <bpmn:incoming>Flow_p5</bpmn:incoming>
       </bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_p1" sourceRef="Start_Primary" targetRef="Task_Intake" />
@@ -47,7 +47,7 @@
       <bpmn:incoming>Flow_Top_NoEffect_Hospital</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_To_Hospital_End</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:endEvent id="End_Hospitalized" name="В стационар">
+    <bpmn:endEvent id="End_Hospitalized" name="Направить в стационар">
       <bpmn:incoming>Flow_Top_To_Hospital_End</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:exclusiveGateway id="Gateway_TherapyEntry" name="">
@@ -56,29 +56,29 @@
       <bpmn:incoming>Flow_Top_NoEffect_Retreatment</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_To_Therapy</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:subProcess id="SubProcess_Therapy" name="Обследование и лечение">
+    <bpmn:subProcess id="SubProcess_Therapy" name="Обследовать и назначить лечение">
       <bpmn:incoming>Flow_Top_To_Therapy</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Therapy_To_Followup</bpmn:outgoing>
       <bpmn:startEvent id="Start_Therapy" name="Начало">
         <bpmn:outgoing>Flow_t1</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:task id="Task_OrderDiagnostics" name="Обследование">
+      <bpmn:task id="Task_OrderDiagnostics" name="Назначить обследования">
         <bpmn:incoming>Flow_t1</bpmn:incoming>
         <bpmn:outgoing>Flow_t2</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_RecordResults" name="Результаты обследования">
+      <bpmn:task id="Task_RecordResults" name="Зафиксировать результаты">
         <bpmn:incoming>Flow_t2</bpmn:incoming>
         <bpmn:outgoing>Flow_t3</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_PrescribeAbt" name="Антибактериальная терапия">
+      <bpmn:task id="Task_PrescribeAbt" name="Назначить антибактериальную терапию">
         <bpmn:incoming>Flow_t3</bpmn:incoming>
         <bpmn:outgoing>Flow_t4</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_PrescribeSymptomatic" name="Симптоматическая терапия">
+      <bpmn:task id="Task_PrescribeSymptomatic" name="Назначить симптоматическую терапию">
         <bpmn:incoming>Flow_t4</bpmn:incoming>
         <bpmn:outgoing>Flow_t5</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_CreateCarePlan" name="План лечения">
+      <bpmn:task id="Task_CreateCarePlan" name="Составить план лечения">
         <bpmn:incoming>Flow_t5</bpmn:incoming>
         <bpmn:outgoing>Flow_t6</bpmn:outgoing>
       </bpmn:task>
@@ -92,13 +92,13 @@
       <bpmn:sequenceFlow id="Flow_t5" sourceRef="Task_PrescribeSymptomatic" targetRef="Task_CreateCarePlan" />
       <bpmn:sequenceFlow id="Flow_t6" sourceRef="Task_CreateCarePlan" targetRef="End_Therapy" />
     </bpmn:subProcess>
-    <bpmn:subProcess id="SubProcess_Followup" name="Контроль и исход">
+    <bpmn:subProcess id="SubProcess_Followup" name="Оценить контроль и исход">
       <bpmn:incoming>Flow_Top_Therapy_To_Followup</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Followup_Ok</bpmn:outgoing>
       <bpmn:startEvent id="Start_Followup" name="Начало">
         <bpmn:outgoing>Flow_f1</bpmn:outgoing>
       </bpmn:startEvent>
-      <bpmn:task id="Task_Reassess" name="Оценка эффекта терапии">
+      <bpmn:task id="Task_Reassess" name="Оценить эффект терапии">
         <bpmn:incoming>Flow_f1</bpmn:incoming>
         <bpmn:outgoing>Flow_f2</bpmn:outgoing>
       </bpmn:task>
@@ -111,7 +111,7 @@
         <bpmn:incoming>Flow_f4</bpmn:incoming>
         <bpmn:errorEventDefinition id="ErrDef_NoEffect" errorRef="Error_NoAbtEffect" />
       </bpmn:endEvent>
-      <bpmn:task id="Task_Followup" name="Контрольный визит">
+      <bpmn:task id="Task_Followup" name="Провести контрольный визит">
         <bpmn:incoming>Flow_f3</bpmn:incoming>
         <bpmn:outgoing>Flow_f5</bpmn:outgoing>
       </bpmn:task>
@@ -120,15 +120,15 @@
         <bpmn:outgoing>Flow_f6</bpmn:outgoing>
         <bpmn:outgoing>Flow_f7</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_Followup_Adjust" name="Нужна коррекция лечения">
+      <bpmn:endEvent id="End_Followup_Adjust" name="Скорректировать лечение">
         <bpmn:incoming>Flow_f7</bpmn:incoming>
         <bpmn:errorEventDefinition id="ErrDef_Adjust" errorRef="Error_AdjustTherapy" />
       </bpmn:endEvent>
-      <bpmn:task id="Task_ScheduleRepeatCxr" name="Контрольная визуализация">
+      <bpmn:task id="Task_ScheduleRepeatCxr" name="Назначить контрольную рентгенографию">
         <bpmn:incoming>Flow_f6</bpmn:incoming>
         <bpmn:outgoing>Flow_f8</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_CloseEpisode" name="Закрытие эпизода">
+      <bpmn:task id="Task_CloseEpisode" name="Закрыть эпизод">
         <bpmn:incoming>Flow_f8</bpmn:incoming>
         <bpmn:outgoing>Flow_f9</bpmn:outgoing>
       </bpmn:task>
@@ -153,7 +153,7 @@
       <bpmn:outgoing>Flow_Top_NoEffect_To_Decide</bpmn:outgoing>
       <bpmn:errorEventDefinition id="BoundErr_NoEffect" errorRef="Error_NoAbtEffect" />
     </bpmn:boundaryEvent>
-    <bpmn:boundaryEvent id="Boundary_Adjust" name="Коррекция лечения" attachedToRef="SubProcess_Followup">
+    <bpmn:boundaryEvent id="Boundary_Adjust" name="Скорректировать лечение" attachedToRef="SubProcess_Followup">
       <bpmn:outgoing>Flow_Top_Adjust_To_Therapy</bpmn:outgoing>
       <bpmn:errorEventDefinition id="BoundErr_Adjust" errorRef="Error_AdjustTherapy" />
     </bpmn:boundaryEvent>
@@ -162,7 +162,7 @@
       <bpmn:outgoing>Flow_Top_NoEffect_Hospital</bpmn:outgoing>
       <bpmn:outgoing>Flow_Top_NoEffect_Retreatment</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:endEvent id="End_Recovered" name="Выздоровление">
+    <bpmn:endEvent id="End_Recovered" name="Выздоровление достигнуто">
       <bpmn:incoming>Flow_Top_Followup_Ok</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_Top_Start_Primary" sourceRef="Start_Complaint" targetRef="SubProcess_PrimaryVisit" />

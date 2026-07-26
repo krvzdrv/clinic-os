@@ -11,6 +11,8 @@
   5) концы рёбер прикреплены к фигурам source/target (не «поток в воздухе»)
   6) boundary не по центру низа подпроцесса (там [+])
   7) в name/annotation нет техжаргона (версия, .bpmn, handoff, …)
+  8) в name нет разговорного/канцелярского сленга («Картина ясна», «Диагноз или…»)
+     и UI/HTTP-жаргона (hard-stop, order-sign, чекбокс, 400)
 
 Запуск: python3 tools/test_bpmn_layout.py
 """
@@ -42,6 +44,13 @@ FORBIDDEN_NAME = (
     ".py",
     "bpmn_task",
     "process_id",
+    "hard-stop",
+    "soft-stop",
+    "order-sign",
+    "чекбокс",
+    "картина ясна",
+    "диагноз или",
+    "диагноз(ы)",
 )
 ACTIVITY_TAGS = frozenset(
     {"task", "subProcess", "userTask", "serviceTask", "callActivity", "scriptTask"}

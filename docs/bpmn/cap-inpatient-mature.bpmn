@@ -4,18 +4,18 @@
   <bpmn:error id="Error_NotReadyDischarge" name="Пока не к выписке" errorCode="NOT_READY_DISCHARGE" />
 
   <bpmn:process id="cap_inpatient" name="Протокольная карта стационар (КП №768) — не путь ведения" isExecutable="false">
-    <bpmn:startEvent id="Start_HospDecision" name="Госпитализация">
+    <bpmn:startEvent id="Start_HospDecision" name="Решение о госпитализации">
       <bpmn:outgoing>Flow_Top_Start_Admit</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <bpmn:subProcess id="SubProcess_Admission" name="Поступление">
+    <bpmn:subProcess id="SubProcess_Admission" name="Оформить поступление">
       <bpmn:incoming>Flow_Top_Start_Admit</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Admit_To_Icu</bpmn:outgoing>
       <bpmn:startEvent id="Start_Admission" name="Начало"><bpmn:outgoing>Flow_a1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:task id="Task_Admit" name="Госпитализация"><bpmn:incoming>Flow_a1</bpmn:incoming><bpmn:outgoing>Flow_a2</bpmn:outgoing><bpmn:outgoing>Flow_a2s</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_AdmissionDiagnostics" name="Обследование при поступлении"><bpmn:incoming>Flow_a2</bpmn:incoming><bpmn:outgoing>Flow_a3</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_PrescribeSymptomaticInpatient" name="Симптоматическая терапия"><bpmn:incoming>Flow_a2s</bpmn:incoming><bpmn:outgoing>Flow_a2se</bpmn:outgoing></bpmn:task>
-      <bpmn:endEvent id="End_SymptomaticOngoing" name="Симптоматика продолжается"><bpmn:incoming>Flow_a2se</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_Admit" name="Госпитализировать"><bpmn:incoming>Flow_a1</bpmn:incoming><bpmn:outgoing>Flow_a2</bpmn:outgoing><bpmn:outgoing>Flow_a2s</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_AdmissionDiagnostics" name="Провести обследование при поступлении"><bpmn:incoming>Flow_a2</bpmn:incoming><bpmn:outgoing>Flow_a3</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_PrescribeSymptomaticInpatient" name="Назначить симптоматическую терапию"><bpmn:incoming>Flow_a2s</bpmn:incoming><bpmn:outgoing>Flow_a2se</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_SymptomaticOngoing" name="Продолжить симптоматическую терапию"><bpmn:incoming>Flow_a2se</bpmn:incoming></bpmn:endEvent>
       <bpmn:endEvent id="End_Admission" name="Поступление оформлено"><bpmn:incoming>Flow_a3</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_a1" sourceRef="Start_Admission" targetRef="Task_Admit" />
       <bpmn:sequenceFlow id="Flow_a2" sourceRef="Task_Admit" targetRef="Task_AdmissionDiagnostics" />
@@ -24,23 +24,23 @@
       <bpmn:sequenceFlow id="Flow_a3" sourceRef="Task_AdmissionDiagnostics" targetRef="End_Admission" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SubProcess_IcuDecision" name="Тяжесть и ОРИТ">
+    <bpmn:subProcess id="SubProcess_IcuDecision" name="Оценить тяжесть и показания к ОРИТ">
       <bpmn:incoming>Flow_Top_Admit_To_Icu</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Icu_To_Therapy</bpmn:outgoing>
       <bpmn:startEvent id="Start_Icu" name="Начало"><bpmn:outgoing>Flow_c1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:task id="Task_AssessSeverityIcu" name="Оценка показаний к ОРИТ"><bpmn:incoming>Flow_c1</bpmn:incoming><bpmn:outgoing>Flow_c2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_AssessSeverityIcu" name="Оценить показания к ОРИТ"><bpmn:incoming>Flow_c1</bpmn:incoming><bpmn:outgoing>Flow_c2</bpmn:outgoing></bpmn:task>
       <bpmn:exclusiveGateway id="Gateway_Icu" name="Нужен ОРИТ?">
         <bpmn:incoming>Flow_c2</bpmn:incoming>
         <bpmn:outgoing>Flow_c3</bpmn:outgoing>
         <bpmn:outgoing>Flow_c4</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_NoteIcu" name="Перевод в ОРИТ"><bpmn:incoming>Flow_c3</bpmn:incoming><bpmn:outgoing>Flow_c5</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_NoteIcu" name="Перевести в ОРИТ"><bpmn:incoming>Flow_c3</bpmn:incoming><bpmn:outgoing>Flow_c5</bpmn:outgoing></bpmn:task>
       <bpmn:exclusiveGateway id="Gateway_IcuMerge" name="">
         <bpmn:incoming>Flow_c4</bpmn:incoming>
         <bpmn:incoming>Flow_c5</bpmn:incoming>
         <bpmn:outgoing>Flow_c6</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_Icu" name="Решение принято"><bpmn:incoming>Flow_c6</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="End_Icu" name="Решение по ОРИТ принято"><bpmn:incoming>Flow_c6</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_c1" sourceRef="Start_Icu" targetRef="Task_AssessSeverityIcu" />
       <bpmn:sequenceFlow id="Flow_c2" sourceRef="Task_AssessSeverityIcu" targetRef="Gateway_Icu" />
       <bpmn:sequenceFlow id="Flow_c3" name="да" sourceRef="Gateway_Icu" targetRef="Task_NoteIcu" />
@@ -56,23 +56,23 @@
       <bpmn:incoming>Flow_Top_Escalate_To_Therapy</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_To_IvTherapy</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:subProcess id="SubProcess_IvTherapy" name="Лечение в стационаре">
+    <bpmn:subProcess id="SubProcess_IvTherapy" name="Назначить лечение в стационаре">
       <bpmn:incoming>Flow_Top_To_IvTherapy</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Therapy_To_Discharge</bpmn:outgoing>
       <bpmn:startEvent id="Start_Iv" name="Начало"><bpmn:outgoing>Flow_v1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:task id="Task_SelectRegimen" name="Выбор схемы лечения"><bpmn:incoming>Flow_v1</bpmn:incoming><bpmn:outgoing>Flow_v2</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_PrescribeIvAbt" name="Антибактериальная терапия внутривенно"><bpmn:incoming>Flow_v2</bpmn:incoming><bpmn:outgoing>Flow_v3</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_SelectRegimen" name="Выбрать схему лечения"><bpmn:incoming>Flow_v1</bpmn:incoming><bpmn:outgoing>Flow_v2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_PrescribeIvAbt" name="Назначить АБТ внутривенно"><bpmn:incoming>Flow_v2</bpmn:incoming><bpmn:outgoing>Flow_v3</bpmn:outgoing></bpmn:task>
       <bpmn:endEvent id="End_Iv" name="Лечение начато"><bpmn:incoming>Flow_v3</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_v1" sourceRef="Start_Iv" targetRef="Task_SelectRegimen" />
       <bpmn:sequenceFlow id="Flow_v2" sourceRef="Task_SelectRegimen" targetRef="Task_PrescribeIvAbt" />
       <bpmn:sequenceFlow id="Flow_v3" sourceRef="Task_PrescribeIvAbt" targetRef="End_Iv" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SubProcess_DischargePath" name="Оценка и выписка">
+    <bpmn:subProcess id="SubProcess_DischargePath" name="Оценить и выписать">
       <bpmn:incoming>Flow_Top_Therapy_To_Discharge</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Discharge_Ok</bpmn:outgoing>
       <bpmn:startEvent id="Start_Dc" name="Начало"><bpmn:outgoing>Flow_d1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:task id="Task_ReassessInpatient" name="Оценка эффекта терапии"><bpmn:incoming>Flow_d1</bpmn:incoming><bpmn:outgoing>Flow_d2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_ReassessInpatient" name="Оценить эффект терапии"><bpmn:incoming>Flow_d1</bpmn:incoming><bpmn:outgoing>Flow_d2</bpmn:outgoing></bpmn:task>
       <bpmn:exclusiveGateway id="Gateway_AbtEffect_in" name="Есть эффект?">
         <bpmn:incoming>Flow_d2</bpmn:incoming>
         <bpmn:outgoing>Flow_d3</bpmn:outgoing>
@@ -87,16 +87,16 @@
         <bpmn:incoming>Flow_d7</bpmn:incoming>
         <bpmn:outgoing>Flow_d4m</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_StepDown" name="Переход на терапию внутрь"><bpmn:incoming>Flow_d4m</bpmn:incoming><bpmn:outgoing>Flow_d5</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_EvaluateDischarge" name="Оценка готовности к выписке"><bpmn:incoming>Flow_d5</bpmn:incoming><bpmn:outgoing>Flow_d6</bpmn:outgoing></bpmn:task>
-      <bpmn:exclusiveGateway id="Gateway_Discharge" name="К выписке?">
+      <bpmn:task id="Task_StepDown" name="Перевести на терапию внутрь"><bpmn:incoming>Flow_d4m</bpmn:incoming><bpmn:outgoing>Flow_d5</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_EvaluateDischarge" name="Оценить готовность к выписке"><bpmn:incoming>Flow_d5</bpmn:incoming><bpmn:outgoing>Flow_d6</bpmn:outgoing></bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_Discharge" name="Готов к выписке?">
         <bpmn:incoming>Flow_d6</bpmn:incoming>
         <bpmn:outgoing>Flow_d7</bpmn:outgoing>
         <bpmn:outgoing>Flow_d8</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_Discharge" name="Выписка"><bpmn:incoming>Flow_d8</bpmn:incoming><bpmn:outgoing>Flow_d9</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_PostDischargeFollowup" name="Контроль после выписки"><bpmn:incoming>Flow_d9</bpmn:incoming><bpmn:outgoing>Flow_d10</bpmn:outgoing></bpmn:task>
-      <bpmn:endEvent id="End_Dc_Ok" name="Готово к амбулаторному контролю"><bpmn:incoming>Flow_d10</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_Discharge" name="Выписать"><bpmn:incoming>Flow_d8</bpmn:incoming><bpmn:outgoing>Flow_d9</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_PostDischargeFollowup" name="Запланировать контроль после выписки"><bpmn:incoming>Flow_d9</bpmn:incoming><bpmn:outgoing>Flow_d10</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_Dc_Ok" name="Готов к амбулаторному контролю"><bpmn:incoming>Flow_d10</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_d1" sourceRef="Start_Dc" targetRef="Task_ReassessInpatient" />
       <bpmn:sequenceFlow id="Flow_d2" sourceRef="Task_ReassessInpatient" targetRef="Gateway_AbtEffect_in" />
       <bpmn:sequenceFlow id="Flow_d3" name="нет" sourceRef="Gateway_AbtEffect_in" targetRef="End_Dc_NoEffect" />
@@ -119,7 +119,7 @@
       <bpmn:errorEventDefinition id="BoundErr_NoIv" errorRef="Error_NoIvEffect" />
     </bpmn:boundaryEvent>
 
-    <bpmn:endEvent id="End_HandoffOutpatient" name="На амбулаторный контроль"><bpmn:incoming>Flow_Top_Discharge_Ok</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_HandoffOutpatient" name="Передать на амбулаторный контроль"><bpmn:incoming>Flow_Top_Discharge_Ok</bpmn:incoming></bpmn:endEvent>
 
     <bpmn:sequenceFlow id="Flow_Top_Start_Admit" sourceRef="Start_HospDecision" targetRef="SubProcess_Admission" />
     <bpmn:sequenceFlow id="Flow_Top_Admit_To_Icu" sourceRef="SubProcess_Admission" targetRef="SubProcess_IcuDecision" />

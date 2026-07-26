@@ -59,6 +59,53 @@ def protocol_applicable(pid, protocol_id: str = DEFAULT_PROTOCOL_ID) -> bool:
     )
 
 
+# Фоновые коды — не триггерят протокол сами, но влияют на выбор терапии/маршрут
+# (сахарный диабет, ХБП, ХОБЛ и т.п.). Не дублировать коды из реестра протоколов.
+COMORBIDITY_ICD_CODES = ("E10", "E11", "N18", "J44", "J45", "J46", "J84")
+
+
+def diagnosis_select_groups() -> list[dict]:
+    """Группы МКБ для формы диагноза: по одному optgroup на каждый протокол
+    из protocol_registry + отдельная группа коморбидности.
+
+    Новый протокол в YAML автоматически появляется в UI — без правки шаблона.
+    Порядок = порядок в реестре.
+    """
+    groups: list[dict] = []
+    seen: set[str] = set()
+    for protocol_id, proto in (load_protocol_registry().get("protocols") or {}).items():
+        codes = [c for c in (proto.get("icd_codes") or []) if c]
+        if not codes:
+            continue
+        title = (proto.get("title") or protocol_id).strip()
+        # «Внебольничная пневмония (КП …)» → «Внебольничная пневмония»
+        label = title.split("(", 1)[0].strip() if "(" in title else title
+        groups.append({
+            "protocol_id": protocol_id,
+            "label": label,
+            "codes": codes,
+        })
+        seen.update(codes)
+    comorbid = [c for c in COMORBIDITY_ICD_CODES if c not in seen]
+    if comorbid:
+        groups.append({
+            "protocol_id": None,
+            "label": "Фоновые / коморбидность",
+            "codes": comorbid,
+        })
+    return groups
+
+
+def protocol_id_for_icd(code: str) -> str | None:
+    """Какой протокол триггерит этот МКБ (первый по реестру), иначе None."""
+    if not code:
+        return None
+    for protocol_id, proto in (load_protocol_registry().get("protocols") or {}).items():
+        if code in (proto.get("icd_codes") or []):
+            return protocol_id
+    return None
+
+
 def _facts(pid, severity=None) -> dict:
     allergy = re.betalactam_allergy_type(pid)  # 'ige' / 'non-ige' / None
     return {

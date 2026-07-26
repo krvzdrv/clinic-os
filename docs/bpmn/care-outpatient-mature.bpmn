@@ -14,14 +14,14 @@
       <bpmn:outgoing>Flow_Start_To_Visit</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <bpmn:subProcess id="SubProcess_Visit" name="Приём: жалобы, осмотр, диагноз">
+    <bpmn:subProcess id="SubProcess_Visit" name="Провести приём: анамнез, осмотр, диагноз">
       <bpmn:incoming>Flow_Start_To_Visit</bpmn:incoming>
       <bpmn:outgoing>Flow_Visit_Done</bpmn:outgoing>
       <bpmn:startEvent id="Start_VisitInner" name="Начало"><bpmn:outgoing>Flow_v1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:task id="Task_Complaint" name="Жалобы и анамнез"><bpmn:incoming>Flow_v1</bpmn:incoming><bpmn:outgoing>Flow_v2</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_Exam" name="Осмотр"><bpmn:incoming>Flow_v2</bpmn:incoming><bpmn:outgoing>Flow_v3</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_Diagnosis" name="Диагноз или диагнозы"><bpmn:incoming>Flow_v3</bpmn:incoming><bpmn:outgoing>Flow_v4</bpmn:outgoing></bpmn:task>
-      <bpmn:endEvent id="End_VisitInner" name="Картина ясна"><bpmn:incoming>Flow_v4</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_Complaint" name="Собрать жалобы и анамнез"><bpmn:incoming>Flow_v1</bpmn:incoming><bpmn:outgoing>Flow_v2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_Exam" name="Провести осмотр"><bpmn:incoming>Flow_v2</bpmn:incoming><bpmn:outgoing>Flow_v3</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_Diagnosis" name="Поставить диагноз"><bpmn:incoming>Flow_v3</bpmn:incoming><bpmn:outgoing>Flow_v4</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_VisitInner" name="Диагноз установлен"><bpmn:incoming>Flow_v4</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_v1" sourceRef="Start_VisitInner" targetRef="Task_Complaint" />
       <bpmn:sequenceFlow id="Flow_v2" sourceRef="Task_Complaint" targetRef="Task_Exam" />
       <bpmn:sequenceFlow id="Flow_v3" sourceRef="Task_Exam" targetRef="Task_Diagnosis" />
@@ -38,10 +38,10 @@
       <bpmn:outgoing>Flow_To_Referral</bpmn:outgoing>
       <bpmn:outgoing>Flow_StayHere</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:endEvent id="End_Hospital" name="В стационар"><bpmn:incoming>Flow_To_Hospital</bpmn:incoming></bpmn:endEvent>
-    <bpmn:endEvent id="End_Referral" name="К другому специалисту"><bpmn:incoming>Flow_To_Referral</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_Hospital" name="Направить в стационар"><bpmn:incoming>Flow_To_Hospital</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_Referral" name="Направить к другому специалисту"><bpmn:incoming>Flow_To_Referral</bpmn:incoming></bpmn:endEvent>
 
-    <bpmn:subProcess id="SubProcess_Workup" name="Обследование">
+    <bpmn:subProcess id="SubProcess_Workup" name="Провести обследование">
       <bpmn:incoming>Flow_StayHere</bpmn:incoming>
       <bpmn:outgoing>Flow_Workup_Done</bpmn:outgoing>
       <bpmn:startEvent id="Start_Workup" name="Начало"><bpmn:outgoing>Flow_w1</bpmn:outgoing></bpmn:startEvent>
@@ -57,7 +57,7 @@
         <bpmn:incoming>Flow_w5</bpmn:incoming>
         <bpmn:outgoing>Flow_w6</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_Workup" name="Данных достаточно"><bpmn:incoming>Flow_w6</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="End_Workup" name="Обследование завершено"><bpmn:incoming>Flow_w6</bpmn:incoming></bpmn:endEvent>
       <bpmn:sequenceFlow id="Flow_w1" sourceRef="Start_Workup" targetRef="Gateway_NeedLabs" />
       <bpmn:sequenceFlow id="Flow_w2" name="да" sourceRef="Gateway_NeedLabs" targetRef="Task_OrderStudies" />
       <bpmn:sequenceFlow id="Flow_w3" name="нет" sourceRef="Gateway_NeedLabs" targetRef="Gateway_WorkupMerge" />
@@ -66,17 +66,17 @@
       <bpmn:sequenceFlow id="Flow_w6" sourceRef="Gateway_WorkupMerge" targetRef="End_Workup" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SubProcess_TreatPlan" name="Лечение и план контроля">
+    <bpmn:subProcess id="SubProcess_TreatPlan" name="Назначить лечение и запланировать контроль">
       <bpmn:incoming>Flow_Workup_Done</bpmn:incoming>
       <bpmn:outgoing>Flow_Treat_Done</bpmn:outgoing>
       <bpmn:startEvent id="Start_Treat" name="Начало"><bpmn:outgoing>Flow_t1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:exclusiveGateway id="Gateway_TreatNow" name="Назначаем лечение сейчас?">
+      <bpmn:exclusiveGateway id="Gateway_TreatNow" name="Назначить лечение сейчас?">
         <bpmn:incoming>Flow_t1</bpmn:incoming>
         <bpmn:outgoing>Flow_t2</bpmn:outgoing>
         <bpmn:outgoing>Flow_t3</bpmn:outgoing>
       </bpmn:exclusiveGateway>
       <bpmn:task id="Task_Prescribe" name="Назначить лечение"><bpmn:incoming>Flow_t2</bpmn:incoming><bpmn:outgoing>Flow_t4</bpmn:outgoing></bpmn:task>
-      <bpmn:task id="Task_Observe" name="Наблюдение без нового назначения"><bpmn:incoming>Flow_t3</bpmn:incoming><bpmn:outgoing>Flow_t5</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_Observe" name="Продолжить наблюдение без назначения"><bpmn:incoming>Flow_t3</bpmn:incoming><bpmn:outgoing>Flow_t5</bpmn:outgoing></bpmn:task>
       <bpmn:exclusiveGateway id="Gateway_TreatMerge" name="">
         <bpmn:incoming>Flow_t4</bpmn:incoming>
         <bpmn:incoming>Flow_t5</bpmn:incoming>

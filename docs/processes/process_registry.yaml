@@ -119,7 +119,7 @@ processes:
         lane: clinician
         intent_ru: "Жалобы, осмотр, один или несколько диагнозов на приёме."
         entry_conditions: ["Обращение амбулаторно"]
-        exit_conditions: ["Диагноз(ы) сформулированы"]
+        exit_conditions: ["Диагноз установлен"]
         signals:
           now_state: { type: "visit", source: "encounter in-progress" }
           stuck_definition:
@@ -140,7 +140,7 @@ processes:
         bpmn_task_id: Gateway_Setting
         lane: clinician
         intent_ru: "Где продолжать: стационар, другой специалист или амбулаторно здесь."
-        entry_conditions: ["Есть клиническая картина"]
+        entry_conditions: ["Диагноз установлен"]
         exit_conditions: ["Выбрана ветка ведения"]
         signals:
           now_state: { type: "setting_decision", source: "clinical judgment" }
@@ -163,7 +163,7 @@ processes:
         lane: clinician
         intent_ru: "Нужны ли исследования сейчас; назначить и получить результаты при необходимости."
         entry_conditions: ["Ведение амбулаторно здесь"]
-        exit_conditions: ["Данных достаточно для решения о лечении"]
+        exit_conditions: ["Обследование завершено — можно решать о лечении"]
         signals:
           now_state: { type: "workup", source: "service_request" }
           stuck_definition:

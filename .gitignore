@@ -34,3 +34,4 @@ cql/*.cql.json
 
 # Scratch / QA screenshots
 .tmp/
+tools/visual_out/

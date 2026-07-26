@@ -8,13 +8,13 @@
                   targetNamespace="http://clinic-os/processes/diagnosis_cds"
                   exporter="Camunda Modeler" exporterVersion="5.46.1">
 
-  <bpmn:process id="diagnosis_cds" name="Диагноз(ы), проверка назначения и госпитализация" isExecutable="false">
+  <bpmn:process id="diagnosis_cds" name="Поставить диагноз, проверить назначение, госпитализировать" isExecutable="false">
 
-    <bpmn:startEvent id="Start_DC" name="Осмотр и жалобы записаны">
+    <bpmn:startEvent id="Start_DC" name="Жалобы и осмотр записаны">
       <bpmn:outgoing>Flow_S1</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <bpmn:subProcess id="SP_Dx" name="Диагноз(ы) и протокол">
+    <bpmn:subProcess id="SP_Dx" name="Поставить диагноз и подключить протокол">
       <bpmn:incoming>Flow_S1</bpmn:incoming>
       <bpmn:outgoing>Flow_S2</bpmn:outgoing>
 
@@ -24,16 +24,16 @@
         <bpmn:incoming>Flow_dx8</bpmn:incoming>
         <bpmn:outgoing>Flow_dx0</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_SetDx" name="Поставить диагноз (код МКБ)">
+      <bpmn:task id="Task_SetDx" name="Поставить диагноз">
         <bpmn:incoming>Flow_dx0</bpmn:incoming>
         <bpmn:outgoing>Flow_dx2</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:exclusiveGateway id="Gateway_Proto" name="Код входит в реестр протокола (ВП / анемия)?">
+      <bpmn:exclusiveGateway id="Gateway_Proto" name="Есть клинический протокол по этому диагнозу?">
         <bpmn:incoming>Flow_dx2</bpmn:incoming>
         <bpmn:outgoing>Flow_dx3</bpmn:outgoing>
         <bpmn:outgoing>Flow_dx4</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_Attach" name="Протокол подключается: своя подсказка + проверка под этим диагнозом">
+      <bpmn:task id="Task_Attach" name="Подключить протокол к диагнозу">
         <bpmn:incoming>Flow_dx3</bpmn:incoming>
         <bpmn:outgoing>Flow_dx5</bpmn:outgoing>
       </bpmn:task>
@@ -42,12 +42,12 @@
         <bpmn:incoming>Flow_dx5</bpmn:incoming>
         <bpmn:outgoing>Flow_dx6</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:exclusiveGateway id="Gateway_More" name="Нужен ещё диагноз? (обычно или по результату исследования)">
+      <bpmn:exclusiveGateway id="Gateway_More" name="Нужен ещё один диагноз?">
         <bpmn:incoming>Flow_dx6</bpmn:incoming>
         <bpmn:outgoing>Flow_dx7</bpmn:outgoing>
         <bpmn:outgoing>Flow_dx8</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_DxS" name="Диагнозы на приёме определены"><bpmn:incoming>Flow_dx7</bpmn:incoming></bpmn:endEvent>
+      <bpmn:endEvent id="End_DxS" name="Диагноз установлен"><bpmn:incoming>Flow_dx7</bpmn:incoming></bpmn:endEvent>
 
       <bpmn:sequenceFlow id="Flow_dx1" sourceRef="Start_DxS" targetRef="Gateway_LoopMerge" />
       <bpmn:sequenceFlow id="Flow_dx0" sourceRef="Gateway_LoopMerge" targetRef="Task_SetDx" />
@@ -69,7 +69,7 @@
       <bpmn:association id="Assoc_MultiProto" sourceRef="Task_Attach" targetRef="Ann_MultiProto" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SP_Order" name="Назначение и проверка (CDS order-sign)">
+    <bpmn:subProcess id="SP_Order" name="Назначить лечение и проверить">
       <bpmn:incoming>Flow_S2</bpmn:incoming>
       <bpmn:outgoing>Flow_S3</bpmn:outgoing>
 
@@ -78,13 +78,13 @@
         <bpmn:incoming>Flow_o1</bpmn:incoming>
         <bpmn:outgoing>Flow_o2</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:exclusiveGateway id="Gateway_Hard" name="Есть жёсткое противопоказание (аллергия и т.п.)?">
+      <bpmn:exclusiveGateway id="Gateway_Hard" name="Есть жёсткое противопоказание?">
         <bpmn:incoming>Flow_o2</bpmn:incoming>
         <bpmn:outgoing>Flow_o3</bpmn:outgoing>
         <bpmn:outgoing>Flow_o4</bpmn:outgoing>
       </bpmn:exclusiveGateway>
 
-      <bpmn:exclusiveGateway id="Gateway_HardAck" name="Врач нажал «Назначить всё равно»?">
+      <bpmn:exclusiveGateway id="Gateway_HardAck" name="Назначить несмотря на риск?">
         <bpmn:incoming>Flow_o3</bpmn:incoming>
         <bpmn:outgoing>Flow_o5</bpmn:outgoing>
         <bpmn:outgoing>Flow_o6</bpmn:outgoing>
@@ -95,8 +95,8 @@
         <bpmn:outgoing>Flow_o7</bpmn:outgoing>
         <bpmn:outgoing>Flow_o8</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_BlockedH" name="Заблокировано (400): нужна причина"><bpmn:incoming>Flow_o7</bpmn:incoming></bpmn:endEvent>
-      <bpmn:task id="Task_SaveHard" name="Сохранено с меткой «осознанно» + запись в журнале (hard-stop)">
+      <bpmn:endEvent id="End_BlockedH" name="Не сохранено — нужна письменная причина"><bpmn:incoming>Flow_o7</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_SaveHard" name="Сохранить назначение осознанно (жёсткое предупреждение)">
         <bpmn:incoming>Flow_o8</bpmn:incoming>
         <bpmn:outgoing>Flow_o15</bpmn:outgoing>
       </bpmn:task>
@@ -106,7 +106,7 @@
         <bpmn:outgoing>Flow_o9</bpmn:outgoing>
         <bpmn:outgoing>Flow_o10</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:exclusiveGateway id="Gateway_SoftAck" name="Отмечен чекбокс «понимаю» и подтверждено?">
+      <bpmn:exclusiveGateway id="Gateway_SoftAck" name="Подтверждено осознанное назначение?">
         <bpmn:incoming>Flow_o9</bpmn:incoming>
         <bpmn:outgoing>Flow_o11</bpmn:outgoing>
         <bpmn:outgoing>Flow_o12</bpmn:outgoing>
@@ -117,12 +117,12 @@
         <bpmn:outgoing>Flow_o13</bpmn:outgoing>
         <bpmn:outgoing>Flow_o14</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:endEvent id="End_BlockedS" name="Заблокировано (400): нужна причина"><bpmn:incoming>Flow_o13</bpmn:incoming></bpmn:endEvent>
-      <bpmn:task id="Task_SaveSoft" name="Сохранено с меткой «осознанно» + запись в журнале (soft-stop)">
+      <bpmn:endEvent id="End_BlockedS" name="Не сохранено — нужна письменная причина"><bpmn:incoming>Flow_o13</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_SaveSoft" name="Сохранить назначение осознанно (не первая линия)">
         <bpmn:incoming>Flow_o14</bpmn:incoming>
         <bpmn:outgoing>Flow_o16</bpmn:outgoing>
       </bpmn:task>
-      <bpmn:task id="Task_SaveClean" name="Сохранено без предупреждений">
+      <bpmn:task id="Task_SaveClean" name="Сохранить назначение">
         <bpmn:incoming>Flow_o10</bpmn:incoming>
         <bpmn:outgoing>Flow_o17</bpmn:outgoing>
       </bpmn:task>
@@ -155,7 +155,7 @@
       <bpmn:sequenceFlow id="Flow_o18" sourceRef="Gateway_MergeSave" targetRef="End_OrdS" />
 
       <bpmn:textAnnotation id="Ann_ReasonRule">
-        <bpmn:text>Подтвердить чекбоксом недостаточно ни для жёсткой, ни для мягкой остановки — нужна письменная причина, иначе система не сохранит запись</bpmn:text>
+        <bpmn:text>Одного подтверждения недостаточно — нужна письменная причина, иначе назначение не сохранится</bpmn:text>
       </bpmn:textAnnotation>
       <bpmn:association id="Assoc_ReasonRule" sourceRef="Gateway_HardReason" targetRef="Ann_ReasonRule" />
       <bpmn:textAnnotation id="Ann_OverrideVisible">
@@ -164,17 +164,17 @@
       <bpmn:association id="Assoc_OverrideVisible" sourceRef="Task_SaveSoft" targetRef="Ann_OverrideVisible" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SP_Sev" name="Тяжесть и госпитализация">
+    <bpmn:subProcess id="SP_Sev" name="Оценить тяжесть и госпитализировать">
       <bpmn:incoming>Flow_S3</bpmn:incoming>
       <bpmn:outgoing>Flow_S4</bpmn:outgoing>
 
       <bpmn:startEvent id="Start_SevS" name="Начало"><bpmn:outgoing>Flow_sv1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:exclusiveGateway id="Gateway_NeedInp" name="Есть показания к госпитализации (тяжесть, тяжёлое общее состояние)?">
+      <bpmn:exclusiveGateway id="Gateway_NeedInp" name="Нужна госпитализация?">
         <bpmn:incoming>Flow_sv1</bpmn:incoming>
         <bpmn:outgoing>Flow_sv2</bpmn:outgoing>
         <bpmn:outgoing>Flow_sv3</bpmn:outgoing>
       </bpmn:exclusiveGateway>
-      <bpmn:task id="Task_Admit" name="Госпитализация: открывается стационарный приём">
+      <bpmn:task id="Task_Admit" name="Госпитализировать">
         <bpmn:incoming>Flow_sv2</bpmn:incoming>
         <bpmn:outgoing>Flow_sv4</bpmn:outgoing>
       </bpmn:task>
@@ -206,11 +206,11 @@
       <bpmn:outgoing>Flow_S5</bpmn:outgoing>
       <bpmn:outgoing>Flow_S6</bpmn:outgoing>
     </bpmn:parallelGateway>
-    <bpmn:task id="Task_Finish" name="Закрыть приём (конец сегодняшнего контакта)">
+    <bpmn:task id="Task_Finish" name="Закрыть приём">
       <bpmn:incoming>Flow_S5</bpmn:incoming>
       <bpmn:outgoing>Flow_S7</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:task id="Task_Resolve" name="Разрешить диагноз (болезнь клинически закончилась)">
+    <bpmn:task id="Task_Resolve" name="Разрешить диагноз">
       <bpmn:incoming>Flow_S6</bpmn:incoming>
       <bpmn:outgoing>Flow_S8</bpmn:outgoing>
     </bpmn:task>

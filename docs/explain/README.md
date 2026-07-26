@@ -42,7 +42,7 @@
 |---|---|
 | **Амбулаторный визит (главная для врачей)** | `docs/bpmn/care-outpatient-mature.bpmn` |
 | **Контроль (отдельно, без петель)** | `docs/bpmn/care-outpatient-control-mature.bpmn` |
-| **Диагноз(ы), проверка назначения, госпитализация — детально** | `docs/bpmn/diagnosis-cds-mature.bpmn` (к схеме 6) |
+| **Поставить диагноз, проверить назначение, госпитализировать — детально** | `docs/bpmn/diagnosis-cds-mature.bpmn` (к схеме 6) |
 | **Повод приёма: новая жалоба или продолжение** | `docs/bpmn/encounter-reason-mature.bpmn` (к схеме 7) |
 | Стационарная пневмония (пример) | `docs/bpmn/cap-inpatient-mature.bpmn` |
 | Узкие протокольные схемы ВП / ЖДА | `cap-outpatient-mature.bpmn`, `ida-outpatient-mature.bpmn` |

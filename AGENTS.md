@@ -133,6 +133,7 @@ UI врачу: понятный текст + что сделать
 | `python3 tools/scenarios.py` | Протокол/правила (28 сценариев) | тронули protocol_*.py, rules_engine.py, *_rules.yaml |
 | `python3 tools/style_gate.py` | Текст-значения без точки/запятой, кнопки без inline-размеров, статусы без сырого enum, формы под double-submit-guard | тронули templates/**, care_plan_service.py, cds_service.py, любой .py с `description=` |
 | `python3 tools/quality_gate.py` | ClinicalVerdict без техкодов в UI, структура #now-action | тронули app.py/protocol_verdict.py/templates/patient.html |
+| `python3 tools/visual_gate.py` | Наложения бейдж/дата/название в диагнозах + (опц.) скриншот-diff эталонов | тронули templates/**, static/clinic.css, UI-статусы; нужен playwright. Эталоны: `--update` → `tools/visual_baselines/` |
 | `python3 tools/test_bpmn_layout.py` | Mature BPMN: один вход в task, рёбра прикреплены, нет default/, нет lanes, boundary не на `[+]` | тронули `docs/bpmn/*mature*.bpmn` или `BPMN_PRACTICES.md` |
 
 Если задача добавляет **новый протокол** (по образцу ВП/ЖДА) — все три гейта обязательны сразу, плюс `python3 tools/doctor_gate.py`. Стиль текста цели/подсказки для нового протокола не полагаться на память — прогнать `style_gate.py`, он поймает разъезд с существующими протоколами автоматически.
@@ -211,6 +212,7 @@ UI врачу: понятный текст + что сделать
   - python3 tools/scenarios.py    (если затронут протокол/ожидания)
   - python3 tools/style_gate.py   (если затронуты templates/**, любой .py с текстом для UI)
   - python3 tools/quality_gate.py (если затронут app.py/verdict/templates/patient.html)
+  - python3 tools/visual_gate.py  (если затронуты templates/** / static/clinic.css)
 
 Не коммить. Архитектуру не менять. Нужен общий файл — остановись и спроси clinic-architect.
 ```

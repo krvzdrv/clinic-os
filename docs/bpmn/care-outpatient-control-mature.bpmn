@@ -3,7 +3,7 @@
 
   <bpmn:process id="care_outpatient_control" name="Контроль амбулаторного ведения" isExecutable="false">
 
-    <bpmn:startEvent id="Start_Control" name="Контрольный визит">
+    <bpmn:startEvent id="Start_Control" name="Начать контрольный визит">
       <bpmn:outgoing>Flow_c1</bpmn:outgoing>
     </bpmn:startEvent>
 
@@ -17,7 +17,7 @@
       <bpmn:outgoing>Flow_c3</bpmn:outgoing>
       <bpmn:outgoing>Flow_c4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:endEvent id="End_Hospital" name="В стационар">
+    <bpmn:endEvent id="End_Hospital" name="Направить в стационар">
       <bpmn:incoming>Flow_c3</bpmn:incoming>
     </bpmn:endEvent>
 
@@ -55,7 +55,7 @@
     <bpmn:endEvent id="End_Recovered" name="Эпизод завершён">
       <bpmn:incoming>Flow_c11</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:endEvent id="End_NextVisit" name="Ещё визит">
+    <bpmn:endEvent id="End_NextVisit" name="Продолжить ещё одним визитом">
       <bpmn:incoming>Flow_c12</bpmn:incoming>
     </bpmn:endEvent>
 

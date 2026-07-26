@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Десять взрослых пациентов ВП — покрытие протокола КП №768 и UI-путей.
+Демо-пациенты: у каждого ровно 1 приём и 1 активный диагноз.
+
+Покрытие протоколов КП №768 (ВП) и КП №23 (ЖДА) — разные варианты, чтобы
+на демо можно было увидеть эталон, ошибки назначения, госпитализацию,
+аллергию, стационар, пустую карту и ЖДА.
 
 Запуск:
   CLINIC_DB=/path/to.db python3 tools/seed_ten.py          # локальный SQLite
@@ -62,7 +66,7 @@ def _obs(pid, eid, code, display, value, unit, days_ago=0):
 
 
 def _vitals(pid, eid, days_ago=0, *, t=None, spo2=None, rr=None, hr=None,
-            sbp=None, dbp=None, wbc=None, crp=None):
+            sbp=None, dbp=None, wbc=None, crp=None, hb=None, ferritin=None):
     if t is not None:
         _obs(pid, eid, "8310-5", "Температура", t, "C", days_ago)
     if spo2 is not None:
@@ -79,10 +83,13 @@ def _vitals(pid, eid, days_ago=0, *, t=None, spo2=None, rr=None, hr=None,
         _obs(pid, eid, "6690-2", "Лейкоциты", wbc, "10^9/L", days_ago)
     if crp is not None:
         _obs(pid, eid, "30522-7", "СРБ", crp, "mg/L", days_ago)
+    if hb is not None:
+        _obs(pid, eid, "718-7", "Гемоглобин", hb, "g/L", days_ago)
+    if ferritin is not None:
+        _obs(pid, eid, "2276-4", "Ферритин", ferritin, "ng/mL", days_ago)
 
 
 def _gc(pid, eid, key):
-    """Общее состояние: key в GENERAL_CONDITION, category=general_condition."""
     fs.add_flag(pid, key, "true", category="general_condition", encounter_id=eid)
 
 
@@ -107,51 +114,35 @@ def _labs_done(pid, eid, days_ago=0):
                            occurrence_date=_ago(days_ago), status="completed")
 
 
-def _history_episode(pid, dr_id, code, display, days_ago, complaint, *, med=None):
-    """Прошлый завершённый эпизод (не по ВП/ЖДА — не триггерит протокол) —
-    для истории на карте: несколько диагнозов, закрытые приёмы в списке.
-    Диагноз ставится resolved: видна серая карточка без CDS-вердикта,
-    рядом с активным диагнозом по текущему протоколу."""
-    eid = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
-                           start=_ago(days_ago), complaint=complaint)
-    fs.add_condition(pid, code, display, onset_date=_ago(days_ago), encounter_id=eid,
-                     clinical_status="resolved")
-    if med:
-        mcode, mdisplay, mdose, mfreq, mdur = med
-        _med(pid, eid, mcode, mdisplay, route="oral", days_ago=days_ago,
-             duration_days=mdur, dose=mdose, frequency=mfreq, status="completed")
-    fs.finish_encounter(eid, end=_ago(max(days_ago - (mdur if med else 5), 0)))
-    return eid
+def _cxr(pid, eid, conclusion, days_ago=0):
+    fs.add_diagnostic_report(
+        pid, "CXR", "Рентгенография ОГК",
+        conclusion=conclusion, rep_date=_ago(days_ago), encounter_id=eid,
+    )
 
 
 def seed_ten(dr_id: str):
     """
-    Карта покрытия UI/протокола. У каждого пациента — история (2–4 приёма,
-    старые закрыты) и 2–3 диагноза (текущий активный + resolved/хронический
-    сопутствующий), чтобы на карте было что посмотреть помимо одного эпизода.
-    Первичный (протокольный) сценарий каждого пациента не менялся — на нём
-    завязаны doctor_gate/http_smoke/quality_gate/protocol_audit/live_ui_audit.
+    У каждого пациента ровно 1 приём и 1 активный диагноз.
+    Разные коды МКБ из реестров протоколов и разные клинические варианты.
 
-      1 Орлов       — эталон амбулаторно (compliant, контроль R-графии); 3 приёма
-      2 Соколов       — гость: неверная АБТ (азитромицин); 2 приёма
-      3 Морозов       — тяжёлая амбулаторно без АБТ → госпитализация/ОРИТ; 2 приёма
-      4 Стационаров — стационар OK, динамика, step-down / выписка; 3 приёма
-      5 Клавуланова — риск АБТ 3 мес, простой амоксициллин (нужен амокс/клав); 2 приёма
-      6 Аллергова   — IgE на β-лактамы + ошибочный амоксициллин; 2 приёма
-      7 Аспиратов   — аспирация + MRSA, мультирежим, исследования; 3 приёма
-      8 Бронхов     — бронхолитик без обструкции + короткий курс; 2 приёма
-      9 Контролёв   — 4 визита, АБТ без эффекта + хроническая ГБ (3 диагноза)
-     10 Пустова     — почти пустая карта (пустые этапы UI), но с историей; 2 приёма
-     11 Феррова     — ВП (контроль) + впервые выявленная ЖДА + история цистита;
-                       3 приёма, 3 диагноза, два протокола одновременно
+      1 Орлов       — ВП J15.9, эталон амбулаторно (амоксициллин)
+      2 Соколов     — ВП J18.9, гость: неверная АБТ (азитромицин)
+      3 Морозов     — ВП J18.0, тяжёлая амбулаторно → госпитализация
+      4 Стационаров — ВП J13, стационар OK (цефтриаксон + азитромицин в/в)
+      5 Клавуланова — ВП J15.9, риск АБТ 3 мес → нужен амокс/клав
+      6 Аллергова   — ВП J14, IgE на β-лактамы + ошибочный амоксициллин
+      7 Аспиратов   — ВП J18.9, аспирация + MRSA (мультирежим)
+      8 Бронхов     — ВП J15.7, бронхолитик без обструкции + короткий курс
+      9 Контролёв   — ВП J15.4, АБТ без эффекта (лихорадка сохраняется)
+     10 Пустова     — ВП J18.9, почти пустая карта (gaps UI)
+     11 Феррова     — ЖДА D50.9, анализы есть, железо не назначено
+     12 Железов     — ЖДА D50.0, терапия железом по протоколу
     """
     stories = []
 
-    # ── 1. Орлов — золотой амбулаторный путь (3 приёма, 2 диагноза) ───────
+    # ── 1. Орлов — эталон амбулаторно ─────────────────────────────────────
     pid = fs.add_patient("Орлов", "Антон", "Петрович", "male", "1985-03-12")
-    _history_episode(pid, dr_id, "J20.9", "Острый бронхит неуточнённый", 210,
-                     "Кашель, першение в горле 5 дней",
-                     med=("J01CA04", "Амоксициллин", "500 мг", "3 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(5), complaint="Кашель с мокротой 4 дня, t 38.2")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -159,26 +150,21 @@ def seed_ten(dr_id: str):
     _gc(pid, e1, "satisfactory")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
+    # Старт: виталы + АБТ; контроль t/SpO2 позже — закрывает no_reassessment.
     _vitals(pid, e1, 5, t=38.2, spo2=96, rr=18, hr=88, sbp=120, dbp=78, wbc=11.2, crp=48)
     _labs_done(pid, e1, 5)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Очагово-инфильтративные изменения S9 справа",
-                             rep_date=_ago(5), encounter_id=e1)
+    _cxr(pid, e1, "Очагово-инфильтративные изменения S9 справа", 5)
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=5,
          duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500)
-    fs.finish_encounter(e1, end=_ago(5))
+    _vitals(pid, e1, 2, t=36.8, spo2=97, rr=16, hr=76, sbp=118, dbp=76, crp=18)
+    fs.add_service_request(pid, "CXR_REPEAT", "Контрольная R-графия ОГК",
+                           encounter_id=e1, occurrence_date=_ago(0), status="active")
     cps.create_cap_plan(pid)
-    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="followup",
-                          start=_ago(2), complaint="Контроль на 3-и сутки АБТ")
-    _vitals(pid, e2, 2, t=36.7, spo2=97, rr=16, hr=76, sbp=118, dbp=76, crp=18)
-    fs.finish_encounter(e2, end=_ago(2))
     fs.set_pathway(pid, "controlled", "Выздоровление, контроль")
-    stories.append((pid, "Орлов", "эталон амбулаторно, 3 приёма, 2 диагноза"))
+    stories.append((pid, "Орлов", "эталон амбулаторно · J15.9 · 1 приём"))
 
-    # ── 2. Соколов — гостевой сценарий, неверная АБТ (2 приёма, 2 диагноза) ─
+    # ── 2. Соколов — гость, неверная АБТ ──────────────────────────────────
     pid = fs.add_patient("Соколов", "Борис", "Иванович", "male", "1978-06-05")
-    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 320,
-                     "ОРВИ, температура 2 дня")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(2), complaint="Кашель, слабость, t 37.8")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
@@ -188,22 +174,18 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
     _vitals(pid, e1, 2, t=37.8, spo2=97, rr=17, hr=82, sbp=118, dbp=74, wbc=9.5, crp=42)
     _labs_done(pid, e1, 2)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Усиление лёгочного рисунка слева",
-                             rep_date=_ago(2), encounter_id=e1)
+    _cxr(pid, e1, "Усиление лёгочного рисунка слева", 2)
     _med(pid, e1, "J01FA10", "Азитромицин", route="oral", days_ago=2,
          duration_days=5, dose="500 мг", frequency="1 раз в день")
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Терапия ВП (отклонение АБТ)")
-    stories.append((pid, "Соколов", "гость: неверная АБТ (макролид), 2 приёма"))
+    stories.append((pid, "Соколов", "гость: неверная АБТ · J18.9 · 1 приём"))
 
-    # ── 3. Морозов — тяжёлая амбулаторно, без АБТ (2 приёма, 2 диагноза) ───
+    # ── 3. Морозов — тяжёлая амбулаторно ──────────────────────────────────
     pid = fs.add_patient("Морозов", "Виктор", "Сергеевич", "male", "1975-04-18")
-    _history_episode(pid, dr_id, "K52.9", "Гастроэнтерит и колит неуточнённые", 260,
-                     "Расстройство желудка, диарея 2 дня")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(1), complaint="Одышка, t 39.5, слабость")
-    fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
+    fs.add_condition(pid, "J18.0", "Бронхопневмония неуточнённая",
                      onset_date=_ago(1), encounter_id=e1)
     _gc(pid, e1, "severe")
     fs.add_flag(pid, "cyanosis", "true", "exam", encounter_id=e1)
@@ -211,53 +193,38 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "shock", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "bilateral_infiltration", "true", "exam", encounter_id=e1)
     _vitals(pid, e1, 1, t=39.5, spo2=86, rr=32, hr=118, sbp=85, dbp=55, wbc=22.0, crp=180)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Двусторонняя инфильтрация — тяжёлая ВП",
-                             rep_date=_ago(1), encounter_id=e1)
+    _cxr(pid, e1, "Двусторонняя инфильтрация — тяжёлая ВП", 1)
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Тяжёлая ВП — нужна госпитализация")
-    stories.append((pid, "Морозов", "тяжёлая амбулаторно → госпитализация, 2 приёма"))
+    stories.append((pid, "Морозов", "тяжёлая амбулаторно → стационар · J18.0 · 1 приём"))
 
-    # ── 4. Стационаров — корректный стационар (3 приёма, 2 диагноза) ──────
+    # ── 4. Стационаров — корректный стационар ─────────────────────────────
     pid = fs.add_patient("Стационаров", "Павел", "Игоревич", "male", "1972-01-18")
-    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 400,
-                     "ОРВИ, лечился амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
-                          start=_ago(6), complaint="Госпитализация: ВП средней тяжести")
-    fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
-                     onset_date=_ago(6), encounter_id=e1)
+                          start=_ago(5), complaint="Госпитализация: ВП средней тяжести")
+    fs.add_condition(pid, "J13", "Пневмония, вызванная Streptococcus pneumoniae",
+                     onset_date=_ago(5), encounter_id=e1)
     _gc(pid, e1, "mod_severe")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
-    _vitals(pid, e1, 6, t=38.8, spo2=91, rr=24, hr=102, sbp=110, dbp=70, wbc=14.5, crp=96)
-    _labs_done(pid, e1, 6)
+    _vitals(pid, e1, 5, t=38.8, spo2=91, rr=24, hr=102, sbp=110, dbp=70, wbc=14.5, crp=96)
+    _labs_done(pid, e1, 5)
     fs.add_service_request(pid, "URINE", "ОАМ", encounter_id=e1,
-                           occurrence_date=_ago(6), status="completed")
+                           occurrence_date=_ago(5), status="completed")
     fs.add_service_request(pid, "ECG", "ЭКГ", encounter_id=e1,
-                           occurrence_date=_ago(6), status="completed")
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Инфильтрация нижней доли слева",
-                             rep_date=_ago(6), encounter_id=e1)
-    _med(pid, e1, "J01DD04", "Цефтриаксон", route="iv", days_ago=6,
+                           occurrence_date=_ago(5), status="completed")
+    _cxr(pid, e1, "Инфильтрация нижней доли слева", 5)
+    _med(pid, e1, "J01DD04", "Цефтриаксон", route="iv", days_ago=5,
          duration_days=7, dose="2 г", frequency="1 раз в день")
-    _med(pid, e1, "J01FA10", "Азитромицин", route="iv", days_ago=6,
+    _med(pid, e1, "J01FA10", "Азитромицин", route="iv", days_ago=5,
          duration_days=5, dose="500 мг", frequency="1 раз в день")
-    fs.finish_encounter(e1, end=_ago(2))
-    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
-                          start=_ago(1), complaint="Контроль перед выпиской")
-    _gc(pid, e2, "satisfactory")
-    _vitals(pid, e2, 1, t=36.6, spo2=96, rr=16, hr=78, sbp=122, dbp=78, crp=22)
-    fs.add_service_request(pid, "CXR_REPEAT", "Контрольная R-графия ОГК",
-                           encounter_id=e2, occurrence_date=_ago(1), status="active")
+    _vitals(pid, e1, 2, t=36.8, spo2=96, rr=16, hr=78, sbp=122, dbp=78, crp=28)
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Стационар — улучшение")
-    stories.append((pid, "Стационаров", "стационар OK, путь к выписке, 3 приёма"))
+    stories.append((pid, "Стационаров", "стационар OK · J13 · 1 приём"))
 
-    # ── 5. Клавуланова — фактор риска АБТ 3 мес (2 приёма, 2 диагноза) ────
+    # ── 5. Клавуланова — риск АБТ 3 мес ───────────────────────────────────
     pid = fs.add_patient("Клавуланова", "Мария", "Сергеевна", "female", "1988-05-09")
-    _history_episode(pid, dr_id, "J20.9", "Острый бронхит неуточнённый", 40,
-                     "Кашель, температура — предыдущий эпизод",
-                     med=("J01CA04", "Амоксициллин", "500 мг", "3 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(3), complaint="Кашель, t 38.0; АБТ месяц назад")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -267,22 +234,18 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     _vitals(pid, e1, 3, t=38.0, spo2=96, rr=18, hr=90, sbp=124, dbp=80, wbc=12.0, crp=55)
     _labs_done(pid, e1, 3)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Инфильтрация справа",
-                             rep_date=_ago(3), encounter_id=e1)
+    _cxr(pid, e1, "Инфильтрация справа", 3)
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=3,
          duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Клавуланова", "риск АБТ 3 мес → нужен амокс/клав, 2 приёма"))
+    stories.append((pid, "Клавуланова", "риск АБТ 3 мес → амокс/клав · J15.9 · 1 приём"))
 
-    # ── 6. Аллергова — IgE β-лактамы (2 приёма, 2 диагноза) ────────────────
+    # ── 6. Аллергова — IgE β-лактамы ──────────────────────────────────────
     pid = fs.add_patient("Аллергова", "Елена", "Викторовна", "female", "1995-09-14")
-    _history_episode(pid, dr_id, "J02.9", "Острый фарингит неуточнённый", 180,
-                     "Боль в горле, температура")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(2),
                           complaint="Кашель, t 37.9; анафилаксия на пенициллин")
-    fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
+    fs.add_condition(pid, "J14", "Пневмония, вызванная Haemophilus influenzae",
                      onset_date=_ago(2), encounter_id=e1)
     fs.add_allergy(pid, "beta-lactam", "β-лактамы", criticality="high",
                    reaction_type="ige", recorded_date=_ago(400))
@@ -290,159 +253,125 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     _vitals(pid, e1, 2, t=37.9, spo2=97, rr=17, hr=84, sbp=116, dbp=72, wbc=8.5, crp=36)
     _labs_done(pid, e1, 2)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Очаговая инфильтрация",
-                             rep_date=_ago(2), encounter_id=e1)
+    _cxr(pid, e1, "Очаговая инфильтрация", 2)
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=2,
          duration_days=7, dose="500 мг", frequency="3 раза в день")
     cps.create_cap_plan(pid)
-    stories.append((pid, "Аллергова", "IgE на β-лактамы + ошибочный амокс, 2 приёма"))
+    stories.append((pid, "Аллергова", "IgE + ошибочный амокс · J14 · 1 приём"))
 
-    # ── 7. Аспиратов — аспирация + MRSA (3 приёма, 2 диагноза) ────────────
+    # ── 7. Аспиратов — аспирация + MRSA ───────────────────────────────────
     pid = fs.add_patient("Аспиратов", "Игорь", "Николаевич", "male", "1965-04-28")
-    _history_episode(pid, dr_id, "K52.9", "Гастроэнтерит и колит неуточнённые", 500,
-                     "Расстройство желудка, амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
-                          start=_ago(8), complaint="Аспирационная пневмония, подозрение MRSA")
-    # J18.9 — в зоне применимости CAP; аспирация задаётся флагом (не отдельным МКБ вне PNEUMONIA_CODES)
+                          start=_ago(6), complaint="Аспирационная пневмония, подозрение MRSA")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая (аспирационный контекст)",
-                     onset_date=_ago(8), encounter_id=e1)
+                     onset_date=_ago(6), encounter_id=e1)
     fs.add_flag(pid, "aspiration_suspicion", "true", "context", encounter_id=e1)
     fs.add_flag(pid, "mrsa_suspicion", "true", "context", encounter_id=e1)
     _gc(pid, e1, "mod_severe")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
-    _vitals(pid, e1, 8, t=38.6, spo2=90, rr=26, hr=108, sbp=100, dbp=65, wbc=16.0, crp=120)
-    _labs_done(pid, e1, 8)
+    _vitals(pid, e1, 6, t=38.6, spo2=90, rr=26, hr=108, sbp=100, dbp=65, wbc=16.0, crp=120)
+    _labs_done(pid, e1, 6)
     fs.add_service_request(pid, "SPUTUM_CULTURE", "Посев мокроты", encounter_id=e1,
-                           occurrence_date=_ago(8), status="active")
+                           occurrence_date=_ago(6), status="active")
     fs.add_service_request(pid, "BLOOD_CULT", "Посев крови", encounter_id=e1,
-                           occurrence_date=_ago(8), status="completed")
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Инфильтрация в зависимых отделах",
-                             rep_date=_ago(8), encounter_id=e1)
+                           occurrence_date=_ago(6), status="completed")
+    _cxr(pid, e1, "Инфильтрация в зависимых отделах", 6)
     fs.add_diagnostic_report(pid, "CT", "КТ ОГК",
                              conclusion="Участки консолидации",
-                             rep_date=_ago(7), encounter_id=e1)
-    _med(pid, e1, "J01CR02", "Амоксициллин с клавуланатом", route="iv", days_ago=8,
+                             rep_date=_ago(5), encounter_id=e1)
+    _med(pid, e1, "J01CR02", "Амоксициллин с клавуланатом", route="iv", days_ago=6,
          duration_days=10, dose="1.2 г", frequency="3 раза в день")
-    _med(pid, e1, "J01XX08", "Линезолид", route="iv", days_ago=8,
+    _med(pid, e1, "J01XX08", "Линезолид", route="iv", days_ago=6,
          duration_days=10, dose="600 мг", frequency="2 раза в день")
-    fs.finish_encounter(e1, end=_ago(4))
-    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
-                          start=_ago(3), complaint="Контроль терапии")
-    _vitals(pid, e2, 3, t=37.2, spo2=94, rr=20, hr=92, sbp=112, dbp=70, crp=68)
+    _vitals(pid, e1, 3, t=37.2, spo2=94, rr=20, hr=92, sbp=112, dbp=70, crp=55)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Аспиратов", "аспирация+MRSA, мультирежим, 3 приёма"))
+    stories.append((pid, "Аспиратов", "аспирация+MRSA · J18.9 · 1 приём"))
 
-    # ── 8. Бронхов — бронхолитик без обструкции (2 приёма, 2 диагноза) ────
-    # Историю подбираем не-респираторную: диагноз ХОБЛ/астмы сломал бы саму
-    # суть сценария (бронхолитик оправдан только при подтверждённой обструкции).
+    # ── 8. Бронхов — бронхолитик без обструкции ───────────────────────────
     pid = fs.add_patient("Бронхов", "Олег", "Андреевич", "male", "1980-12-01")
-    _history_episode(pid, dr_id, "K29.7", "Гастрит неуточнённый", 150,
-                     "Боли в эпигастрии после еды")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
-                          start=_ago(4),
+                          start=_ago(3),
                           complaint="Кашель, t 37.6; сальбутамол «на всякий»")
-    fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
-                     onset_date=_ago(4), encounter_id=e1)
+    fs.add_condition(pid, "J15.7", "Пневмония, вызванная Mycoplasma pneumoniae",
+                     onset_date=_ago(3), encounter_id=e1)
     _gc(pid, e1, "satisfactory")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
-    # Нет bronchial_obstruction / ХОБЛ — бронхолитик лишний
-    _vitals(pid, e1, 4, t=37.6, spo2=97, rr=16, hr=78, sbp=120, dbp=76, wbc=8.0, crp=28)
-    _labs_done(pid, e1, 4)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Лёгкая инфильтрация",
-                             rep_date=_ago(4), encounter_id=e1)
-    _med(pid, e1, "J01FA10", "Азитромицин", route="oral", days_ago=4,
+    _vitals(pid, e1, 3, t=37.6, spo2=97, rr=16, hr=78, sbp=120, dbp=76, wbc=8.0, crp=28)
+    _labs_done(pid, e1, 3)
+    _cxr(pid, e1, "Лёгкая инфильтрация", 3)
+    _med(pid, e1, "J01FA10", "Азитромицин", route="oral", days_ago=3,
          duration_days=3, dose="500 мг", frequency="1 раз в день")
-    _med(pid, e1, "R03AC02", "Сальбутамол", route="inhalation", days_ago=4,
+    _med(pid, e1, "R03AC02", "Сальбутамол", route="inhalation", days_ago=3,
          duration_days=5, dose="100 мкг", frequency="по потребности")
     cps.create_cap_plan(pid)
-    stories.append((pid, "Бронхов", "бронхолитик без обструкции + короткий курс, 2 приёма"))
+    stories.append((pid, "Бронхов", "бронхолитик без обструкции · J15.7 · 1 приём"))
 
-    # ── 9. Контролёв — 4 визита, 2 диагноза (ВП + хроническая ГБ) ─────────
+    # ── 9. Контролёв — АБТ без эффекта (один открытый приём) ─────────────
     pid = fs.add_patient("Контролёв", "Андрей", "Павлович", "male", "1978-06-20")
-    _history_episode(pid, dr_id, "J02.9", "Острый фарингит неуточнённый", 120,
-                     "Боль в горле, температура")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
-                          start=_ago(8), complaint="Первичный осмотр: кашель, t 38.4")
-    fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
-                     onset_date=_ago(8), encounter_id=e1)
-    # Сопутствующий хронический диагноз — не респираторный, не триггерит
-    # протокол ВП, просто «второй активный диагноз» на карте.
-    fs.add_condition(pid, "I10", "Артериальная гипертензия",
-                     onset_date=_ago(900), encounter_id=e1)
+                          start=_ago(5), complaint="Кашель, t 38.4 — без улучшения на АБТ")
+    fs.add_condition(pid, "J15.4", "Пневмония, вызванная стрептококками группы A",
+                     onset_date=_ago(5), encounter_id=e1)
     _gc(pid, e1, "satisfactory")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
-    _vitals(pid, e1, 8, t=38.4, spo2=96, rr=19, hr=92, sbp=122, dbp=78, wbc=11.8, crp=62)
-    _labs_done(pid, e1, 8)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Инфильтрация нижней доли справа",
-                             rep_date=_ago(8), encounter_id=e1)
-    _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=8,
+    # Стартовые виталы при назначении + актуальные (всё ещё лихорадка)
+    _vitals(pid, e1, 5, t=38.4, spo2=96, rr=19, hr=92, sbp=122, dbp=78, wbc=11.8, crp=62)
+    _vitals(pid, e1, 0, t=38.5, spo2=94, rr=21, hr=98, sbp=118, dbp=74, crp=78)
+    _labs_done(pid, e1, 5)
+    _cxr(pid, e1, "Инфильтрация нижней доли справа", 5)
+    _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=5,
          duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500)
-    fs.finish_encounter(e1, end=_ago(8))
-    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="followup",
-                          start=_ago(5), complaint="Контроль на 3-и сутки — улучшений нет")
-    _vitals(pid, e2, 5, t=38.3, spo2=95, rr=20, hr=96, sbp=120, dbp=76, crp=70)
-    fs.finish_encounter(e2, end=_ago(5))
-    e3 = fs.add_encounter(pid, practitioner_id=dr_id, cls="followup",
-                          start=_ago(1), complaint="Повтор: сохраняется лихорадка на АБТ")
-    _vitals(pid, e3, 1, t=38.5, spo2=94, rr=21, hr=98, sbp=118, dbp=74, crp=78)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Контролёв", "4 визита: АБТ без эффекта / смена, 3 диагноза"))
+    stories.append((pid, "Контролёв", "АБТ без эффекта · J15.4 · 1 приём"))
 
-    # ── 10. Пустова — почти пустая карта (2 приёма, 2 диагноза) ───────────
+    # ── 10. Пустова — почти пустая карта ──────────────────────────────────
     pid = fs.add_patient("Пустова", "Наталья", "Олеговна", "female", "1992-02-11")
-    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 240,
-                     "ОРВИ, наблюдалась амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(0), complaint="Первичный приём: кашель 2 дня")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
                      onset_date=_ago(0), encounter_id=e1)
-    # Текущий приём остаётся почти пустым намеренно — без виталов, R-графии,
-    # АБТ (тест «gap»-подсказок и пустых этапов UI). История выше — для
-    # контраста: у пациентки обычно есть записи, этот приём просто неполный.
     cps.create_cap_plan(pid)
-    stories.append((pid, "Пустова", "почти пустая карта: gaps + пустые этапы UI, 2 приёма"))
+    stories.append((pid, "Пустова", "пустые этапы UI · J18.9 · 1 приём"))
 
-    # ── 11. Феррова — ВП + впервые выявленная ЖДА (3 приёма, 3 диагноза) ──
+    # ── 11. Феррова — ЖДА, железо не назначено ────────────────────────────
     pid = fs.add_patient("Феррова", "Ирина", "Дмитриевна", "female", "1982-11-03")
-    _history_episode(pid, dr_id, "N30.9", "Цистит неуточнённый", 260,
-                     "Учащённое болезненное мочеиспускание",
-                     med=("J01XE01", "Нитрофурантоин", "100 мг", "2 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
-                          start=_ago(20), complaint="Кашель, t 38.0")
-    fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
-                     onset_date=_ago(20), encounter_id=e1)
-    _gc(pid, e1, "satisfactory")
-    fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
-    fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
-    _vitals(pid, e1, 20, t=38.0, spo2=97, rr=18, hr=86, sbp=120, dbp=78, wbc=10.5, crp=40)
-    _labs_done(pid, e1, 20)
-    fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
-                             conclusion="Инфильтрация нижней доли справа",
-                             rep_date=_ago(20), encounter_id=e1)
-    _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=20,
-         duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500,
-         status="completed")
-    fs.finish_encounter(e1, end=_ago(13))
-    cps.create_cap_plan(pid)
-    # Контроль: ОАК показал анемию → второй диагноз (ЖДА) по результату исследования
-    e2 = fs.add_encounter(pid, practitioner_id=dr_id, cls="followup",
-                          start=_ago(2), complaint="Плановый контроль после ВП; по ОАК — анемия")
-    _obs(pid, e2, "718-7", "Гемоглобин", 92, "g/L", 2)
-    _obs(pid, e2, "2276-4", "Ферритин", 8, "ng/mL", 2)
-    fs.add_service_request(pid, "CBC", "ОАК", encounter_id=e2,
-                           occurrence_date=_ago(2), status="completed")
-    fs.add_service_request(pid, "FERRITIN", "Ферритин", encounter_id=e2,
-                           occurrence_date=_ago(2), status="completed")
+                          start=_ago(2), complaint="Слабость, бледность; по ОАК — анемия")
     fs.add_condition(pid, "D50.9", "Железодефицитная анемия неуточнённая",
-                     onset_date=_ago(2), encounter_id=e2)
-    fs.finish_encounter(e2, end=_ago(2))
-    fs.set_pathway(pid, "treatment", "ВП на контроле; ЖДА впервые выявлена — терапия не назначена")
-    stories.append((pid, "Феррова", "ВП (контроль) + впервые выявленная ЖДА, 3 приёма, 3 диагноза"))
+                     onset_date=_ago(2), encounter_id=e1)
+    _gc(pid, e1, "satisfactory")
+    fs.add_flag(pid, "Слабость", "true", "anamnesis", encounter_id=e1)
+    _vitals(pid, e1, 2, t=36.6, spo2=98, rr=16, hr=84, sbp=110, dbp=70,
+            hb=92, ferritin=8)
+    fs.add_service_request(pid, "CBC", "ОАК", encounter_id=e1,
+                           occurrence_date=_ago(2), status="completed")
+    fs.add_service_request(pid, "FERRITIN", "Ферритин", encounter_id=e1,
+                           occurrence_date=_ago(2), status="completed")
+    fs.set_pathway(pid, "treatment", "ЖДА — терапия железом не назначена")
+    stories.append((pid, "Феррова", "ЖДА без железа · D50.9 · 1 приём"))
+
+    # ── 12. Железов — ЖДА с терапией по протоколу ─────────────────────────
+    pid = fs.add_patient("Железов", "Сергей", "Михайлович", "male", "1970-08-22")
+    e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
+                          start=_ago(7), complaint="Утомляемость, одышка при нагрузке")
+    fs.add_condition(pid, "D50.0", "Железодефицитная анемия вторичная",
+                     onset_date=_ago(7), encounter_id=e1)
+    _gc(pid, e1, "satisfactory")
+    fs.add_flag(pid, "Слабость", "true", "anamnesis", encounter_id=e1)
+    _vitals(pid, e1, 7, t=36.5, spo2=98, rr=15, hr=80, sbp=122, dbp=76,
+            hb=98, ferritin=12)
+    _obs(pid, e1, "2498-4", "Железо сыворотки", 5.2, "umol/L", 7)
+    fs.add_service_request(pid, "CBC", "ОАК", encounter_id=e1,
+                           occurrence_date=_ago(7), status="completed")
+    fs.add_service_request(pid, "FERRITIN", "Ферритин", encounter_id=e1,
+                           occurrence_date=_ago(7), status="completed")
+    fs.add_service_request(pid, "IRON_SERUM", "Железо сыворотки", encounter_id=e1,
+                           occurrence_date=_ago(7), status="completed")
+    _med(pid, e1, "B03AA07", "Сульфат железа", route="oral", days_ago=7,
+         duration_days=90, dose="100 мг элементарного Fe", frequency="1–2 раза в день")
+    fs.set_pathway(pid, "treatment", "ЖДА — терапия железом внутрь")
+    stories.append((pid, "Железов", "ЖДА с железом · D50.0 · 1 приём"))
 
     return stories
 
@@ -466,8 +395,12 @@ def _print_verdicts(stories):
     for pid, name, story in stories:
         try:
             items = pdisp.patient_assessments(pid)
+            n_enc = len(fs.get_encounters(pid))
+            n_dx = len([c for c in fs.get_conditions(pid)
+                        if (c.get("clinical_status") or "active") == "active"])
+            shape = f"enc={n_enc} dx={n_dx}"
             if not items:
-                print(f"  {name:14} [n/a ] нет применимого протокола")
+                print(f"  {name:14} [n/a ] {shape} нет применимого протокола")
                 print(f"                 → {story}")
                 continue
             for item in items:
@@ -476,7 +409,7 @@ def _print_verdicts(stories):
                 ok = "OK" if v.get("ok") else ("n/a" if not v.get("applicable") else "GAP")
                 tag = f"{name:14}" if item is items[0] else " " * 14
                 print(
-                    f"  {tag} [{ok:4}] ({item['protocol_id']}) "
+                    f"  {tag} [{ok:4}] {shape} ({item['protocol_id']}) "
                     f"CTA={(v.get('cta_label') or '—'):22} | "
                     f"{(v.get('headline') or '')[:70]}"
                 )
@@ -501,19 +434,31 @@ def main() -> int:
 
     dr = fs.add_practitioner("Терапевт", "Анна", "терапия")
     stories = seed_ten(dr)
-    print(f"seeded {len(stories)} patients")
+    print(f"seeded {len(stories)} patients (1 encounter + 1 diagnosis each)")
 
     print("seeding drug catalog…")
     _ensure_drugs()
     n_drugs = len(fs.get_drug_catalog())
     print(f"drug_catalog={n_drugs}")
 
-    print("warming cap_cache…")
+    print("warming protocol cache…")
     for pid, name, _ in stories:
-        cap = pcap.evaluate_cap(pid)
-        fs.save_cap_cache(pid, cap)
+        for item in pdisp.patient_assessments(pid):
+            if item["protocol_id"] == "cap_adult_768":
+                fs.save_cap_cache(pid, item["assessment"])
 
     _print_verdicts(stories)
+
+    bad = []
+    for pid, name, _ in stories:
+        n_enc = len(fs.get_encounters(pid))
+        n_dx = len([c for c in fs.get_conditions(pid)
+                    if (c.get("clinical_status") or "active") == "active"])
+        if n_enc != 1 or n_dx != 1:
+            bad.append(f"{name}: enc={n_enc} dx={n_dx}")
+    if bad:
+        print("\nSHAPE FAIL:", "; ".join(bad))
+        return 1
 
     guest = next((s for s in stories if s[1] == "Соколов"), None)
     if guest:
