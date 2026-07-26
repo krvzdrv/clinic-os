@@ -518,6 +518,16 @@
   .save-status{font-size:12px;color:var(--text-muted);margin-left:8px;min-height:1em;}
   .save-status.is-ok{color:var(--text-success);}
   .save-status.is-err{color:var(--text-danger);}
+  /* Dirty-state: кнопка = индикатор (неактивна / есть изменения / сохраняю / сохранено). */
+  .btn-save{transition:background-color .15s ease,color .15s ease,border-color .15s ease;}
+  .btn-save:disabled{
+    background:var(--surface-1,#f5f5f3);color:var(--text-muted);border:1px solid var(--border);
+    cursor:default;opacity:1;
+  }
+  .btn-save.is-dirty:not(:disabled),
+  .btn-save.is-dirty{background:var(--fill-accent);color:#fff;border-color:var(--fill-accent);cursor:pointer;}
+  .btn-save.is-saving{background:var(--text-muted);color:#fff;border-color:transparent;cursor:wait;}
+  .btn-save.is-saved{background:var(--green,#2e6b2e);color:#fff;border-color:transparent;}
   .enc-complaint-edit input[type=text]{min-width:18em;max-width:100%;}
   /* Все триггеры тулбара = размер .btn (SSOT 32px), без «плашки» Жалоба другого роста. */
   .enc-toolbar .add-panel,
@@ -988,7 +998,7 @@
         <textarea name="complaint" rows="3" maxlength="300" aria-label="Жалоба" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
       </div>
       <div class="form-actions">
-        <button class="btn-small" type="submit">Сохранить</button>
+        <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
         <span class="save-status" aria-live="polite"></span>
       </div>
     </form>
@@ -1006,7 +1016,7 @@
         <textarea name="text" rows="4" aria-label="Анамнез" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
       </div>
       <div class="form-actions">
-        <button class="btn-small" type="submit">Сохранить</button>
+        <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
         <span class="save-status" aria-live="polite"></span>
       </div>
     </form>
@@ -2194,19 +2204,73 @@
 
   function _setSaveStatus(form, text, ok){
     var st = form.querySelector('.save-status');
-    if(!st) return;
-    st.textContent = text || '';
-    st.classList.toggle('is-ok', !!ok);
-    st.classList.toggle('is-err', ok === false);
-    if(text && ok){
+    if(st){
+      st.textContent = text || '';
+      st.classList.toggle('is-ok', !!ok);
+      st.classList.toggle('is-err', ok === false);
+      if(text && ok){
+        setTimeout(function(){
+          if(st.textContent === text){ st.textContent=''; st.classList.remove('is-ok'); }
+        }, 2000);
+      }
+    }
+
+    var btn = form.querySelector('.btn-save');
+    if(!btn) return;
+    btn.style.opacity = '';
+    if(ok === null && text){ // «Сохраняю…»
+      btn.disabled = true;
+      btn.classList.remove('is-dirty', 'is-saved');
+      btn.classList.add('is-saving');
+      btn.textContent = 'Сохраняю…';
+    } else if(ok === true){
+      btn.classList.remove('is-dirty', 'is-saving');
+      btn.classList.add('is-saved');
+      btn.disabled = true;
+      btn.textContent = '✓ Сохранено';
+      form.dispatchEvent(new Event('_saved'));
       setTimeout(function(){
-        if(st.textContent === text){ st.textContent=''; st.classList.remove('is-ok'); }
-      }, 2000);
+        if(!btn.classList.contains('is-saved')) return;
+        btn.classList.remove('is-saved');
+        btn.disabled = true;
+        btn.textContent = 'Сохранить';
+      }, 1500);
+    } else if(ok === false){
+      btn.classList.remove('is-saving', 'is-saved');
+      btn.classList.add('is-dirty');
+      btn.disabled = false;
+      btn.textContent = 'Повторить';
+    } else if(ok === null && !text){
+      // сброс (need_confirm и т.п.) — вернуть dirty, если текст ещё не совпадает
+      btn.classList.remove('is-saving', 'is-saved');
+      btn.textContent = 'Сохранить';
+      form.dispatchEvent(new Event('_sync-save'));
     }
   }
 
+  // Dirty-state: кнопка активна только при несохранённых изменениях в textarea.
+  document.querySelectorAll('.fform.anam-text-form textarea').forEach(function(ta){
+    var form = ta.closest('form');
+    var btn = form && form.querySelector('.btn-save');
+    if(!btn) return;
+    var savedValue = ta.value;
+    function sync(){
+      var dirty = ta.value !== savedValue;
+      btn.disabled = !dirty;
+      btn.classList.toggle('is-dirty', dirty);
+      btn.classList.remove('is-saving', 'is-saved');
+      if(dirty) btn.textContent = 'Сохранить';
+      else if(!btn.classList.contains('is-saved')) btn.textContent = 'Сохранить';
+    }
+    ta.addEventListener('input', sync);
+    form.addEventListener('_saved', function(){ savedValue = ta.value; });
+    form.addEventListener('_sync-save', sync);
+    sync();
+  });
+
   function _ajaxSubmit(form){
     var btn=form.querySelector('button[type="submit"]');
+    var isSaveBtn = btn && btn.classList.contains('btn-save');
     var note=form.parentNode.querySelector('.note, .hint');
     var targetSel=form.getAttribute('data-chip-target');
     var target=targetSel?document.getElementById(targetSel):null;
@@ -2229,7 +2293,7 @@
       }
     }
 
-    if(btn){ btn.disabled=true; btn.style.opacity='0.6'; }
+    if(btn && !isSaveBtn){ btn.disabled=true; btn.style.opacity='0.6'; }
     _setSaveStatus(form, 'Сохраняю…', null);
     var fd=new FormData(form);
     fetch(form.getAttribute('action'),{
@@ -2237,7 +2301,7 @@
       headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
       redirect:'error'
     }).then(function(r){ return r.json(); }).then(function(data){
-      if(btn){ btn.disabled=false; btn.style.opacity=''; }
+      if(btn && !isSaveBtn){ btn.disabled=false; btn.style.opacity=''; }
       if(data && data.ok && data.reload){
         saveFstepUi();
         location.reload();
@@ -2276,7 +2340,7 @@
         if(note){ note.innerHTML='<span style="color:var(--text-warning)">'+data.cds.map(function(c){return c.message;}).join(' · ')+'</span>'; }
       }
     }).catch(function(){
-      if(btn){ btn.disabled=false; btn.style.opacity=''; }
+      if(btn && !isSaveBtn){ btn.disabled=false; btn.style.opacity=''; }
       _setSaveStatus(form, 'Ошибка сети', false);
       if(note){ note.innerHTML='<span style="color:var(--text-danger)">Ошибка сети. Повторите.</span>'; }
     });
