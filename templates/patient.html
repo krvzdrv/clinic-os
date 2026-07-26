@@ -1171,20 +1171,18 @@
           {% endif %}
         </div>
       {% elif focus_now == 'exam' %}
-        {{ gc_form(patient.id, e0.id, 'chips-exam-' ~ e0.id, general_condition) }}
-        {{ obs_form(patient.id, e0.id, 'chips-exam-' ~ e0.id, uid='now') }}
+        {# Формы только в гармошке приёма — без дубля в CDS. #}
+        <p class="empty" style="margin:0 0 8px;">Нужны данные осмотра — заполните раздел ниже.</p>
+        <a class="btn" href="#flow-exam">К осмотру</a>
       {% elif focus_now == 'cond' %}
-        {{ cond_form(patient.id, e0.id, 'chips-cond-' ~ e0.id) }}
+        <p class="empty" style="margin:0 0 8px;">Укажите диагноз в разделе приёма.</p>
+        <a class="btn" href="#flow-cond">К диагнозу</a>
       {% elif focus_now == 'anam' %}
-        {% set _anam_now = namespace(parts=[]) %}
-        {% for f in flags if f.category == 'anamnesis' and f.encounter_id == e0.id %}
-          {% set _ = _anam_now.parts.append(f.key) %}
-        {% endfor %}
-        {{ anam_form(patient.id, e0.id, _anam_now.parts|join('\n')) }}
-        {{ flag_form(patient.id, e0.id, 'chips-risk-' ~ e0.id) }}
+        <p class="empty" style="margin:0 0 8px;">Дополните анамнез или факторы риска в разделе ниже.</p>
+        <a class="btn" href="#flow-anam">К анамнезу</a>
       {% elif focus_now == 'diag' %}
-        {{ sr_form(patient.id, e0.id, 'all', 'dlist-lab-' ~ e0.id) }}
-        {{ lab_obs_form(patient.id, e0.id, 'dlist-lab-' ~ e0.id) }}
+        <p class="empty" style="margin:0 0 8px;">Назначьте или внесите результаты обследования ниже.</p>
+        <a class="btn" href="#flow-diag">К обследованию</a>
       {% endif %}
       </div>
 
@@ -1630,11 +1628,7 @@
               </span>
               {% endfor %}
             </div>
-            <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('+ Добавить', true) %}
-                {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) %}
-              {% endcall %}
-            </div>
+            {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) }}
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
@@ -1653,15 +1647,11 @@
                   </div>
                 </div>
               </div>
+              {% else %}
+              <p class="section-label" style="margin-top:0;">Общее состояние</p>
+              {{ gc_form(patient.id, e.id, 'chips-gc-' ~ e.id, gc_flag) }}
               {% endif %}
             </div>
-            {% if not gc_flag %}
-            <div class="add-bar" style="border:none;background:transparent;padding:0 0 8px;">
-              {% call add_panel('+ Оценить общее состояние', true) %}
-                {{ gc_form(patient.id, e.id, 'chips-gc-' ~ e.id, gc_flag) }}
-              {% endcall %}
-            </div>
-            {% endif %}
             {# Виталы: labeled row max 420px; АДс+АДд одной строкой; red flags — danger chip.
                Название показателя — из loinc_display (единый источник: то же имя, что в
                форме выбора показателя), не отдельный локальный словарь. #}
@@ -1731,7 +1721,10 @@
               </div>
               {% endfor %}
             </div>
-            <p class="section-label" style="margin-top:8px;">Данные объективного осмотра</p>
+            <p class="section-label" style="margin-top:8px;">Показатели</p>
+            {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
+
+            <p class="section-label" style="margin-top:12px;">Данные объективного осмотра</p>
             <div class="chips" id="chips-exam-flags-{{ e.id }}">
               {% for f in exam_flags %}
               {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
@@ -1742,14 +1735,7 @@
               </span>
               {% endfor %}
             </div>
-            <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('+ Показатель', true) %}
-                {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
-              {% endcall %}
-              {% call add_panel('+ Добавить', true) %}
-                {{ exam_flag_form(patient.id, e.id, 'chips-exam-flags-' ~ e.id) }}
-              {% endcall %}
-            </div>
+            {{ exam_flag_form(patient.id, e.id, 'chips-exam-flags-' ~ e.id) }}
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
                open=true) %}
@@ -1769,11 +1755,7 @@
               </span>
               {% endfor %}
             </div>
-            <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('+ Поставить диагноз', true) %}
-                {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
-              {% endcall %}
-            </div>
+            {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
