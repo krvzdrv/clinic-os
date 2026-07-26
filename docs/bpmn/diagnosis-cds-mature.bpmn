@@ -1,0 +1,426 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  id="Definitions_diagnosis_cds"
+                  targetNamespace="http://clinic-os/processes/diagnosis_cds"
+                  exporter="Camunda Modeler" exporterVersion="5.46.1">
+
+  <bpmn:process id="diagnosis_cds" name="Диагноз(ы), проверка назначения и госпитализация" isExecutable="false">
+
+    <bpmn:startEvent id="Start_DC" name="Осмотр и жалобы записаны">
+      <bpmn:outgoing>Flow_S1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:subProcess id="SP_Dx" name="Диагноз(ы) и протокол">
+      <bpmn:incoming>Flow_S1</bpmn:incoming>
+      <bpmn:outgoing>Flow_S2</bpmn:outgoing>
+
+      <bpmn:startEvent id="Start_DxS" name="Начало"><bpmn:outgoing>Flow_dx1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:exclusiveGateway id="Gateway_LoopMerge" name="">
+        <bpmn:incoming>Flow_dx1</bpmn:incoming>
+        <bpmn:incoming>Flow_dx8</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx0</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:task id="Task_SetDx" name="Поставить диагноз (код МКБ)">
+        <bpmn:incoming>Flow_dx0</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_Proto" name="Код входит в реестр протокола (ВП / анемия)?">
+        <bpmn:incoming>Flow_dx2</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx3</bpmn:outgoing>
+        <bpmn:outgoing>Flow_dx4</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:task id="Task_Attach" name="Протокол подключается: своя подсказка + проверка под этим диагнозом">
+        <bpmn:incoming>Flow_dx3</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx5</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_Merge1" name="">
+        <bpmn:incoming>Flow_dx4</bpmn:incoming>
+        <bpmn:incoming>Flow_dx5</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx6</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:exclusiveGateway id="Gateway_More" name="Нужен ещё диагноз? (обычно или по результату исследования)">
+        <bpmn:incoming>Flow_dx6</bpmn:incoming>
+        <bpmn:outgoing>Flow_dx7</bpmn:outgoing>
+        <bpmn:outgoing>Flow_dx8</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_DxS" name="Диагнозы на приёме определены"><bpmn:incoming>Flow_dx7</bpmn:incoming></bpmn:endEvent>
+
+      <bpmn:sequenceFlow id="Flow_dx1" sourceRef="Start_DxS" targetRef="Gateway_LoopMerge" />
+      <bpmn:sequenceFlow id="Flow_dx0" sourceRef="Gateway_LoopMerge" targetRef="Task_SetDx" />
+      <bpmn:sequenceFlow id="Flow_dx2" sourceRef="Task_SetDx" targetRef="Gateway_Proto" />
+      <bpmn:sequenceFlow id="Flow_dx3" name="да" sourceRef="Gateway_Proto" targetRef="Task_Attach" />
+      <bpmn:sequenceFlow id="Flow_dx4" name="нет" sourceRef="Gateway_Proto" targetRef="Gateway_Merge1" />
+      <bpmn:sequenceFlow id="Flow_dx5" sourceRef="Task_Attach" targetRef="Gateway_Merge1" />
+      <bpmn:sequenceFlow id="Flow_dx6" sourceRef="Gateway_Merge1" targetRef="Gateway_More" />
+      <bpmn:sequenceFlow id="Flow_dx7" name="нет" sourceRef="Gateway_More" targetRef="End_DxS" />
+      <bpmn:sequenceFlow id="Flow_dx8" name="да" sourceRef="Gateway_More" targetRef="Gateway_LoopMerge" />
+
+      <bpmn:textAnnotation id="Ann_Provenance">
+        <bpmn:text>Диагноз по результату — кнопка «Диагноз» рядом с результатом анализа/снимка; новая запись подписывается «по результату: …» (провенанс)</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_Provenance" sourceRef="Task_SetDx" targetRef="Ann_Provenance" />
+      <bpmn:textAnnotation id="Ann_MultiProto">
+        <bpmn:text>Может быть несколько протоколов одновременно (напр. ВП + анемия) — каждый со своей карточкой и проверкой</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_MultiProto" sourceRef="Task_Attach" targetRef="Ann_MultiProto" />
+    </bpmn:subProcess>
+
+    <bpmn:subProcess id="SP_Order" name="Назначение и проверка (CDS order-sign)">
+      <bpmn:incoming>Flow_S2</bpmn:incoming>
+      <bpmn:outgoing>Flow_S3</bpmn:outgoing>
+
+      <bpmn:startEvent id="Start_OrdS" name="Начало"><bpmn:outgoing>Flow_o1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:task id="Task_Prescribe" name="Назначить лечение">
+        <bpmn:incoming>Flow_o1</bpmn:incoming>
+        <bpmn:outgoing>Flow_o2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_Hard" name="Есть жёсткое противопоказание (аллергия и т.п.)?">
+        <bpmn:incoming>Flow_o2</bpmn:incoming>
+        <bpmn:outgoing>Flow_o3</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o4</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+
+      <bpmn:exclusiveGateway id="Gateway_HardAck" name="Врач нажал «Назначить всё равно»?">
+        <bpmn:incoming>Flow_o3</bpmn:incoming>
+        <bpmn:outgoing>Flow_o5</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o6</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_NotSavedH" name="Не сохранено — ждём решения врача"><bpmn:incoming>Flow_o5</bpmn:incoming></bpmn:endEvent>
+      <bpmn:exclusiveGateway id="Gateway_HardReason" name="Указана письменная причина?">
+        <bpmn:incoming>Flow_o6</bpmn:incoming>
+        <bpmn:outgoing>Flow_o7</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o8</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_BlockedH" name="Заблокировано (400): нужна причина"><bpmn:incoming>Flow_o7</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_SaveHard" name="Сохранено с меткой «осознанно» + запись в журнале (hard-stop)">
+        <bpmn:incoming>Flow_o8</bpmn:incoming>
+        <bpmn:outgoing>Flow_o15</bpmn:outgoing>
+      </bpmn:task>
+
+      <bpmn:exclusiveGateway id="Gateway_Soft" name="Назначение не первой линии по протоколу?">
+        <bpmn:incoming>Flow_o4</bpmn:incoming>
+        <bpmn:outgoing>Flow_o9</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o10</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:exclusiveGateway id="Gateway_SoftAck" name="Отмечен чекбокс «понимаю» и подтверждено?">
+        <bpmn:incoming>Flow_o9</bpmn:incoming>
+        <bpmn:outgoing>Flow_o11</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o12</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_NotSavedS" name="Не сохранено — ждём решения врача"><bpmn:incoming>Flow_o11</bpmn:incoming></bpmn:endEvent>
+      <bpmn:exclusiveGateway id="Gateway_SoftReason" name="Указана письменная причина?">
+        <bpmn:incoming>Flow_o12</bpmn:incoming>
+        <bpmn:outgoing>Flow_o13</bpmn:outgoing>
+        <bpmn:outgoing>Flow_o14</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_BlockedS" name="Заблокировано (400): нужна причина"><bpmn:incoming>Flow_o13</bpmn:incoming></bpmn:endEvent>
+      <bpmn:task id="Task_SaveSoft" name="Сохранено с меткой «осознанно» + запись в журнале (soft-stop)">
+        <bpmn:incoming>Flow_o14</bpmn:incoming>
+        <bpmn:outgoing>Flow_o16</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_SaveClean" name="Сохранено без предупреждений">
+        <bpmn:incoming>Flow_o10</bpmn:incoming>
+        <bpmn:outgoing>Flow_o17</bpmn:outgoing>
+      </bpmn:task>
+
+      <bpmn:exclusiveGateway id="Gateway_MergeSave" name="">
+        <bpmn:incoming>Flow_o15</bpmn:incoming>
+        <bpmn:incoming>Flow_o16</bpmn:incoming>
+        <bpmn:incoming>Flow_o17</bpmn:incoming>
+        <bpmn:outgoing>Flow_o18</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_OrdS" name="Назначение сохранено"><bpmn:incoming>Flow_o18</bpmn:incoming></bpmn:endEvent>
+
+      <bpmn:sequenceFlow id="Flow_o1" sourceRef="Start_OrdS" targetRef="Task_Prescribe" />
+      <bpmn:sequenceFlow id="Flow_o2" sourceRef="Task_Prescribe" targetRef="Gateway_Hard" />
+      <bpmn:sequenceFlow id="Flow_o3" name="да" sourceRef="Gateway_Hard" targetRef="Gateway_HardAck" />
+      <bpmn:sequenceFlow id="Flow_o4" name="нет" sourceRef="Gateway_Hard" targetRef="Gateway_Soft" />
+      <bpmn:sequenceFlow id="Flow_o5" name="нет" sourceRef="Gateway_HardAck" targetRef="End_NotSavedH" />
+      <bpmn:sequenceFlow id="Flow_o6" name="да" sourceRef="Gateway_HardAck" targetRef="Gateway_HardReason" />
+      <bpmn:sequenceFlow id="Flow_o7" name="нет" sourceRef="Gateway_HardReason" targetRef="End_BlockedH" />
+      <bpmn:sequenceFlow id="Flow_o8" name="да" sourceRef="Gateway_HardReason" targetRef="Task_SaveHard" />
+      <bpmn:sequenceFlow id="Flow_o9" name="да" sourceRef="Gateway_Soft" targetRef="Gateway_SoftAck" />
+      <bpmn:sequenceFlow id="Flow_o10" name="нет" sourceRef="Gateway_Soft" targetRef="Task_SaveClean" />
+      <bpmn:sequenceFlow id="Flow_o11" name="нет" sourceRef="Gateway_SoftAck" targetRef="End_NotSavedS" />
+      <bpmn:sequenceFlow id="Flow_o12" name="да" sourceRef="Gateway_SoftAck" targetRef="Gateway_SoftReason" />
+      <bpmn:sequenceFlow id="Flow_o13" name="нет" sourceRef="Gateway_SoftReason" targetRef="End_BlockedS" />
+      <bpmn:sequenceFlow id="Flow_o14" name="да" sourceRef="Gateway_SoftReason" targetRef="Task_SaveSoft" />
+      <bpmn:sequenceFlow id="Flow_o15" sourceRef="Task_SaveHard" targetRef="Gateway_MergeSave" />
+      <bpmn:sequenceFlow id="Flow_o16" sourceRef="Task_SaveSoft" targetRef="Gateway_MergeSave" />
+      <bpmn:sequenceFlow id="Flow_o17" sourceRef="Task_SaveClean" targetRef="Gateway_MergeSave" />
+      <bpmn:sequenceFlow id="Flow_o18" sourceRef="Gateway_MergeSave" targetRef="End_OrdS" />
+
+      <bpmn:textAnnotation id="Ann_ReasonRule">
+        <bpmn:text>Подтвердить чекбоксом недостаточно ни для жёсткой, ни для мягкой остановки — нужна письменная причина, иначе система не сохранит запись</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_ReasonRule" sourceRef="Gateway_HardReason" targetRef="Ann_ReasonRule" />
+      <bpmn:textAnnotation id="Ann_OverrideVisible">
+        <bpmn:text>Осознанное назначение не делает картину приёма «зелёной» — остаётся видимая метка отклонения от протокола</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_OverrideVisible" sourceRef="Task_SaveSoft" targetRef="Ann_OverrideVisible" />
+    </bpmn:subProcess>
+
+    <bpmn:subProcess id="SP_Sev" name="Тяжесть и госпитализация">
+      <bpmn:incoming>Flow_S3</bpmn:incoming>
+      <bpmn:outgoing>Flow_S4</bpmn:outgoing>
+
+      <bpmn:startEvent id="Start_SevS" name="Начало"><bpmn:outgoing>Flow_sv1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:exclusiveGateway id="Gateway_NeedInp" name="Есть показания к госпитализации (тяжесть, тяжёлое общее состояние)?">
+        <bpmn:incoming>Flow_sv1</bpmn:incoming>
+        <bpmn:outgoing>Flow_sv2</bpmn:outgoing>
+        <bpmn:outgoing>Flow_sv3</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:task id="Task_Admit" name="Госпитализация: открывается стационарный приём">
+        <bpmn:incoming>Flow_sv2</bpmn:incoming>
+        <bpmn:outgoing>Flow_sv4</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_MergeSev" name="">
+        <bpmn:incoming>Flow_sv3</bpmn:incoming>
+        <bpmn:incoming>Flow_sv4</bpmn:incoming>
+        <bpmn:outgoing>Flow_sv5</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_SevS" name="Приём продолжается"><bpmn:incoming>Flow_sv5</bpmn:incoming></bpmn:endEvent>
+
+      <bpmn:sequenceFlow id="Flow_sv1" sourceRef="Start_SevS" targetRef="Gateway_NeedInp" />
+      <bpmn:sequenceFlow id="Flow_sv2" name="да" sourceRef="Gateway_NeedInp" targetRef="Task_Admit" />
+      <bpmn:sequenceFlow id="Flow_sv3" name="нет" sourceRef="Gateway_NeedInp" targetRef="Gateway_MergeSev" />
+      <bpmn:sequenceFlow id="Flow_sv4" sourceRef="Task_Admit" targetRef="Gateway_MergeSev" />
+      <bpmn:sequenceFlow id="Flow_sv5" sourceRef="Gateway_MergeSev" targetRef="End_SevS" />
+
+      <bpmn:textAnnotation id="Ann_Continuous">
+        <bpmn:text>Пересчитывается непрерывно из данных осмотра — не отдельной кнопкой «оценить тяжесть»</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_Continuous" sourceRef="Gateway_NeedInp" targetRef="Ann_Continuous" />
+      <bpmn:textAnnotation id="Ann_IcuGap">
+        <bpmn:text>Запланировано, не готово: перевод в ОРИТ сейчас только текст подсказки — отдельного статуса «в ОРИТ» в системе нет</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_IcuGap" sourceRef="Task_Admit" targetRef="Ann_IcuGap" />
+    </bpmn:subProcess>
+
+    <bpmn:parallelGateway id="Gateway_Split">
+      <bpmn:incoming>Flow_S4</bpmn:incoming>
+      <bpmn:outgoing>Flow_S5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_S6</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:task id="Task_Finish" name="Закрыть приём (конец сегодняшнего контакта)">
+      <bpmn:incoming>Flow_S5</bpmn:incoming>
+      <bpmn:outgoing>Flow_S7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Resolve" name="Разрешить диагноз (болезнь клинически закончилась)">
+      <bpmn:incoming>Flow_S6</bpmn:incoming>
+      <bpmn:outgoing>Flow_S8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_Finish" name="Приём закрыт"><bpmn:incoming>Flow_S7</bpmn:incoming></bpmn:endEvent>
+    <bpmn:endEvent id="End_Resolve" name="Диагноз разрешён"><bpmn:incoming>Flow_S8</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_S1" sourceRef="Start_DC" targetRef="SP_Dx" />
+    <bpmn:sequenceFlow id="Flow_S2" sourceRef="SP_Dx" targetRef="SP_Order" />
+    <bpmn:sequenceFlow id="Flow_S3" sourceRef="SP_Order" targetRef="SP_Sev" />
+    <bpmn:sequenceFlow id="Flow_S4" sourceRef="SP_Sev" targetRef="Gateway_Split" />
+    <bpmn:sequenceFlow id="Flow_S5" sourceRef="Gateway_Split" targetRef="Task_Finish" />
+    <bpmn:sequenceFlow id="Flow_S6" sourceRef="Gateway_Split" targetRef="Task_Resolve" />
+    <bpmn:sequenceFlow id="Flow_S7" sourceRef="Task_Finish" targetRef="End_Finish" />
+    <bpmn:sequenceFlow id="Flow_S8" sourceRef="Task_Resolve" targetRef="End_Resolve" />
+
+    <bpmn:textAnnotation id="Ann_Independent">
+      <bpmn:text>Оба действия — по отдельности, в любой момент приёма (не только в конце), не обязательно одновременно. STATUS_SEMANTICS.md §0: «Два переключателя»</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_Independent" sourceRef="Gateway_Split" targetRef="Ann_Independent" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_diagnosis_cds">
+    <bpmndi:BPMNPlane id="BPMNPlane_diagnosis_cds" bpmnElement="diagnosis_cds">
+      <bpmndi:BPMNShape id="T_S" bpmnElement="Start_DC">
+        <dc:Bounds x="80" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="45" y="225" width="110" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Dx" bpmnElement="SP_Dx">
+        <dc:Bounds x="180" y="150" width="200" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Ord" bpmnElement="SP_Order">
+        <dc:Bounds x="420" y="150" width="200" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Sev" bpmnElement="SP_Sev">
+        <dc:Bounds x="660" y="150" width="200" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Split" bpmnElement="Gateway_Split">
+        <dc:Bounds x="920" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Finish" bpmnElement="Task_Finish">
+        <dc:Bounds x="1030" y="80" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_Resolve" bpmnElement="Task_Resolve">
+        <dc:Bounds x="1030" y="270" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_EFinish" bpmnElement="End_Finish">
+        <dc:Bounds x="1240" y="98" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1215" y="141" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_EResolve" bpmnElement="End_Resolve">
+        <dc:Bounds x="1250" y="288" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1225" y="331" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_AnnInd" bpmnElement="Ann_Independent">
+        <dc:Bounds x="900" y="280" width="280" height="60" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="E_S1" bpmnElement="Flow_S1"><di:waypoint x="116" y="200" /><di:waypoint x="180" y="200" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S2" bpmnElement="Flow_S2"><di:waypoint x="380" y="200" /><di:waypoint x="420" y="200" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S3" bpmnElement="Flow_S3"><di:waypoint x="620" y="200" /><di:waypoint x="660" y="200" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S4" bpmnElement="Flow_S4"><di:waypoint x="860" y="200" /><di:waypoint x="920" y="200" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S5" bpmnElement="Flow_S5"><di:waypoint x="945" y="175" /><di:waypoint x="945" y="120" /><di:waypoint x="1030" y="120" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S6" bpmnElement="Flow_S6"><di:waypoint x="945" y="225" /><di:waypoint x="945" y="310" /><di:waypoint x="1030" y="310" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S7" bpmnElement="Flow_S7"><di:waypoint x="1190" y="120" /><di:waypoint x="1240" y="116" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_S8" bpmnElement="Flow_S8"><di:waypoint x="1200" y="310" /><di:waypoint x="1250" y="306" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="EA_Ind" bpmnElement="Assoc_Independent"><di:waypoint x="945" y="225" /><di:waypoint x="960" y="280" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Dx">
+    <bpmndi:BPMNPlane id="BPMNPlane_Dx" bpmnElement="SP_Dx">
+      <bpmndi:BPMNShape id="Dx_S" bpmnElement="Start_DxS"><dc:Bounds x="90" y="122" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_LM" bpmnElement="Gateway_LoopMerge" isMarkerVisible="true"><dc:Bounds x="170" y="115" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_T" bpmnElement="Task_SetDx"><dc:Bounds x="260" y="100" width="180" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_G1" bpmnElement="Gateway_Proto" isMarkerVisible="true">
+        <dc:Bounds x="500" y="115" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="475" y="65" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_A" bpmnElement="Task_Attach"><dc:Bounds x="600" y="20" width="220" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_M1" bpmnElement="Gateway_Merge1" isMarkerVisible="true"><dc:Bounds x="860" y="115" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_G2" bpmnElement="Gateway_More" isMarkerVisible="true">
+        <dc:Bounds x="980" y="115" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="945" y="175" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_E" bpmnElement="End_DxS">
+        <dc:Bounds x="1120" y="122" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="1080" y="165" width="120" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_AnnP" bpmnElement="Ann_Provenance"><dc:Bounds x="220" y="230" width="280" height="55" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Dx_AnnM" bpmnElement="Ann_MultiProto"><dc:Bounds x="580" y="185" width="260" height="55" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Ex1" bpmnElement="Flow_dx1"><di:waypoint x="126" y="140" /><di:waypoint x="170" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex0" bpmnElement="Flow_dx0"><di:waypoint x="220" y="140" /><di:waypoint x="260" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex2" bpmnElement="Flow_dx2"><di:waypoint x="440" y="140" /><di:waypoint x="500" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex3" bpmnElement="Flow_dx3"><di:waypoint x="525" y="115" /><di:waypoint x="525" y="60" /><di:waypoint x="600" y="60" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex4" bpmnElement="Flow_dx4"><di:waypoint x="550" y="140" /><di:waypoint x="860" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex5" bpmnElement="Flow_dx5"><di:waypoint x="820" y="60" /><di:waypoint x="885" y="60" /><di:waypoint x="885" y="115" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex6" bpmnElement="Flow_dx6"><di:waypoint x="910" y="140" /><di:waypoint x="980" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex7" bpmnElement="Flow_dx7"><di:waypoint x="1030" y="140" /><di:waypoint x="1120" y="140" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ex8" bpmnElement="Flow_dx8"><di:waypoint x="1005" y="165" /><di:waypoint x="1005" y="290" /><di:waypoint x="195" y="290" /><di:waypoint x="195" y="165" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ExAP" bpmnElement="Assoc_Provenance"><di:waypoint x="350" y="180" /><di:waypoint x="350" y="230" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ExAM" bpmnElement="Assoc_MultiProto"><di:waypoint x="710" y="100" /><di:waypoint x="710" y="185" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Order">
+    <bpmndi:BPMNPlane id="BPMNPlane_Order" bpmnElement="SP_Order">
+      <bpmndi:BPMNShape id="O_S" bpmnElement="Start_OrdS"><dc:Bounds x="300" y="20" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_T" bpmnElement="Task_Prescribe"><dc:Bounds x="228" y="90" width="180" height="60" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_GH" bpmnElement="Gateway_Hard" isMarkerVisible="true">
+        <dc:Bounds x="293" y="190" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="358" y="185" width="150" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_GHA" bpmnElement="Gateway_HardAck" isMarkerVisible="true">
+        <dc:Bounds x="450" y="190" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="440" y="145" width="120" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_ENSH" bpmnElement="End_NotSavedH">
+        <dc:Bounds x="600" y="196" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="580" y="150" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_GHR" bpmnElement="Gateway_HardReason" isMarkerVisible="true">
+        <dc:Bounds x="450" y="290" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="440" y="245" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_EBH" bpmnElement="End_BlockedH">
+        <dc:Bounds x="600" y="296" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="580" y="252" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_TSH" bpmnElement="Task_SaveHard"><dc:Bounds x="420" y="380" width="190" height="60" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="O_GS" bpmnElement="Gateway_Soft" isMarkerVisible="true">
+        <dc:Bounds x="293" y="290" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="120" y="285" width="160" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_GSA" bpmnElement="Gateway_SoftAck" isMarkerVisible="true">
+        <dc:Bounds x="293" y="390" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="80" y="385" width="200" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_ENSS" bpmnElement="End_NotSavedS">
+        <dc:Bounds x="450" y="396" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="430" y="352" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_GSR" bpmnElement="Gateway_SoftReason" isMarkerVisible="true">
+        <dc:Bounds x="293" y="490" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="130" y="485" width="150" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_EBS" bpmnElement="End_BlockedS">
+        <dc:Bounds x="450" y="496" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="430" y="452" width="100" height="40" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_TSS" bpmnElement="Task_SaveSoft"><dc:Bounds x="228" y="560" width="190" height="60" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_TSC" bpmnElement="Task_SaveClean"><dc:Bounds x="40" y="590" width="190" height="60" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="O_GM" bpmnElement="Gateway_MergeSave" isMarkerVisible="true"><dc:Bounds x="750" y="480" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_E" bpmnElement="End_OrdS">
+        <dc:Bounds x="850" y="480" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="830" y="523" width="90" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="O_AnnR" bpmnElement="Ann_ReasonRule"><dc:Bounds x="600" y="230" width="260" height="55" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="O_AnnO" bpmnElement="Ann_OverrideVisible"><dc:Bounds x="10" y="660" width="260" height="55" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Oe1" bpmnElement="Flow_o1"><di:waypoint x="318" y="56" /><di:waypoint x="318" y="90" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe2" bpmnElement="Flow_o2"><di:waypoint x="318" y="150" /><di:waypoint x="318" y="190" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe3" bpmnElement="Flow_o3"><di:waypoint x="343" y="215" /><di:waypoint x="450" y="215" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe4" bpmnElement="Flow_o4"><di:waypoint x="318" y="240" /><di:waypoint x="318" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe5" bpmnElement="Flow_o5"><di:waypoint x="500" y="215" /><di:waypoint x="600" y="214" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe6" bpmnElement="Flow_o6"><di:waypoint x="475" y="240" /><di:waypoint x="475" y="290" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe7" bpmnElement="Flow_o7"><di:waypoint x="500" y="315" /><di:waypoint x="600" y="314" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe8" bpmnElement="Flow_o8"><di:waypoint x="475" y="340" /><di:waypoint x="475" y="410" /><di:waypoint x="420" y="410" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe9" bpmnElement="Flow_o9"><di:waypoint x="318" y="340" /><di:waypoint x="318" y="390" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe10" bpmnElement="Flow_o10"><di:waypoint x="293" y="315" /><di:waypoint x="135" y="315" /><di:waypoint x="135" y="590" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe11" bpmnElement="Flow_o11"><di:waypoint x="343" y="415" /><di:waypoint x="450" y="414" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe12" bpmnElement="Flow_o12"><di:waypoint x="318" y="440" /><di:waypoint x="318" y="490" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe13" bpmnElement="Flow_o13"><di:waypoint x="343" y="515" /><di:waypoint x="450" y="514" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe14" bpmnElement="Flow_o14"><di:waypoint x="318" y="540" /><di:waypoint x="318" y="590" /><di:waypoint x="228" y="590" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe15" bpmnElement="Flow_o15"><di:waypoint x="610" y="410" /><di:waypoint x="775" y="410" /><di:waypoint x="775" y="480" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe16" bpmnElement="Flow_o16"><di:waypoint x="418" y="590" /><di:waypoint x="775" y="590" /><di:waypoint x="775" y="530" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe17" bpmnElement="Flow_o17"><di:waypoint x="230" y="620" /><di:waypoint x="750" y="620" /><di:waypoint x="750" y="510" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Oe18" bpmnElement="Flow_o18"><di:waypoint x="800" y="505" /><di:waypoint x="850" y="498" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="OeAR" bpmnElement="Assoc_ReasonRule"><di:waypoint x="500" y="300" /><di:waypoint x="600" y="270" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="OeAO" bpmnElement="Assoc_OverrideVisible"><di:waypoint x="280" y="620" /><di:waypoint x="200" y="660" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Sev">
+    <bpmndi:BPMNPlane id="BPMNPlane_Sev" bpmnElement="SP_Sev">
+      <bpmndi:BPMNShape id="Sv_S" bpmnElement="Start_SevS"><dc:Bounds x="140" y="142" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_G" bpmnElement="Gateway_NeedInp" isMarkerVisible="true">
+        <dc:Bounds x="240" y="135" width="50" height="50" />
+        <bpmndi:BPMNLabel><dc:Bounds x="210" y="195" width="110" height="55" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_T" bpmnElement="Task_Admit"><dc:Bounds x="360" y="30" width="200" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_M" bpmnElement="Gateway_MergeSev" isMarkerVisible="true"><dc:Bounds x="600" y="135" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_E" bpmnElement="End_SevS">
+        <dc:Bounds x="720" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel><dc:Bounds x="690" y="185" width="100" height="27" /></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_AnnC" bpmnElement="Ann_Continuous"><dc:Bounds x="200" y="270" width="240" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Sv_AnnI" bpmnElement="Ann_IcuGap"><dc:Bounds x="600" y="20" width="240" height="60" /></bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Sve1" bpmnElement="Flow_sv1"><di:waypoint x="176" y="160" /><di:waypoint x="240" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Sve2" bpmnElement="Flow_sv2"><di:waypoint x="265" y="135" /><di:waypoint x="265" y="70" /><di:waypoint x="360" y="70" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Sve3" bpmnElement="Flow_sv3"><di:waypoint x="290" y="160" /><di:waypoint x="600" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Sve4" bpmnElement="Flow_sv4"><di:waypoint x="560" y="70" /><di:waypoint x="625" y="70" /><di:waypoint x="625" y="135" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Sve5" bpmnElement="Flow_sv5"><di:waypoint x="650" y="160" /><di:waypoint x="720" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SveAC" bpmnElement="Assoc_Continuous"><di:waypoint x="265" y="185" /><di:waypoint x="280" y="270" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SveAI" bpmnElement="Assoc_IcuGap"><di:waypoint x="560" y="70" /><di:waypoint x="600" y="50" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

@@ -855,6 +855,19 @@ def delete_report_route(pid, rid):
 
 
 # ---------- Диагноз ----------
+@app.route("/patient/<pid>/condition/<cid>/resolve", methods=["POST"])
+def resolve_condition_route(pid, cid):
+    """Разрешить диагноз — отдельное клиническое решение врача, не совпадает
+    по времени с закрытием приёма (STATUS_SEMANTICS.md §0, «Два переключателя»)."""
+    if not fs.get_patient(pid):
+        return "Пациент не найден", 404
+    fs.resolve_condition(pid, cid)
+    if _wants_json():
+        return _json_after_clinical(pid, reload_ui=True)
+    _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid))
+
+
 @app.route("/patient/<pid>/condition", methods=["POST"])
 def add_condition_route(pid):
     if not fs.get_patient(pid):

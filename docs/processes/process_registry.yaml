@@ -1,5 +1,5 @@
 registry_version: 1
-updated_at: "2026-07-25"
+updated_at: "2026-07-26"
 
 # Политика CDS: сигнал → возможный override → видимость. SSOT-проза:
 # docs/processes/CDS_SIGNALING.md
@@ -51,6 +51,14 @@ cds_policy:
 
 # Cross-process handoffs (SSOT). Артефакт + триггер передачи между процессами.
 process_handoffs:
+  - from: care_outpatient
+    to: care_outpatient_control
+    artifact: followup_plan
+    trigger_ru: "Визит завершён с запланированным контролем — следующий контрольный визит идёт в процесс care_outpatient_control."
+  - from: care_outpatient_control
+    to: care_outpatient
+    artifact: control_decision
+    trigger_ru: "Исход контроля: дообследовать / сменить лечение / ещё визит — снова амбулаторный визит (care_outpatient)."
   - from: cap_outpatient
     to: cap_inpatient
     artifact: hospitalization_decision
@@ -74,6 +82,180 @@ lane_canon:
   system: "Автоматические переходы пути (pathway) и системные политики"
 
 processes:
+  - id: care_outpatient
+    name: "Амбулаторный визит (общий путь)"
+    scope: >
+      Один амбулаторный визит вне привязки к конкретному клиническому протоколу:
+      обращение → приём → решение куда вести → обследование → лечение или наблюдение →
+      план контроля. Повторное обращение — снова этот процесс. Контроль — отдельно
+      (care_outpatient_control). Протоколы сверяют назначения, не задают отдельный путь.
+    trigger_ru: "Пациент обратился амбулаторно (первично или повторно)."
+    outcome_ru: "До следующего визита; либо передача в стационар / к другому специалисту."
+    handoff_to: care_outpatient_control
+    reader_intro_ru: |
+      Главная схема визита для врачей — линейно, без петель на холсте.
+      Картинка: docs/bpmn/care-outpatient-mature.bpmn. Контроль: care-outpatient-control-mature.bpmn.
+      Протоколы (ВП, ЖДА и др.) — проверки на шагах назначения, не отдельные дороги.
+    bpmn_files:
+      - docs/bpmn/care-outpatient-mature.bpmn
+    business_owner: "Клиническая служба"
+    data_owner: "Data Engineering"
+    entities:
+      - patient
+      - encounter
+      - condition_
+      - observation
+      - service_request
+      - medication_request
+      - clinical_flag
+      - pathway
+    links:
+      - docs/processes/PROCESSES_BPMN.md
+      - docs/processes/BPMN_PRACTICES.md
+      - docs/processes/STATUS_SEMANTICS.md
+    steps:
+      - id: visit_assessment
+        bpmn_task_id: SubProcess_Visit
+        lane: clinician
+        intent_ru: "Жалобы, осмотр, один или несколько диагнозов на приёме."
+        entry_conditions: ["Обращение амбулаторно"]
+        exit_conditions: ["Диагноз(ы) сформулированы"]
+        signals:
+          now_state: { type: "visit", source: "encounter in-progress" }
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 0
+            meaning_ru: "Приём открыт без осмотра/диагноза."
+          sla_targets: []
+        inputs: []
+        outputs: ["encounter", "condition_"]
+        data_mapping:
+          contract_views: []
+          raw_tables: [encounter, condition_, clinical_flag, observation]
+          keys: []
+          columns: []
+          notes_ru: ["Внутри: Task_Complaint, Task_Exam, Task_Diagnosis."]
+        golden_checks_sql: []
+      - id: decide_setting
+        bpmn_task_id: Gateway_Setting
+        lane: clinician
+        intent_ru: "Где продолжать: стационар, другой специалист или амбулаторно здесь."
+        entry_conditions: ["Есть клиническая картина"]
+        exit_conditions: ["Выбрана ветка ведения"]
+        signals:
+          now_state: { type: "setting_decision", source: "clinical judgment" }
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 0
+            meaning_ru: "Решение о месте ведения не принято."
+          sla_targets: []
+        inputs: []
+        outputs: ["ветка стационар / направление / амбулаторно"]
+        data_mapping:
+          contract_views: []
+          raw_tables: [encounter]
+          keys: []
+          columns: [encounter.class]
+          notes_ru: []
+        golden_checks_sql: []
+      - id: workup
+        bpmn_task_id: SubProcess_Workup
+        lane: clinician
+        intent_ru: "Нужны ли исследования сейчас; назначить и получить результаты при необходимости."
+        entry_conditions: ["Ведение амбулаторно здесь"]
+        exit_conditions: ["Данных достаточно для решения о лечении"]
+        signals:
+          now_state: { type: "workup", source: "service_request" }
+          stuck_definition:
+            age_from: "service_request.authored"
+            stuck_after_days: 7
+            meaning_ru: "Исследования заказаны, результатов нет."
+          sla_targets: []
+        inputs: []
+        outputs: ["service_request / результаты"]
+        data_mapping:
+          contract_views: []
+          raw_tables: [service_request, observation, diagnostic_report]
+          keys: []
+          columns: []
+          notes_ru: []
+        golden_checks_sql: []
+      - id: treat_and_plan
+        bpmn_task_id: SubProcess_TreatPlan
+        lane: clinician
+        intent_ru: "Назначить лечение или наблюдение без нового назначения; запланировать контроль. Сверка с активными протоколами при назначении."
+        entry_conditions: ["Решение о лечении возможно"]
+        exit_conditions: ["Контроль запланирован"]
+        signals:
+          now_state: { type: "therapy_plan", source: "medication_request / plan" }
+          stuck_definition:
+            age_from: "encounter.start"
+            stuck_after_days: 1
+            meaning_ru: "Нет ни назначения, ни явного наблюдения, ни даты контроля."
+          sla_targets: []
+        inputs: []
+        outputs: ["лечение или наблюдение", "запланированный контроль"]
+        data_mapping:
+          contract_views: []
+          raw_tables: [medication_request, encounter]
+          keys: []
+          columns: []
+          notes_ru:
+            - "Протоколы не ветвят путь: сверка на Task_Prescribe."
+        golden_checks_sql: []
+
+  - id: care_outpatient_control
+    name: "Контроль амбулаторного ведения"
+    scope: >
+      Контрольный визит: оценка состояния и эффекта → стационар / коррекция
+      (дообследовать или сменить лечение) / продолжение наблюдения / закрытие заболевания.
+      Исходы на BPMN — концы без стрелок назад; коррекция и «ещё визит» снова запускают care_outpatient.
+    trigger_ru: "Наступил плановый контроль или пациент вернулся раньше срока."
+    outcome_ru: "Эпизод завершён; стационар; либо следующий амбулаторный визит."
+    handoff_to: care_outpatient
+    reader_intro_ru: |
+      Отдельная схема, чтобы не превращать визит в паутину петель.
+      Картинка: docs/bpmn/care-outpatient-control-mature.bpmn.
+    bpmn_files:
+      - docs/bpmn/care-outpatient-control-mature.bpmn
+    business_owner: "Клиническая служба"
+    data_owner: "Data Engineering"
+    entities:
+      - patient
+      - encounter
+      - condition_
+      - observation
+      - pathway
+    links:
+      - docs/processes/PROCESSES_BPMN.md
+      - docs/processes/BPMN_PRACTICES.md
+      - docs/processes/STATUS_SEMANTICS.md
+    steps:
+      - id: control_and_decide
+        bpmn_task_id: Task_Reassess
+        lane: clinician
+        intent_ru: "Оценить эффект; при угрозе — стационар; при отсутствии эффекта — коррекция; при улучшении — закрыть заболевание или продолжить наблюдение (новый визит)."
+        entry_conditions: ["Наступил контроль или пациент вернулся"]
+        exit_conditions: ["Решение: эскалация / коррекция / ещё визит / эпизод завершён"]
+        signals:
+          now_state: { type: "control", source: "followup encounter" }
+          stuck_definition:
+            age_from: "planned_followup"
+            stuck_after_days: 14
+            meaning_ru: "Контроль просрочен, пациента нет."
+          sla_targets: []
+        inputs: []
+        outputs: ["исход ветки контроля"]
+        data_mapping:
+          contract_views: []
+          raw_tables: [encounter, condition_, observation]
+          keys: []
+          columns: []
+          notes_ru:
+            - "Закрытие заболевания ≠ закрытие приёма (STATUS_SEMANTICS)."
+            - "Концы «Дообследовать / Сменить лечение / Ещё визит» → handoff в care_outpatient."
+        golden_checks_sql: []
+
   - id: cap_outpatient
     name: "Амбулаторное лечение внебольничной пневмонии (взрослые, КП МЗ РБ №768)"
     scope: "Амбулаторный блок: обращение/анамнез → осмотр/измерения → установка диагноза ВП (МКБ-10) → сверка с протоколом (тяжесть, показания к госпитализации) → обследование по показаниям (ОАК, СРБ, пульсоксиметрия, R-графия) → лечение (АБТ per os + симптоматика) → план/цель → оценка эффективности через 48–72 ч → контрольный визит → исход → повторная R-графия. Стационарный блок — отдельный процесс cap_inpatient."
@@ -98,7 +280,7 @@ processes:
       Один эпизод ВП у взрослого в амбулаторных условиях — одна «дорожка» от жалобы до выздоровления или передачи в стационар.
       Канонический порядок приёма (см. canonical_order_ru): Анамнез → Осмотр → Диагноз → сверка с протоколом (тяжесть/госпитализация) → Обследование (если надо) → Лечение. Формы карты пациента (templates/patient.html) — шаги 1..5 (Анамнез…Лечение); сверка и оценка 48–72 ч — в CDS. Мост UI↔шаги: docs/processes/UI_PROCESS_MAP.md.
       Этот раздел описывает шаги так, чтобы человек или агент не смешивали диагноз, измерения и назначения и не угадывали тяжесть: смотрите entry_conditions / exit_conditions и ссылки на таблицы.
-      Картинка для людей: docs/bpmn/cap-outpatient-mature.bpmn. Правила статусов: docs/processes/STATUS_SEMANTICS.md.
+      Картинка для людей: docs/bpmn/cap-outpatient-mature.bpmn (верхний уровень — фазы-подпроцессы). Правила статусов: docs/processes/STATUS_SEMANTICS.md.
       Решение о госпитализации (шаг decide_hospitalization) — это gateway: при наличии причин (КП №768) — handoff в процесс cap_inpatient (admit), амбулаторный эпизод закрывается.
       Оценка эффективности АБТ через 48–72 ч (шаг reassess_48_72h): при сохранении лихорадки — смена АБТ или госпитализация (КП №768).
       Регламент (protocol_cap.evaluate_cap) — независимая проверка всей картины; его вердикт — основа и для CDS-карточек, и для метрики качества.
@@ -666,7 +848,7 @@ processes:
           - "medication_request (J01*), observation (temp, CRP, SpO2)"
         outputs:
           - "Контрольная observation (temp, SpO2)"
-          - "Решение: эффект → followup | нет эффекта → смена АБТ / handoff cap_inpatient"
+          - "Решение: эффект → followup | нет эффекта → Gateway_NoEffectNext (стационар или смена АБТ), BPMN: cap-outpatient-mature.bpmn"
         data_mapping:
           contract_views: []
           raw_tables:
@@ -849,7 +1031,7 @@ processes:
     handoff_to: cap_outpatient
     reader_intro_ru: |
       Стационарный эпизод тяжёлой ВП — от госпитализации до выписки и контроля.
-      Картинка для людей: docs/bpmn/cap-inpatient-mature.bpmn. Правила статусов: docs/processes/STATUS_SEMANTICS.md.
+      Картинка для людей: docs/bpmn/cap-inpatient-mature.bpmn (верхний уровень — фазы-подпроцессы). Правила статусов: docs/processes/STATUS_SEMANTICS.md.
       Старт АБТ — внутривенно (КП №768). Режим (primary + addons) — protocol_cap.expected_inpatient_regimen: цефалоспорин III (цефтриаксон), при MRSA — линезолид/ванкомицин, при аспирации — карбапенем + метронидазол, при гриппе — осельтамивир, при атипичной этиологии — макролид-аддон, респираторные фторхинолоны — резерв.
       ОРИТ (шаг transfer_icu): ≥1 «большой» критерий (шок, ОПН, ИВЛ) или ≥2 «малых» критерия тяжёлого течения (КП №768).
       Step-down: при клиническом ответе — переход в/в → per os. Выписка (КП №768): нормотермия, нормальный ЧД, SpO2 ≥ 95, толерантность per os.
@@ -1463,3 +1645,184 @@ processes:
                   select 1 from diagnostic_report r
                   where r.patient_id = p.id and r.code = 'CXR_REPEAT'
                 );
+
+  # ─── Железодефицитная анемия (КП №23) ─────────────────────────────
+  - id: ida_outpatient
+    name: "Лечение железодефицитной анемии (взрослые, КП МЗ РБ №23)"
+    scope: "Амбулаторный (и ветка «в стационар») эпизод ЖДА: подтверждение и тяжесть → решение о госпитализации/переливании → обследование → терапия железом (внутрь или внутривенно) → контроль эффективности."
+    trigger_ru: "Активный диагноз железодефицитной анемии по МКБ (D50*) — протокол ida_adult_23."
+    outcome_ru: "Цель лечения достигнута (нормализация показателей) либо передача в стационар при тяжёлой/декомпенсированной анемии."
+    handoff_to: null
+    reader_intro_ru: |
+      Эпизод железодефицитной анемии у взрослого — от диагноза до контроля эффекта терапии железом.
+      Картинка: docs/bpmn/ida-outpatient-mature.bpmn (верхний уровень — фазы-подпроцессы).
+      Проверка соответствия протоколу — protocol_anemia.evaluate_ida; выбор железа — docs/protocols/ida_therapy_rules.yaml.
+      У одного пациента может идти параллельно с ВП (cap_*) — каждый протокол со своей подсказкой.
+    bpmn_files:
+      - docs/bpmn/ida-outpatient-mature.bpmn
+    business_owner: "Терапевтическая служба"
+    data_owner: "Data Engineering"
+    entities:
+      - patient
+      - encounter
+      - condition_
+      - observation
+      - service_request
+      - medication_request
+      - clinical_flag
+      - pathway
+    links:
+      - docs/processes/PROCESS_REGISTRY.md
+      - docs/processes/BPMN_PRACTICES.md
+      - docs/protocols/ida_therapy_rules.yaml
+      - protocol_anemia.py
+    steps:
+      - id: confirm_and_severity
+        bpmn_task_id: SubProcess_Confirm
+        lane: clinician
+        intent_ru: "Жалобы/анамнез, осмотр, диагноз ЖДА, тяжесть по гемоглобину."
+        entry_conditions:
+          - "Активный диагноз D50*"
+        exit_conditions:
+          - "Тяжесть оценена (есть Hb или клиническая оценка)"
+        signals:
+          now_state:
+            type: "ida_active"
+            source: "condition_ D50*"
+          stuck_definition:
+            age_from: "condition_.onset_date"
+            stuck_after_days: 3
+            meaning_ru: "Диагноз ЖДА есть, тяжесть/обследование не оформлены."
+          sla_targets: []
+        inputs:
+          - "condition_ (D50*)"
+          - "observation Hb / жалобы / осмотр"
+        outputs:
+          - "оценка тяжести"
+        data_mapping:
+          contract_views: []
+          raw_tables: [condition_, observation, clinical_flag]
+          keys: []
+          columns: [condition_.code, observation.code]
+          notes_ru:
+            - "Детали шагов внутри подпроцесса: Task_IdaAnamnesis, Task_IdaExam, Task_IdaDiagnosis, Task_IdaSeverity."
+        golden_checks_sql: []
+
+      - id: decide_hospitalization_ida
+        bpmn_task_id: Gateway_IdaHospitalization
+        lane: clinician
+        intent_ru: "Показания к госпитализации/переливанию (тяжёлая анемия, декомпенсация) — КП №23."
+        entry_conditions:
+          - "Тяжесть оценена"
+        exit_conditions:
+          - "Решение: амбулаторно или в стационар"
+        signals:
+          now_state:
+            type: "ida_hosp_decision"
+            source: "protocol_anemia.hospitalization_reasons_ida"
+          stuck_definition:
+            age_from: "condition_.onset_date"
+            stuck_after_days: 1
+            meaning_ru: "Есть показания к стационару, решение не оформлено."
+          sla_targets: []
+        inputs:
+          - "Hb, общее состояние, гемодинамика"
+        outputs:
+          - "ветка амбулаторно / в стационар"
+        data_mapping:
+          contract_views: []
+          raw_tables: [observation, clinical_flag, encounter]
+          keys: []
+          columns: []
+          notes_ru: []
+        golden_checks_sql: []
+
+      - id: order_and_record_labs_ida
+        bpmn_task_id: SubProcess_IdaLabs
+        lane: laboratory
+        intent_ru: "Необходимые исследования по КП №23 (без чек-листа на диаграмме)."
+        entry_conditions:
+          - "Амбулаторное ведение ЖДА"
+        exit_conditions:
+          - "Ключевые результаты получены или заказы оформлены"
+        signals:
+          now_state:
+            type: "ida_labs"
+            source: "service_request / observation"
+          stuck_definition:
+            age_from: "condition_.onset_date"
+            stuck_after_days: 7
+            meaning_ru: "Диагноз есть, обследования по ЖДА нет."
+          sla_targets: []
+        inputs: []
+        outputs:
+          - "service_request / observation"
+        data_mapping:
+          contract_views: []
+          raw_tables: [service_request, observation]
+          keys: []
+          columns: [service_request.code, observation.code]
+          notes_ru:
+            - "Внутри: Task_IdaOrderLabs, Task_IdaRecordLabs."
+        golden_checks_sql: []
+
+      - id: prescribe_iron
+        bpmn_task_id: SubProcess_IdaTherapy
+        lane: clinician
+        intent_ru: "Назначить терапию железом: внутрь (первая линия) или внутривенно по показаниям."
+        entry_conditions:
+          - "Обследование начато / диагноз подтверждён"
+        exit_conditions:
+          - "Активное назначение препарата железа"
+        signals:
+          now_state:
+            type: "iron_therapy"
+            source: "medication_request B03A"
+          stuck_definition:
+            age_from: "condition_.onset_date"
+            stuck_after_days: 3
+            meaning_ru: "ЖДА без терапии железом."
+          sla_targets: []
+        inputs:
+          - "факторы: нарушение всасывания, болезнь ЖКТ, непереносимость внутрь"
+        outputs:
+          - "medication_request (железо)"
+        data_mapping:
+          contract_views: []
+          raw_tables: [medication_request, clinical_flag]
+          keys: []
+          columns: [medication_request.code, medication_request.route]
+          notes_ru:
+            - "SSOT выбора: docs/protocols/ida_therapy_rules.yaml. Внутри: Gateway_OralIron, Task_IdaOralIron, Task_IdaIvIron."
+        golden_checks_sql: []
+
+      - id: control_iron_effect
+        bpmn_task_id: SubProcess_IdaControl
+        lane: clinician
+        intent_ru: "Контрольные анализы и оценка эффекта; при отсутствии эффекта — коррекция терапии."
+        entry_conditions:
+          - "Терапия железом назначена"
+        exit_conditions:
+          - "Цель лечения достигнута ИЛИ коррекция терапии"
+        signals:
+          now_state:
+            type: "ida_control"
+            source: "observation после старта терапии"
+          stuck_definition:
+            age_from: "medication_request.date"
+            stuck_after_days: 28
+            meaning_ru: "Терапия идёт, контроля эффективности нет."
+          sla_targets: []
+        inputs:
+          - "контроль Hb / ферритин"
+        outputs:
+          - "исход эпизода или возврат к коррекции терапии"
+        data_mapping:
+          contract_views: []
+          raw_tables: [observation, medication_request]
+          keys: []
+          columns: []
+          notes_ru:
+            - "Внутри: Task_IdaControlLabs, Gateway_IronEffect, Task_IdaClose."
+        golden_checks_sql: []
+

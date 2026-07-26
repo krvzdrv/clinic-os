@@ -1,316 +1,529 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_cap_outpatient" targetNamespace="http://clinic-os/processes/cap_outpatient" exporter="Camunda Modeler" exporterVersion="5.46.1">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_cap_outpatient" targetNamespace="http://clinic-os/processes/cap_outpatient" exporter="Camunda Modeler" exporterVersion="5.46.1">
+  <bpmn:error id="Error_NoAbtEffect" name="Нет эффекта терапии" errorCode="NO_ABT_EFFECT" />
+  <bpmn:error id="Error_AdjustTherapy" name="Нужна коррекция лечения" errorCode="ADJUST_THERAPY" />
   <bpmn:process id="cap_outpatient" name="Амбулаторное лечение внебольничной пневмонии (КП №768)" isExecutable="false">
-    <bpmn:startEvent id="Start_Complaint" name="Старт: обращение">
-      <bpmn:outgoing>Flow_s1</bpmn:outgoing>
+    <bpmn:startEvent id="Start_Complaint" name="Обращение">
+      <bpmn:outgoing>Flow_Top_Start_Primary</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:task id="Task_Intake" name="Приём обращения">
-      <bpmn:incoming>Flow_s1</bpmn:incoming>
-      <bpmn:outgoing>Flow_s2</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_VitalsExam" name="Осмотр">
-      <bpmn:incoming>Flow_s2</bpmn:incoming>
-      <bpmn:outgoing>Flow_s3</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_SetDiagnosis" name="Диагноз ВП">
-      <bpmn:incoming>Flow_s3</bpmn:incoming>
-      <bpmn:outgoing>Flow_s4</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_AssessSeverity" name="Оценка тяжести">
-      <bpmn:incoming>Flow_s4</bpmn:incoming>
-      <bpmn:outgoing>Flow_s5</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="Gateway_Hospitalization" name="Госпитализация?" default="Flow_s7">
-      <bpmn:incoming>Flow_s5</bpmn:incoming>
-      <bpmn:incoming>Flow_s15</bpmn:incoming>
-      <bpmn:outgoing>Flow_s6</bpmn:outgoing>
-      <bpmn:outgoing>Flow_s7</bpmn:outgoing>
+    <bpmn:subProcess id="SubProcess_PrimaryVisit" name="Первичный приём">
+      <bpmn:incoming>Flow_Top_Start_Primary</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Primary_To_Hosp</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Primary" name="Начало">
+        <bpmn:outgoing>Flow_p1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="Task_Intake" name="Приём обращения">
+        <bpmn:incoming>Flow_p1</bpmn:incoming>
+        <bpmn:outgoing>Flow_p2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_VitalsExam" name="Осмотр">
+        <bpmn:incoming>Flow_p2</bpmn:incoming>
+        <bpmn:outgoing>Flow_p3</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_SetDiagnosis" name="Диагноз внебольничной пневмонии">
+        <bpmn:incoming>Flow_p3</bpmn:incoming>
+        <bpmn:outgoing>Flow_p4</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_AssessSeverity" name="Оценка тяжести">
+        <bpmn:incoming>Flow_p4</bpmn:incoming>
+        <bpmn:outgoing>Flow_p5</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:endEvent id="End_Primary" name="Готово к решению о месте лечения">
+        <bpmn:incoming>Flow_p5</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_p1" sourceRef="Start_Primary" targetRef="Task_Intake" />
+      <bpmn:sequenceFlow id="Flow_p2" sourceRef="Task_Intake" targetRef="Task_VitalsExam" />
+      <bpmn:sequenceFlow id="Flow_p3" sourceRef="Task_VitalsExam" targetRef="Task_SetDiagnosis" />
+      <bpmn:sequenceFlow id="Flow_p4" sourceRef="Task_SetDiagnosis" targetRef="Task_AssessSeverity" />
+      <bpmn:sequenceFlow id="Flow_p5" sourceRef="Task_AssessSeverity" targetRef="End_Primary" />
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="Gateway_Hospitalization" name="Нужна госпитализация?">
+      <bpmn:incoming>Flow_Top_Primary_To_Hosp</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Hosp_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Top_Hosp_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="Gateway_HospitalMerge" name="">
+      <bpmn:incoming>Flow_Top_Hosp_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_NoEffect_Hospital</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_To_Hospital_End</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:endEvent id="End_Hospitalized" name="В стационар">
-      <bpmn:incoming>Flow_s6</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_To_Hospital_End</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="Task_OrderDiagnostics" name="Обследование">
-      <bpmn:incoming>Flow_s7</bpmn:incoming>
-      <bpmn:outgoing>Flow_s8</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_RecordResults" name="Результаты обследования">
-      <bpmn:incoming>Flow_s8</bpmn:incoming>
-      <bpmn:outgoing>Flow_s9</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_PrescribeAbt" name="Антибактериальная терапия">
-      <bpmn:incoming>Flow_s9</bpmn:incoming>
-      <bpmn:incoming>Flow_s18</bpmn:incoming>
-      <bpmn:outgoing>Flow_s10</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_PrescribeSymptomatic" name="Симптоматическая терапия">
-      <bpmn:incoming>Flow_s10</bpmn:incoming>
-      <bpmn:outgoing>Flow_s11</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_CreateCarePlan" name="План лечения">
-      <bpmn:incoming>Flow_s11</bpmn:incoming>
-      <bpmn:outgoing>Flow_s12</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_Reassess" name="Оценка эффекта терапии">
-      <bpmn:incoming>Flow_s12</bpmn:incoming>
-      <bpmn:outgoing>Flow_s13</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="Gateway_AbtEffect" name="Есть эффект?" default="Flow_s14">
-      <bpmn:incoming>Flow_s13</bpmn:incoming>
-      <bpmn:outgoing>Flow_s14</bpmn:outgoing>
-      <bpmn:outgoing>Flow_s15</bpmn:outgoing>
+    <bpmn:exclusiveGateway id="Gateway_TherapyEntry" name="">
+      <bpmn:incoming>Flow_Top_Hosp_No</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_Adjust_To_Therapy</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_NoEffect_Retreatment</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_To_Therapy</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_Followup" name="Контрольный визит">
-      <bpmn:incoming>Flow_s14</bpmn:incoming>
-      <bpmn:outgoing>Flow_s16</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:exclusiveGateway id="Gateway_Goal" name="Цель достигнута?" default="Flow_s18">
-      <bpmn:incoming>Flow_s16</bpmn:incoming>
-      <bpmn:outgoing>Flow_s17</bpmn:outgoing>
-      <bpmn:outgoing>Flow_s18</bpmn:outgoing>
+    <bpmn:subProcess id="SubProcess_Therapy" name="Обследование и лечение">
+      <bpmn:incoming>Flow_Top_To_Therapy</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Therapy_To_Followup</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Therapy" name="Начало">
+        <bpmn:outgoing>Flow_t1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="Task_OrderDiagnostics" name="Обследование">
+        <bpmn:incoming>Flow_t1</bpmn:incoming>
+        <bpmn:outgoing>Flow_t2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_RecordResults" name="Результаты обследования">
+        <bpmn:incoming>Flow_t2</bpmn:incoming>
+        <bpmn:outgoing>Flow_t3</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_PrescribeAbt" name="Антибактериальная терапия">
+        <bpmn:incoming>Flow_t3</bpmn:incoming>
+        <bpmn:outgoing>Flow_t4</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_PrescribeSymptomatic" name="Симптоматическая терапия">
+        <bpmn:incoming>Flow_t4</bpmn:incoming>
+        <bpmn:outgoing>Flow_t5</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_CreateCarePlan" name="План лечения">
+        <bpmn:incoming>Flow_t5</bpmn:incoming>
+        <bpmn:outgoing>Flow_t6</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:endEvent id="End_Therapy" name="Лечение назначено">
+        <bpmn:incoming>Flow_t6</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_t1" sourceRef="Start_Therapy" targetRef="Task_OrderDiagnostics" />
+      <bpmn:sequenceFlow id="Flow_t2" sourceRef="Task_OrderDiagnostics" targetRef="Task_RecordResults" />
+      <bpmn:sequenceFlow id="Flow_t3" sourceRef="Task_RecordResults" targetRef="Task_PrescribeAbt" />
+      <bpmn:sequenceFlow id="Flow_t4" sourceRef="Task_PrescribeAbt" targetRef="Task_PrescribeSymptomatic" />
+      <bpmn:sequenceFlow id="Flow_t5" sourceRef="Task_PrescribeSymptomatic" targetRef="Task_CreateCarePlan" />
+      <bpmn:sequenceFlow id="Flow_t6" sourceRef="Task_CreateCarePlan" targetRef="End_Therapy" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SubProcess_Followup" name="Контроль и исход">
+      <bpmn:incoming>Flow_Top_Therapy_To_Followup</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Followup_Ok</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Followup" name="Начало">
+        <bpmn:outgoing>Flow_f1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:task id="Task_Reassess" name="Оценка эффекта терапии">
+        <bpmn:incoming>Flow_f1</bpmn:incoming>
+        <bpmn:outgoing>Flow_f2</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_AbtEffect" name="Есть эффект?">
+        <bpmn:incoming>Flow_f2</bpmn:incoming>
+        <bpmn:outgoing>Flow_f3</bpmn:outgoing>
+        <bpmn:outgoing>Flow_f4</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_Followup_NoEffect" name="Нет эффекта терапии">
+        <bpmn:incoming>Flow_f4</bpmn:incoming>
+        <bpmn:errorEventDefinition id="ErrDef_NoEffect" errorRef="Error_NoAbtEffect" />
+      </bpmn:endEvent>
+      <bpmn:task id="Task_Followup" name="Контрольный визит">
+        <bpmn:incoming>Flow_f3</bpmn:incoming>
+        <bpmn:outgoing>Flow_f5</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_Goal" name="Цель достигнута?">
+        <bpmn:incoming>Flow_f5</bpmn:incoming>
+        <bpmn:outgoing>Flow_f6</bpmn:outgoing>
+        <bpmn:outgoing>Flow_f7</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_Followup_Adjust" name="Нужна коррекция лечения">
+        <bpmn:incoming>Flow_f7</bpmn:incoming>
+        <bpmn:errorEventDefinition id="ErrDef_Adjust" errorRef="Error_AdjustTherapy" />
+      </bpmn:endEvent>
+      <bpmn:task id="Task_ScheduleRepeatCxr" name="Контрольная визуализация">
+        <bpmn:incoming>Flow_f6</bpmn:incoming>
+        <bpmn:outgoing>Flow_f8</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:task id="Task_CloseEpisode" name="Закрытие эпизода">
+        <bpmn:incoming>Flow_f8</bpmn:incoming>
+        <bpmn:outgoing>Flow_f9</bpmn:outgoing>
+      </bpmn:task>
+      <bpmn:endEvent id="End_Followup_Ok" name="Эпизод завершён">
+        <bpmn:incoming>Flow_f9</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_f1" sourceRef="Start_Followup" targetRef="Task_Reassess" />
+      <bpmn:sequenceFlow id="Flow_f2" sourceRef="Task_Reassess" targetRef="Gateway_AbtEffect" />
+      <bpmn:sequenceFlow id="Flow_f3" name="да" sourceRef="Gateway_AbtEffect" targetRef="Task_Followup" />
+      <bpmn:sequenceFlow id="Flow_f4" name="нет" sourceRef="Gateway_AbtEffect" targetRef="End_Followup_NoEffect" />
+      <bpmn:sequenceFlow id="Flow_f5" sourceRef="Task_Followup" targetRef="Gateway_Goal" />
+      <bpmn:sequenceFlow id="Flow_f6" name="да" sourceRef="Gateway_Goal" targetRef="Task_ScheduleRepeatCxr" />
+      <bpmn:sequenceFlow id="Flow_f7" name="нет" sourceRef="Gateway_Goal" targetRef="End_Followup_Adjust" />
+      <bpmn:sequenceFlow id="Flow_f8" sourceRef="Task_ScheduleRepeatCxr" targetRef="Task_CloseEpisode" />
+      <bpmn:sequenceFlow id="Flow_f9" sourceRef="Task_CloseEpisode" targetRef="End_Followup_Ok" />
+      <bpmn:textAnnotation id="Annotation_P15">
+        <bpmn:text>КП №768, п.15</bpmn:text>
+      </bpmn:textAnnotation>
+      <bpmn:association id="Assoc_P15" sourceRef="Gateway_AbtEffect" targetRef="Annotation_P15" />
+    </bpmn:subProcess>
+    <bpmn:boundaryEvent id="Boundary_NoEffect" name="Нет эффекта" attachedToRef="SubProcess_Followup">
+      <bpmn:outgoing>Flow_Top_NoEffect_To_Decide</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BoundErr_NoEffect" errorRef="Error_NoAbtEffect" />
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Boundary_Adjust" name="Коррекция лечения" attachedToRef="SubProcess_Followup">
+      <bpmn:outgoing>Flow_Top_Adjust_To_Therapy</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BoundErr_Adjust" errorRef="Error_AdjustTherapy" />
+    </bpmn:boundaryEvent>
+    <bpmn:exclusiveGateway id="Gateway_NoEffectNext" name="Нет эффекта — что дальше?">
+      <bpmn:incoming>Flow_Top_NoEffect_To_Decide</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_NoEffect_Hospital</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Top_NoEffect_Retreatment</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_ScheduleRepeatCxr" name="Контрольная визуализация">
-      <bpmn:incoming>Flow_s17</bpmn:incoming>
-      <bpmn:outgoing>Flow_s19</bpmn:outgoing>
-    </bpmn:task>
-    <bpmn:task id="Task_CloseEpisode" name="Закрытие эпизода">
-      <bpmn:incoming>Flow_s19</bpmn:incoming>
-      <bpmn:outgoing>Flow_s20</bpmn:outgoing>
-    </bpmn:task>
     <bpmn:endEvent id="End_Recovered" name="Выздоровление">
-      <bpmn:incoming>Flow_s20</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_Followup_Ok</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_s1" sourceRef="Start_Complaint" targetRef="Task_Intake" />
-    <bpmn:sequenceFlow id="Flow_s2" sourceRef="Task_Intake" targetRef="Task_VitalsExam" />
-    <bpmn:sequenceFlow id="Flow_s3" sourceRef="Task_VitalsExam" targetRef="Task_SetDiagnosis" />
-    <bpmn:sequenceFlow id="Flow_s4" sourceRef="Task_SetDiagnosis" targetRef="Task_AssessSeverity" />
-    <bpmn:sequenceFlow id="Flow_s5" sourceRef="Task_AssessSeverity" targetRef="Gateway_Hospitalization" />
-    <bpmn:sequenceFlow id="Flow_s6" name="да" sourceRef="Gateway_Hospitalization" targetRef="End_Hospitalized" />
-    <bpmn:sequenceFlow id="Flow_s7" name="нет" sourceRef="Gateway_Hospitalization" targetRef="Task_OrderDiagnostics" />
-    <bpmn:sequenceFlow id="Flow_s8" sourceRef="Task_OrderDiagnostics" targetRef="Task_RecordResults" />
-    <bpmn:sequenceFlow id="Flow_s9" sourceRef="Task_RecordResults" targetRef="Task_PrescribeAbt" />
-    <bpmn:sequenceFlow id="Flow_s10" sourceRef="Task_PrescribeAbt" targetRef="Task_PrescribeSymptomatic" />
-    <bpmn:sequenceFlow id="Flow_s11" sourceRef="Task_PrescribeSymptomatic" targetRef="Task_CreateCarePlan" />
-    <bpmn:sequenceFlow id="Flow_s12" sourceRef="Task_CreateCarePlan" targetRef="Task_Reassess" />
-    <bpmn:sequenceFlow id="Flow_s13" sourceRef="Task_Reassess" targetRef="Gateway_AbtEffect" />
-    <bpmn:sequenceFlow id="Flow_s14" name="да" sourceRef="Gateway_AbtEffect" targetRef="Task_Followup" />
-    <bpmn:sequenceFlow id="Flow_s15" name="нет" sourceRef="Gateway_AbtEffect" targetRef="Gateway_Hospitalization" />
-    <bpmn:sequenceFlow id="Flow_s16" sourceRef="Task_Followup" targetRef="Gateway_Goal" />
-    <bpmn:sequenceFlow id="Flow_s17" name="да" sourceRef="Gateway_Goal" targetRef="Task_ScheduleRepeatCxr" />
-    <bpmn:sequenceFlow id="Flow_s18" name="нет" sourceRef="Gateway_Goal" targetRef="Task_PrescribeAbt" />
-    <bpmn:sequenceFlow id="Flow_s19" sourceRef="Task_ScheduleRepeatCxr" targetRef="Task_CloseEpisode" />
-    <bpmn:sequenceFlow id="Flow_s20" sourceRef="Task_CloseEpisode" targetRef="End_Recovered" />
+    <bpmn:sequenceFlow id="Flow_Top_Start_Primary" sourceRef="Start_Complaint" targetRef="SubProcess_PrimaryVisit" />
+    <bpmn:sequenceFlow id="Flow_Top_Primary_To_Hosp" sourceRef="SubProcess_PrimaryVisit" targetRef="Gateway_Hospitalization" />
+    <bpmn:sequenceFlow id="Flow_Top_Hosp_Yes" name="да" sourceRef="Gateway_Hospitalization" targetRef="Gateway_HospitalMerge" />
+    <bpmn:sequenceFlow id="Flow_Top_Hosp_No" name="нет" sourceRef="Gateway_Hospitalization" targetRef="Gateway_TherapyEntry" />
+    <bpmn:sequenceFlow id="Flow_Top_To_Hospital_End" sourceRef="Gateway_HospitalMerge" targetRef="End_Hospitalized" />
+    <bpmn:sequenceFlow id="Flow_Top_To_Therapy" sourceRef="Gateway_TherapyEntry" targetRef="SubProcess_Therapy" />
+    <bpmn:sequenceFlow id="Flow_Top_Therapy_To_Followup" sourceRef="SubProcess_Therapy" targetRef="SubProcess_Followup" />
+    <bpmn:sequenceFlow id="Flow_Top_Followup_Ok" sourceRef="SubProcess_Followup" targetRef="End_Recovered" />
+    <bpmn:sequenceFlow id="Flow_Top_NoEffect_To_Decide" sourceRef="Boundary_NoEffect" targetRef="Gateway_NoEffectNext" />
+    <bpmn:sequenceFlow id="Flow_Top_NoEffect_Hospital" sourceRef="Gateway_NoEffectNext" targetRef="Gateway_HospitalMerge" />
+    <bpmn:sequenceFlow id="Flow_Top_NoEffect_Retreatment" name="сменить лечение" sourceRef="Gateway_NoEffectNext" targetRef="Gateway_TherapyEntry" />
+    <bpmn:sequenceFlow id="Flow_Top_Adjust_To_Therapy" sourceRef="Boundary_Adjust" targetRef="Gateway_TherapyEntry" />
     <bpmn:textAnnotation id="Annotation_P26">
       <bpmn:text>КП №768, п.26</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Assoc_P26" sourceRef="Gateway_Hospitalization" targetRef="Annotation_P26" />
-    <bpmn:textAnnotation id="Annotation_P15">
+    <bpmn:textAnnotation id="Annotation_P15_Top">
       <bpmn:text>КП №768, п.15</bpmn:text>
     </bpmn:textAnnotation>
-    <bpmn:association id="Assoc_P15" sourceRef="Gateway_AbtEffect" targetRef="Annotation_P15" />
-    <bpmn:textAnnotation id="Annotation_Version">
-      <bpmn:text>Версия: 2026-07-25. Бизнес-процесс (не инструкция). Сверка с КП №768 — через YAML и аннотации у шлюзов.</bpmn:text>
-    </bpmn:textAnnotation>
-    <bpmn:association id="Assoc_Version" sourceRef="Start_Complaint" targetRef="Annotation_Version" />
+    <bpmn:association id="Assoc_P15_Top" sourceRef="Gateway_NoEffectNext" targetRef="Annotation_P15_Top" />
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_out">
     <bpmndi:BPMNPlane id="BPMNPlane_out" bpmnElement="cap_outpatient">
       <bpmndi:BPMNShape id="Shape_Start" bpmnElement="Start_Complaint">
-        <dc:Bounds x="170" y="262" width="36" height="36" />
+        <dc:Bounds x="170" y="182" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="159" y="305" width="59" height="27" />
+          <dc:Bounds x="160" y="224" width="61" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Intake" bpmnElement="Task_Intake">
-        <dc:Bounds x="240" y="240" width="130" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Vitals" bpmnElement="Task_VitalsExam">
-        <dc:Bounds x="410" y="240" width="120" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Dx" bpmnElement="Task_SetDiagnosis">
-        <dc:Bounds x="570" y="240" width="120" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Severity" bpmnElement="Task_AssessSeverity">
-        <dc:Bounds x="730" y="240" width="130" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_GwHosp" bpmnElement="Gateway_Hospitalization" isMarkerVisible="true">
-        <dc:Bounds x="900" y="255" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="881" y="312" width="89" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_OrderDx" bpmnElement="Task_OrderDiagnostics">
-        <dc:Bounds x="990" y="240" width="130" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Results" bpmnElement="Task_RecordResults">
-        <dc:Bounds x="1160" y="240" width="150" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Abt" bpmnElement="Task_PrescribeAbt">
-        <dc:Bounds x="1350" y="240" width="150" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Symp" bpmnElement="Task_PrescribeSymptomatic">
-        <dc:Bounds x="1540" y="240" width="150" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Plan" bpmnElement="Task_CreateCarePlan">
-        <dc:Bounds x="1730" y="240" width="130" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Reassess" bpmnElement="Task_Reassess">
-        <dc:Bounds x="1900" y="240" width="150" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_GwAbt" bpmnElement="Gateway_AbtEffect" isMarkerVisible="true">
-        <dc:Bounds x="2090" y="255" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2079" y="312" width="73" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Followup" bpmnElement="Task_Followup">
-        <dc:Bounds x="2180" y="240" width="140" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_GwGoal" bpmnElement="Gateway_Goal" isMarkerVisible="true">
-        <dc:Bounds x="2360" y="255" width="50" height="50" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2354" y="312" width="62" height="27" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_RepeatCxr" bpmnElement="Task_ScheduleRepeatCxr">
-        <dc:Bounds x="2450" y="240" width="160" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Close" bpmnElement="Task_CloseEpisode">
-        <dc:Bounds x="2650" y="240" width="140" height="80" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_EndRec" bpmnElement="End_Recovered">
-        <dc:Bounds x="2830" y="262" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2807" y="305" width="82" height="14" />
-        </bpmndi:BPMNLabel>
+      <bpmndi:BPMNShape id="Shape_GwHospMerge" bpmnElement="Gateway_HospitalMerge" isMarkerVisible="true">
+        <dc:Bounds x="570" y="275" width="50" height="50" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_EndHosp" bpmnElement="End_Hospitalized">
-        <dc:Bounds x="907" y="452" width="36" height="36" />
+        <dc:Bounds x="652" y="282" width="36" height="36" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="893" y="498" width="64" height="14" />
+          <dc:Bounds x="638" y="258" width="64" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Ann_P26" bpmnElement="Annotation_P26">
-        <dc:Bounds x="970" y="100" width="110" height="30" />
+      <bpmndi:BPMNShape id="Shape_EndRec" bpmnElement="End_Recovered">
+        <dc:Bounds x="1580" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1564" y="224" width="82" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Ann_P15" bpmnElement="Annotation_P15">
-        <dc:Bounds x="2150" y="100" width="110" height="30" />
+      <bpmndi:BPMNShape id="Shape_GwTherapyEntry" bpmnElement="Gateway_TherapyEntry" isMarkerVisible="true">
+        <dc:Bounds x="785" y="175" width="50" height="50" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Ann" bpmnElement="Annotation_Version">
-        <dc:Bounds x="170" y="80" width="320" height="50" />
+      <bpmndi:BPMNShape id="Shape_GwNoEff" bpmnElement="Gateway_NoEffectNext" isMarkerVisible="true">
+        <dc:Bounds x="785" y="400" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="819" y="476" width="82" height="27" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Edge_s1" bpmnElement="Flow_s1">
-        <di:waypoint x="206" y="280" />
-        <di:waypoint x="240" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s2" bpmnElement="Flow_s2">
-        <di:waypoint x="370" y="280" />
-        <di:waypoint x="410" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s3" bpmnElement="Flow_s3">
-        <di:waypoint x="530" y="280" />
-        <di:waypoint x="570" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s4" bpmnElement="Flow_s4">
-        <di:waypoint x="690" y="280" />
-        <di:waypoint x="730" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s5" bpmnElement="Flow_s5">
-        <di:waypoint x="860" y="280" />
-        <di:waypoint x="900" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s6" bpmnElement="Flow_s6">
-        <di:waypoint x="925" y="305" />
-        <di:waypoint x="925" y="452" />
+      <bpmndi:BPMNShape id="Shape_SubPrimary" bpmnElement="SubProcess_PrimaryVisit">
+        <dc:Bounds x="270" y="150" width="200" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_GwHosp" bpmnElement="Gateway_Hospitalization" isMarkerVisible="true">
+        <dc:Bounds x="570" y="175" width="50" height="50" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="933" y="390" width="13" height="14" />
+          <dc:Bounds x="452" y="250" width="87" height="27" />
         </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s7" bpmnElement="Flow_s7">
-        <di:waypoint x="950" y="280" />
-        <di:waypoint x="990" y="280" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="960" y="258" width="17" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s8" bpmnElement="Flow_s8">
-        <di:waypoint x="1120" y="280" />
-        <di:waypoint x="1160" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s9" bpmnElement="Flow_s9">
-        <di:waypoint x="1310" y="280" />
-        <di:waypoint x="1350" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s10" bpmnElement="Flow_s10">
-        <di:waypoint x="1500" y="280" />
-        <di:waypoint x="1540" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s11" bpmnElement="Flow_s11">
-        <di:waypoint x="1690" y="280" />
-        <di:waypoint x="1730" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s12" bpmnElement="Flow_s12">
-        <di:waypoint x="1860" y="280" />
-        <di:waypoint x="1900" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s13" bpmnElement="Flow_s13">
-        <di:waypoint x="2050" y="280" />
-        <di:waypoint x="2090" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s14" bpmnElement="Flow_s14">
-        <di:waypoint x="2140" y="280" />
-        <di:waypoint x="2180" y="280" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2149" y="258" width="13" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s15" bpmnElement="Flow_s15">
-        <di:waypoint x="2115" y="255" />
-        <di:waypoint x="2115" y="190" />
-        <di:waypoint x="925" y="190" />
-        <di:waypoint x="925" y="255" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1492" y="168" width="17" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s16" bpmnElement="Flow_s16">
-        <di:waypoint x="2320" y="280" />
-        <di:waypoint x="2360" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s17" bpmnElement="Flow_s17">
-        <di:waypoint x="2410" y="280" />
-        <di:waypoint x="2450" y="280" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="2419" y="258" width="13" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s18" bpmnElement="Flow_s18">
-        <di:waypoint x="2385" y="305" />
-        <di:waypoint x="2385" y="460" />
-        <di:waypoint x="1425" y="460" />
-        <di:waypoint x="1425" y="320" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="1882" y="438" width="17" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s19" bpmnElement="Flow_s19">
-        <di:waypoint x="2610" y="280" />
-        <di:waypoint x="2650" y="280" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_s20" bpmnElement="Flow_s20">
-        <di:waypoint x="2790" y="280" />
-        <di:waypoint x="2830" y="280" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SubTherapy" bpmnElement="SubProcess_Therapy">
+        <dc:Bounds x="980" y="150" width="220" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SubFollowup" bpmnElement="SubProcess_Followup">
+        <dc:Bounds x="1280" y="150" width="220" height="100" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Assoc_P15T" bpmnElement="Assoc_P15_Top">
+        <di:waypoint x="810" y="450" />
+        <di:waypoint x="810" y="520" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Assoc_P26" bpmnElement="Assoc_P26">
-        <di:waypoint x="950" y="255" />
-        <di:waypoint x="1000" y="130" />
+        <di:waypoint x="595" y="175" />
+        <di:waypoint x="595" y="140" />
+        <di:waypoint x="595" y="90" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Assoc_P15" bpmnElement="Assoc_P15">
-        <di:waypoint x="2140" y="255" />
-        <di:waypoint x="2190" y="130" />
+      <bpmndi:BPMNShape id="Shape_BoundAdj" bpmnElement="Boundary_Adjust">
+        <dc:Bounds x="1440" y="132" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1518" y="100" width="55" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_BoundNo" bpmnElement="Boundary_NoEffect">
+        <dc:Bounds x="1310" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1301" y="275" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Top1" bpmnElement="Flow_Top_Start_Primary">
+        <di:waypoint x="206" y="200" />
+        <di:waypoint x="270" y="200" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Ann" bpmnElement="Assoc_Version">
-        <di:waypoint x="188" y="262" />
-        <di:waypoint x="188" y="130" />
+      <bpmndi:BPMNEdge id="Edge_Top2" bpmnElement="Flow_Top_Primary_To_Hosp">
+        <di:waypoint x="470" y="200" />
+        <di:waypoint x="570" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_TopYes" bpmnElement="Flow_Top_Hosp_Yes">
+        <di:waypoint x="595" y="225" />
+        <di:waypoint x="595" y="275" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="568" y="248" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_TopNo" bpmnElement="Flow_Top_Hosp_No">
+        <di:waypoint x="620" y="200" />
+        <di:waypoint x="785" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="685" y="178" width="17" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_ToHospEnd" bpmnElement="Flow_Top_To_Hospital_End">
+        <di:waypoint x="620" y="300" />
+        <di:waypoint x="652" y="300" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_ToTherapy" bpmnElement="Flow_Top_To_Therapy">
+        <di:waypoint x="835" y="200" />
+        <di:waypoint x="980" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_TopNoEff" bpmnElement="Flow_Top_NoEffect_To_Decide">
+        <di:waypoint x="1328" y="268" />
+        <di:waypoint x="1328" y="425" />
+        <di:waypoint x="835" y="425" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_NoEffHosp" bpmnElement="Flow_Top_NoEffect_Hospital">
+        <di:waypoint x="785" y="425" />
+        <di:waypoint x="595" y="425" />
+        <di:waypoint x="595" y="325" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_NoEffTreat" bpmnElement="Flow_Top_NoEffect_Retreatment">
+        <di:waypoint x="810" y="400" />
+        <di:waypoint x="810" y="225" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="751" y="311" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_TopAdj" bpmnElement="Flow_Top_Adjust_To_Therapy">
+        <di:waypoint x="1458" y="132" />
+        <di:waypoint x="1458" y="60" />
+        <di:waypoint x="810" y="60" />
+        <di:waypoint x="810" y="175" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Top3" bpmnElement="Flow_Top_Therapy_To_Followup">
+        <di:waypoint x="1200" y="200" />
+        <di:waypoint x="1280" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_TopOk" bpmnElement="Flow_Top_Followup_Ok">
+        <di:waypoint x="1500" y="200" />
+        <di:waypoint x="1580" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_Ann_P15T" bpmnElement="Annotation_P15_Top">
+        <dc:Bounds x="766" y="520" width="110" height="30" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Ann_P26" bpmnElement="Annotation_P26">
+        <dc:Bounds x="495" y="60" width="100" height="30" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Primary">
+    <bpmndi:BPMNPlane id="BPMNPlane_Primary" bpmnElement="SubProcess_PrimaryVisit">
+      <bpmndi:BPMNShape id="S_P_Start" bpmnElement="Start_Primary">
+        <dc:Bounds x="160" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="159" y="138" width="39" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_P_Intake" bpmnElement="Task_Intake">
+        <dc:Bounds x="240" y="80" width="130" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_P_Exam" bpmnElement="Task_VitalsExam">
+        <dc:Bounds x="420" y="80" width="120" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_P_Dx" bpmnElement="Task_SetDiagnosis">
+        <dc:Bounds x="590" y="80" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_P_Sev" bpmnElement="Task_AssessSeverity">
+        <dc:Bounds x="820" y="80" width="140" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_P_End" bpmnElement="End_Primary">
+        <dc:Bounds x="1010" y="102" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="992" y="144" width="76" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E_P1" bpmnElement="Flow_p1">
+        <di:waypoint x="196" y="120" />
+        <di:waypoint x="240" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_P2" bpmnElement="Flow_p2">
+        <di:waypoint x="370" y="120" />
+        <di:waypoint x="420" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_P3" bpmnElement="Flow_p3">
+        <di:waypoint x="540" y="120" />
+        <di:waypoint x="590" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_P4" bpmnElement="Flow_p4">
+        <di:waypoint x="770" y="120" />
+        <di:waypoint x="820" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_P5" bpmnElement="Flow_p5">
+        <di:waypoint x="960" y="120" />
+        <di:waypoint x="1010" y="120" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Therapy">
+    <bpmndi:BPMNPlane id="BPMNPlane_Therapy" bpmnElement="SubProcess_Therapy">
+      <bpmndi:BPMNShape id="S_T_Start" bpmnElement="Start_Therapy">
+        <dc:Bounds x="80" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_Ord" bpmnElement="Task_OrderDiagnostics">
+        <dc:Bounds x="160" y="160" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_Res" bpmnElement="Task_RecordResults">
+        <dc:Bounds x="370" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_Abt" bpmnElement="Task_PrescribeAbt">
+        <dc:Bounds x="570" y="160" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_Sym" bpmnElement="Task_PrescribeSymptomatic">
+        <dc:Bounds x="780" y="160" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_Plan" bpmnElement="Task_CreateCarePlan">
+        <dc:Bounds x="990" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_T_End" bpmnElement="End_Therapy">
+        <dc:Bounds x="1190" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1150" y="224" width="100" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E_T1" bpmnElement="Flow_t1">
+        <di:waypoint x="116" y="200" />
+        <di:waypoint x="160" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_T2" bpmnElement="Flow_t2">
+        <di:waypoint x="320" y="200" />
+        <di:waypoint x="370" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_T3" bpmnElement="Flow_t3">
+        <di:waypoint x="520" y="200" />
+        <di:waypoint x="570" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_T4" bpmnElement="Flow_t4">
+        <di:waypoint x="730" y="200" />
+        <di:waypoint x="780" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_T5" bpmnElement="Flow_t5">
+        <di:waypoint x="940" y="200" />
+        <di:waypoint x="990" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_T6" bpmnElement="Flow_t6">
+        <di:waypoint x="1140" y="200" />
+        <di:waypoint x="1190" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_Followup">
+    <bpmndi:BPMNPlane id="BPMNPlane_Followup" bpmnElement="SubProcess_Followup">
+      <bpmndi:BPMNShape id="S_F_Start" bpmnElement="Start_Followup">
+        <dc:Bounds x="60" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Re" bpmnElement="Task_Reassess">
+        <dc:Bounds x="140" y="160" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Ge" bpmnElement="Gateway_AbtEffect" isMarkerVisible="true">
+        <dc:Bounds x="360" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="220" y="238" width="120" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_No" bpmnElement="End_Followup_NoEffect">
+        <dc:Bounds x="367" y="50" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="410" y="55" width="130" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Fu" bpmnElement="Task_Followup">
+        <dc:Bounds x="470" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Gg" bpmnElement="Gateway_Goal" isMarkerVisible="true">
+        <dc:Bounds x="680" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="540" y="238" width="130" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Adj" bpmnElement="End_Followup_Adjust">
+        <dc:Bounds x="687" y="310" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="640" y="350" width="140" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Cx" bpmnElement="Task_ScheduleRepeatCxr">
+        <dc:Bounds x="790" y="160" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Cl" bpmnElement="Task_CloseEpisode">
+        <dc:Bounds x="1010" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_Ok" bpmnElement="End_Followup_Ok">
+        <dc:Bounds x="1210" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1170" y="224" width="110" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="S_F_A15" bpmnElement="Annotation_P15">
+        <dc:Bounds x="300" y="20" width="100" height="28" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="E_F1" bpmnElement="Flow_f1">
+        <di:waypoint x="96" y="200" />
+        <di:waypoint x="140" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F2" bpmnElement="Flow_f2">
+        <di:waypoint x="310" y="200" />
+        <di:waypoint x="360" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F3" bpmnElement="Flow_f3">
+        <di:waypoint x="410" y="200" />
+        <di:waypoint x="470" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="430" y="178" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F4" bpmnElement="Flow_f4">
+        <di:waypoint x="385" y="175" />
+        <di:waypoint x="385" y="86" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="400" y="120" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F5" bpmnElement="Flow_f5">
+        <di:waypoint x="620" y="200" />
+        <di:waypoint x="680" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F6" bpmnElement="Flow_f6">
+        <di:waypoint x="730" y="200" />
+        <di:waypoint x="790" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="750" y="178" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F7" bpmnElement="Flow_f7">
+        <di:waypoint x="705" y="225" />
+        <di:waypoint x="705" y="310" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="720" y="260" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F8" bpmnElement="Flow_f8">
+        <di:waypoint x="960" y="200" />
+        <di:waypoint x="1010" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_F9" bpmnElement="Flow_f9">
+        <di:waypoint x="1160" y="200" />
+        <di:waypoint x="1210" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="E_FA" bpmnElement="Assoc_P15">
+        <di:waypoint x="360" y="175" />
+        <di:waypoint x="350" y="48" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

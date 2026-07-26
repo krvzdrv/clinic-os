@@ -1009,6 +1009,9 @@
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
           <span class="badge green">активный</span>
+          <form method="POST" action="{{ url_for('resolve_condition_route', pid=patient.id, cid=c.id) }}" style="display:inline;">
+            <button class="btn ghost btn-small" type="submit" title="Эпизод болезни клинически закончен — отдельно от закрытия приёма">Разрешить диагноз</button>
+          </form>
         </div>
         {% if c.source_label %}
         <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>

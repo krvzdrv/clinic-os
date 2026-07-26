@@ -493,6 +493,17 @@ def delete_condition(cid):
     db.execute("DELETE FROM condition_ WHERE id = %s", (cid,))
 
 
+def resolve_condition(pid, cid):
+    """Клиническое решение врача «эпизод болезни закрыт» (STATUS_SEMANTICS.md §3):
+    отдельное действие от закрытия приёма — не выставляется автоматически ни
+    целью (goal.status=achieved), ни выпиской (discharge_inpatient)."""
+    db.execute(
+        "UPDATE condition_ SET clinical_status = %s WHERE id = %s AND patient_id = %s",
+        ("resolved", cid, pid),
+    )
+    clear_pid_cache(pid)
+
+
 def delete_service_request(sid):
     db.execute("DELETE FROM service_request WHERE id = %s", (sid,))
 

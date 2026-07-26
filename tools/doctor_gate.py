@@ -438,6 +438,19 @@ def main() -> int:
         "Морозов: появился стационарный encounter",
     )
 
+    print("\n[7] Разрешить диагноз — отдельно от закрытия приёма (STATUS_SEMANTICS §0)")
+    cond_v = fs.get_condition(pid_v)
+    check(bool(cond_v), "Морозов: есть активный диагноз перед разрешением")
+    r = client.post(f"/patient/{pid_v}/condition/{cond_v['id']}/resolve", follow_redirects=True)
+    check(r.status_code == 200, f"Морозов: resolve → {r.status_code}")
+    conds_after = fs.get_conditions(pid_v)
+    resolved = next((c for c in conds_after if c["id"] == cond_v["id"]), None)
+    check(bool(resolved) and resolved.get("clinical_status") == "resolved",
+          "Морозов: clinical_status=resolved после разрешения")
+    html_v = client.get(f"/patient/{pid_v}").data.decode("utf-8", "replace")
+    check("История диагнозов" in html_v, "Морозов: разрешённый диагноз ушёл в историю")
+    check("разрешён" in html_v, "Морозов: бейдж «разрешён» виден в UI")
+
     print("\n" + "=" * 70)
     print(f"ИТОГ doctor_gate: {PASS} ok, {FAIL} fail")
     print("=" * 70)

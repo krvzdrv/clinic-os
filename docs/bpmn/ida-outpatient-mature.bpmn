@@ -1,0 +1,329 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_ida_outpatient" targetNamespace="http://clinic-os/processes/ida_outpatient" exporter="Camunda Modeler" exporterVersion="5.46.1">
+  <bpmn:error id="Error_NoIronEffect" name="Нет эффекта терапии железом" errorCode="NO_IRON_EFFECT" />
+
+  <bpmn:process id="ida_outpatient" name="Протокольная карта амбулаторно (КП №23) — не путь ведения" isExecutable="false">
+    <bpmn:startEvent id="Start_Ida" name="Обращение">
+      <bpmn:outgoing>Flow_Top_Start</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:subProcess id="SubProcess_Confirm" name="Подтверждение и тяжесть">
+      <bpmn:incoming>Flow_Top_Start</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Confirm_To_Hosp</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Confirm" name="Начало"><bpmn:outgoing>Flow_i1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:task id="Task_IdaAnamnesis" name="Жалобы и анамнез"><bpmn:incoming>Flow_i1</bpmn:incoming><bpmn:outgoing>Flow_i2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_IdaExam" name="Осмотр"><bpmn:incoming>Flow_i2</bpmn:incoming><bpmn:outgoing>Flow_i3</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_IdaDiagnosis" name="Диагноз или диагнозы"><bpmn:incoming>Flow_i3</bpmn:incoming><bpmn:outgoing>Flow_i4</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_IdaSeverity" name="Оценка тяжести по гемоглобину"><bpmn:incoming>Flow_i4</bpmn:incoming><bpmn:outgoing>Flow_i5</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_Confirm" name="Тяжесть определена"><bpmn:incoming>Flow_i5</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_i1" sourceRef="Start_Confirm" targetRef="Task_IdaAnamnesis" />
+      <bpmn:sequenceFlow id="Flow_i2" sourceRef="Task_IdaAnamnesis" targetRef="Task_IdaExam" />
+      <bpmn:sequenceFlow id="Flow_i3" sourceRef="Task_IdaExam" targetRef="Task_IdaDiagnosis" />
+      <bpmn:sequenceFlow id="Flow_i4" sourceRef="Task_IdaDiagnosis" targetRef="Task_IdaSeverity" />
+      <bpmn:sequenceFlow id="Flow_i5" sourceRef="Task_IdaSeverity" targetRef="End_Confirm" />
+    </bpmn:subProcess>
+
+    <bpmn:exclusiveGateway id="Gateway_IdaHospitalization" name="В стационар или переливание?">
+      <bpmn:incoming>Flow_Top_Confirm_To_Hosp</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Hosp_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Top_Hosp_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_IdaHospital" name="В стационар"><bpmn:incoming>Flow_Top_Hosp_Yes</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:subProcess id="SubProcess_IdaLabs" name="Обследование">
+      <bpmn:incoming>Flow_Top_Hosp_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Labs_To_Therapy</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Labs" name="Начало"><bpmn:outgoing>Flow_l1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:task id="Task_IdaOrderLabs" name="Назначить необходимые исследования"><bpmn:incoming>Flow_l1</bpmn:incoming><bpmn:outgoing>Flow_l2</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_IdaRecordLabs" name="Получить результаты"><bpmn:incoming>Flow_l2</bpmn:incoming><bpmn:outgoing>Flow_l3</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_Labs" name="Обследование выполнено"><bpmn:incoming>Flow_l3</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_l1" sourceRef="Start_Labs" targetRef="Task_IdaOrderLabs" />
+      <bpmn:sequenceFlow id="Flow_l2" sourceRef="Task_IdaOrderLabs" targetRef="Task_IdaRecordLabs" />
+      <bpmn:sequenceFlow id="Flow_l3" sourceRef="Task_IdaRecordLabs" targetRef="End_Labs" />
+    </bpmn:subProcess>
+
+    <bpmn:exclusiveGateway id="Gateway_IdaTherapyEntry" name="">
+      <bpmn:incoming>Flow_Top_Labs_To_Therapy</bpmn:incoming>
+      <bpmn:incoming>Flow_Top_Retry_Therapy</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_To_IdaTherapy</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="SubProcess_IdaTherapy" name="Лечение">
+      <bpmn:incoming>Flow_Top_To_IdaTherapy</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Therapy_To_Control</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Iron" name="Начало"><bpmn:outgoing>Flow_r1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:exclusiveGateway id="Gateway_OralIron" name="Можно препарат внутрь?">
+        <bpmn:incoming>Flow_r1</bpmn:incoming>
+        <bpmn:outgoing>Flow_r2</bpmn:outgoing>
+        <bpmn:outgoing>Flow_r3</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:task id="Task_IdaOralIron" name="Препарат внутрь"><bpmn:incoming>Flow_r3</bpmn:incoming><bpmn:outgoing>Flow_r4</bpmn:outgoing></bpmn:task>
+      <bpmn:task id="Task_IdaIvIron" name="Препарат парентерально"><bpmn:incoming>Flow_r2</bpmn:incoming><bpmn:outgoing>Flow_r5</bpmn:outgoing></bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_IronMerge" name="">
+        <bpmn:incoming>Flow_r4</bpmn:incoming>
+        <bpmn:incoming>Flow_r5</bpmn:incoming>
+        <bpmn:outgoing>Flow_r6</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_Iron" name="Терапия назначена"><bpmn:incoming>Flow_r6</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_r1" sourceRef="Start_Iron" targetRef="Gateway_OralIron" />
+      <bpmn:sequenceFlow id="Flow_r2" name="нет" sourceRef="Gateway_OralIron" targetRef="Task_IdaIvIron" />
+      <bpmn:sequenceFlow id="Flow_r3" name="да" sourceRef="Gateway_OralIron" targetRef="Task_IdaOralIron" />
+      <bpmn:sequenceFlow id="Flow_r4" sourceRef="Task_IdaOralIron" targetRef="Gateway_IronMerge" />
+      <bpmn:sequenceFlow id="Flow_r5" sourceRef="Task_IdaIvIron" targetRef="Gateway_IronMerge" />
+      <bpmn:sequenceFlow id="Flow_r6" sourceRef="Gateway_IronMerge" targetRef="End_Iron" />
+      <bpmn:textAnnotation id="Annotation_IdaRoute"><bpmn:text>КП №23: внутрь — первая линия; внутривенно — при нарушении всасывания, болезни ЖКТ, непереносимости</bpmn:text></bpmn:textAnnotation>
+      <bpmn:association id="Assoc_IdaRoute" sourceRef="Gateway_OralIron" targetRef="Annotation_IdaRoute" />
+    </bpmn:subProcess>
+
+    <bpmn:subProcess id="SubProcess_IdaControl" name="Контроль эффективности">
+      <bpmn:incoming>Flow_Top_Therapy_To_Control</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_Control_Ok</bpmn:outgoing>
+      <bpmn:startEvent id="Start_Ctrl" name="Начало"><bpmn:outgoing>Flow_k1</bpmn:outgoing></bpmn:startEvent>
+      <bpmn:task id="Task_IdaControlLabs" name="Контрольные анализы"><bpmn:incoming>Flow_k1</bpmn:incoming><bpmn:outgoing>Flow_k2</bpmn:outgoing></bpmn:task>
+      <bpmn:exclusiveGateway id="Gateway_IronEffect" name="Есть эффект?">
+        <bpmn:incoming>Flow_k2</bpmn:incoming>
+        <bpmn:outgoing>Flow_k3</bpmn:outgoing>
+        <bpmn:outgoing>Flow_k4</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:endEvent id="End_Ctrl_NoEffect" name="Нет эффекта терапии">
+        <bpmn:incoming>Flow_k3</bpmn:incoming>
+        <bpmn:errorEventDefinition id="ErrDef_NoIron" errorRef="Error_NoIronEffect" />
+      </bpmn:endEvent>
+      <bpmn:task id="Task_IdaClose" name="Цель лечения достигнута"><bpmn:incoming>Flow_k4</bpmn:incoming><bpmn:outgoing>Flow_k5</bpmn:outgoing></bpmn:task>
+      <bpmn:endEvent id="End_Ctrl_Ok" name="Завершено"><bpmn:incoming>Flow_k5</bpmn:incoming></bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_k1" sourceRef="Start_Ctrl" targetRef="Task_IdaControlLabs" />
+      <bpmn:sequenceFlow id="Flow_k2" sourceRef="Task_IdaControlLabs" targetRef="Gateway_IronEffect" />
+      <bpmn:sequenceFlow id="Flow_k3" name="нет" sourceRef="Gateway_IronEffect" targetRef="End_Ctrl_NoEffect" />
+      <bpmn:sequenceFlow id="Flow_k4" name="да" sourceRef="Gateway_IronEffect" targetRef="Task_IdaClose" />
+      <bpmn:sequenceFlow id="Flow_k5" sourceRef="Task_IdaClose" targetRef="End_Ctrl_Ok" />
+    </bpmn:subProcess>
+
+    <bpmn:boundaryEvent id="Boundary_NoIron" name="Нет эффекта" attachedToRef="SubProcess_IdaControl">
+      <bpmn:outgoing>Flow_Top_Retry_Therapy</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="BoundErr_NoIron" errorRef="Error_NoIronEffect" />
+    </bpmn:boundaryEvent>
+
+    <bpmn:endEvent id="End_IdaRecovered" name="Цель лечения достигнута"><bpmn:incoming>Flow_Top_Control_Ok</bpmn:incoming></bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_Top_Start" sourceRef="Start_Ida" targetRef="SubProcess_Confirm" />
+    <bpmn:sequenceFlow id="Flow_Top_Confirm_To_Hosp" sourceRef="SubProcess_Confirm" targetRef="Gateway_IdaHospitalization" />
+    <bpmn:sequenceFlow id="Flow_Top_Hosp_Yes" name="да" sourceRef="Gateway_IdaHospitalization" targetRef="End_IdaHospital" />
+    <bpmn:sequenceFlow id="Flow_Top_Hosp_No" name="нет" sourceRef="Gateway_IdaHospitalization" targetRef="SubProcess_IdaLabs" />
+    <bpmn:sequenceFlow id="Flow_Top_Labs_To_Therapy" sourceRef="SubProcess_IdaLabs" targetRef="Gateway_IdaTherapyEntry" />
+    <bpmn:sequenceFlow id="Flow_Top_To_IdaTherapy" sourceRef="Gateway_IdaTherapyEntry" targetRef="SubProcess_IdaTherapy" />
+    <bpmn:sequenceFlow id="Flow_Top_Therapy_To_Control" sourceRef="SubProcess_IdaTherapy" targetRef="SubProcess_IdaControl" />
+    <bpmn:sequenceFlow id="Flow_Top_Control_Ok" sourceRef="SubProcess_IdaControl" targetRef="End_IdaRecovered" />
+    <bpmn:sequenceFlow id="Flow_Top_Retry_Therapy" sourceRef="Boundary_NoIron" targetRef="Gateway_IdaTherapyEntry" />
+
+    <bpmn:textAnnotation id="Annotation_IdaHosp"><bpmn:text>КП №23: тяжёлая анемия или декомпенсация</bpmn:text></bpmn:textAnnotation>
+    <bpmn:association id="Assoc_IdaHosp" sourceRef="Gateway_IdaHospitalization" targetRef="Annotation_IdaHosp" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_ida">
+    <bpmndi:BPMNPlane id="BPMNPlane_ida" bpmnElement="ida_outpatient">
+      <bpmndi:BPMNShape id="X_S" bpmnElement="Start_Ida"><dc:Bounds x="120" y="212" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="100" y="255" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_C" bpmnElement="SubProcess_Confirm"><dc:Bounds x="220" y="180" width="200" height="100" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_G" bpmnElement="Gateway_IdaHospitalization" isMarkerVisible="true"><dc:Bounds x="500" y="205" width="50" height="50" /><bpmndi:BPMNLabel><dc:Bounds x="430" y="262" width="150" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_H" bpmnElement="End_IdaHospital"><dc:Bounds x="507" y="100" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="550" y="108" width="74" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_AH" bpmnElement="Annotation_IdaHosp"><dc:Bounds x="300" y="40" width="200" height="40" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_L" bpmnElement="SubProcess_IdaLabs"><dc:Bounds x="600" y="180" width="180" height="100" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_GwTEntry" bpmnElement="Gateway_IdaTherapyEntry" isMarkerVisible="true"><dc:Bounds x="820" y="205" width="50" height="50" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_T" bpmnElement="SubProcess_IdaTherapy"><dc:Bounds x="900" y="180" width="180" height="100" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_K" bpmnElement="SubProcess_IdaControl"><dc:Bounds x="1140" y="180" width="200" height="100" /></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_B" bpmnElement="Boundary_NoIron"><dc:Bounds x="1160" y="262" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1205" y="305" width="80" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNShape id="X_E" bpmnElement="End_IdaRecovered"><dc:Bounds x="1400" y="212" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1360" y="255" width="120" height="40" /></bpmndi:BPMNLabel></bpmndi:BPMNShape><bpmndi:BPMNEdge id="Xe1" bpmnElement="Flow_Top_Start"><di:waypoint x="156" y="230" /><di:waypoint x="220" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe2" bpmnElement="Flow_Top_Confirm_To_Hosp"><di:waypoint x="420" y="230" /><di:waypoint x="500" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe3" bpmnElement="Flow_Top_Hosp_Yes"><di:waypoint x="525" y="205" /><di:waypoint x="525" y="136" /><bpmndi:BPMNLabel><dc:Bounds x="533" y="160" width="13" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe4" bpmnElement="Flow_Top_Hosp_No"><di:waypoint x="550" y="230" /><di:waypoint x="600" y="230" /><bpmndi:BPMNLabel><dc:Bounds x="560" y="208" width="17" height="14" /></bpmndi:BPMNLabel></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe5" bpmnElement="Flow_Top_Labs_To_Therapy"><di:waypoint x="780" y="230" /><di:waypoint x="820" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe5b" bpmnElement="Flow_Top_To_IdaTherapy"><di:waypoint x="870" y="230" /><di:waypoint x="900" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe6" bpmnElement="Flow_Top_Therapy_To_Control"><di:waypoint x="1080" y="230" /><di:waypoint x="1140" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe7" bpmnElement="Flow_Top_Control_Ok"><di:waypoint x="1340" y="230" /><di:waypoint x="1400" y="230" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="Xe8" bpmnElement="Flow_Top_Retry_Therapy"><di:waypoint x="1178" y="298" /><di:waypoint x="1178" y="360" /><di:waypoint x="845" y="360" /><di:waypoint x="845" y="255" /></bpmndi:BPMNEdge><bpmndi:BPMNEdge id="XeA" bpmnElement="Assoc_IdaHosp"><di:waypoint x="500" y="220" /><di:waypoint x="400" y="80" /></bpmndi:BPMNEdge></bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_IdaConfirm">
+    <bpmndi:BPMNPlane id="BPMNPlane_IdaConfirm" bpmnElement="SubProcess_Confirm">
+      <bpmndi:BPMNShape id="IC_S" bpmnElement="Start_Confirm">
+        <dc:Bounds x="100" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_A" bpmnElement="Task_IdaAnamnesis">
+        <dc:Bounds x="180" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_E" bpmnElement="Task_IdaExam">
+        <dc:Bounds x="380" y="160" width="120" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_D" bpmnElement="Task_IdaDiagnosis">
+        <dc:Bounds x="550" y="160" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_V" bpmnElement="Task_IdaSeverity">
+        <dc:Bounds x="800" y="160" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_N" bpmnElement="End_Confirm">
+        <dc:Bounds x="1030" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="990" y="224" width="110" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="ICe1" bpmnElement="Flow_i1">
+        <di:waypoint x="136" y="200" />
+        <di:waypoint x="180" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ICe2" bpmnElement="Flow_i2">
+        <di:waypoint x="330" y="200" />
+        <di:waypoint x="380" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ICe3" bpmnElement="Flow_i3">
+        <di:waypoint x="500" y="200" />
+        <di:waypoint x="550" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ICe4" bpmnElement="Flow_i4">
+        <di:waypoint x="750" y="200" />
+        <di:waypoint x="800" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ICe5" bpmnElement="Flow_i5">
+        <di:waypoint x="980" y="200" />
+        <di:waypoint x="1030" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_IdaLabs">
+    <bpmndi:BPMNPlane id="BPMNPlane_IdaLabs" bpmnElement="SubProcess_IdaLabs">
+      <bpmndi:BPMNShape id="IL_S" bpmnElement="Start_Labs">
+        <dc:Bounds x="100" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IL_O" bpmnElement="Task_IdaOrderLabs">
+        <dc:Bounds x="180" y="160" width="200" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IL_R" bpmnElement="Task_IdaRecordLabs">
+        <dc:Bounds x="440" y="160" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IL_E" bpmnElement="End_Labs">
+        <dc:Bounds x="660" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="224" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="ILe1" bpmnElement="Flow_l1">
+        <di:waypoint x="136" y="200" />
+        <di:waypoint x="180" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ILe2" bpmnElement="Flow_l2">
+        <di:waypoint x="380" y="200" />
+        <di:waypoint x="440" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ILe3" bpmnElement="Flow_l3">
+        <di:waypoint x="600" y="200" />
+        <di:waypoint x="660" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_IdaTherapy">
+    <bpmndi:BPMNPlane id="BPMNPlane_IdaTherapy" bpmnElement="SubProcess_IdaTherapy">
+      <bpmndi:BPMNShape id="IT_S" bpmnElement="Start_Iron">
+        <dc:Bounds x="80" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_G" bpmnElement="Gateway_OralIron" isMarkerVisible="true">
+        <dc:Bounds x="160" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="8.0" y="180.0" width="140.0" height="40.0" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_O" bpmnElement="Task_IdaOralIron">
+        <dc:Bounds x="280" y="160" width="150" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_I" bpmnElement="Task_IdaIvIron">
+        <dc:Bounds x="280" y="270" width="170" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_M" bpmnElement="Gateway_IronMerge" isMarkerVisible="true">
+        <dc:Bounds x="520" y="175" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_E" bpmnElement="End_Iron">
+        <dc:Bounds x="630" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="590" y="224" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IT_A" bpmnElement="Annotation_IdaRoute">
+        <dc:Bounds x="140" y="20" width="280" height="45" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="ITe1" bpmnElement="Flow_r1">
+        <di:waypoint x="116" y="200" />
+        <di:waypoint x="160" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITe3" bpmnElement="Flow_r3">
+        <di:waypoint x="210" y="200" />
+        <di:waypoint x="280" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="235.0" y="178.0" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITe2" bpmnElement="Flow_r2">
+        <di:waypoint x="185" y="225" />
+        <di:waypoint x="185" y="310" />
+        <di:waypoint x="280" y="310" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="199.0" y="260.5" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITe4" bpmnElement="Flow_r4">
+        <di:waypoint x="430" y="200" />
+        <di:waypoint x="520" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITe5" bpmnElement="Flow_r5">
+        <di:waypoint x="450" y="310" />
+        <di:waypoint x="545" y="310" />
+        <di:waypoint x="545" y="225" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITe6" bpmnElement="Flow_r6">
+        <di:waypoint x="570" y="200" />
+        <di:waypoint x="630" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="ITeA" bpmnElement="Assoc_IdaRoute">
+        <di:waypoint x="185" y="175" />
+        <di:waypoint x="185" y="65" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_IdaControl">
+    <bpmndi:BPMNPlane id="BPMNPlane_IdaControl" bpmnElement="SubProcess_IdaControl">
+      <bpmndi:BPMNShape id="IK_S" bpmnElement="Start_Ctrl">
+        <dc:Bounds x="80" y="182" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IK_L" bpmnElement="Task_IdaControlLabs">
+        <dc:Bounds x="160" y="160" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IK_G" bpmnElement="Gateway_IronEffect" isMarkerVisible="true">
+        <dc:Bounds x="380" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="268.0" y="186.5" width="100.0" height="27.0" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IK_No" bpmnElement="End_Ctrl_NoEffect">
+        <dc:Bounds x="387" y="50" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="430" y="55" width="130" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IK_C" bpmnElement="Task_IdaClose">
+        <dc:Bounds x="500" y="160" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IK_Ok" bpmnElement="End_Ctrl_Ok">
+        <dc:Bounds x="740" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="710" y="224" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="IKe1" bpmnElement="Flow_k1">
+        <di:waypoint x="116" y="200" />
+        <di:waypoint x="160" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="IKe2" bpmnElement="Flow_k2">
+        <di:waypoint x="320" y="200" />
+        <di:waypoint x="380" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="IKe4" bpmnElement="Flow_k4">
+        <di:waypoint x="430" y="200" />
+        <di:waypoint x="500" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="455.0" y="178.0" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="IKe3" bpmnElement="Flow_k3">
+        <di:waypoint x="405" y="175" />
+        <di:waypoint x="405" y="86" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="419.0" y="123.5" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="IKe5" bpmnElement="Flow_k5">
+        <di:waypoint x="680" y="200" />
+        <di:waypoint x="740" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_care_outpatient_control" targetNamespace="http://clinic-os/processes/care_outpatient_control" exporter="Camunda Modeler" exporterVersion="5.46.1">
+
+  <bpmn:process id="care_outpatient_control" name="Контроль амбулаторного ведения" isExecutable="false">
+
+    <bpmn:startEvent id="Start_Control" name="Контрольный визит">
+      <bpmn:outgoing>Flow_c1</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:task id="Task_Reassess" name="Оценить состояние и эффект">
+      <bpmn:incoming>Flow_c1</bpmn:incoming>
+      <bpmn:outgoing>Flow_c2</bpmn:outgoing>
+    </bpmn:task>
+
+    <bpmn:exclusiveGateway id="Gateway_Worse" name="Стало хуже или есть угроза?">
+      <bpmn:incoming>Flow_c2</bpmn:incoming>
+      <bpmn:outgoing>Flow_c3</bpmn:outgoing>
+      <bpmn:outgoing>Flow_c4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Hospital" name="В стационар">
+      <bpmn:incoming>Flow_c3</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:exclusiveGateway id="Gateway_Effect" name="Есть улучшение?">
+      <bpmn:incoming>Flow_c4</bpmn:incoming>
+      <bpmn:outgoing>Flow_c5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_c6</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_Adjust" name="Что скорректировать?">
+      <bpmn:incoming>Flow_c5</bpmn:incoming>
+      <bpmn:outgoing>Flow_c7</bpmn:outgoing>
+      <bpmn:outgoing>Flow_c8</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_NeedWorkup" name="Дообследовать">
+      <bpmn:incoming>Flow_c7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_NeedTreat" name="Сменить лечение">
+      <bpmn:incoming>Flow_c8</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:exclusiveGateway id="Gateway_Goal" name="Заболевание разрешилось?">
+      <bpmn:incoming>Flow_c6</bpmn:incoming>
+      <bpmn:outgoing>Flow_c9</bpmn:outgoing>
+      <bpmn:outgoing>Flow_c10</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_CloseCondition" name="Закрыть заболевание">
+      <bpmn:incoming>Flow_c9</bpmn:incoming>
+      <bpmn:outgoing>Flow_c11</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_ContinueWatch" name="Продолжить наблюдение">
+      <bpmn:incoming>Flow_c10</bpmn:incoming>
+      <bpmn:outgoing>Flow_c12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="End_Recovered" name="Эпизод завершён">
+      <bpmn:incoming>Flow_c11</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_NextVisit" name="Ещё визит">
+      <bpmn:incoming>Flow_c12</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_c1" sourceRef="Start_Control" targetRef="Task_Reassess" />
+    <bpmn:sequenceFlow id="Flow_c2" sourceRef="Task_Reassess" targetRef="Gateway_Worse" />
+    <bpmn:sequenceFlow id="Flow_c3" name="да" sourceRef="Gateway_Worse" targetRef="End_Hospital" />
+    <bpmn:sequenceFlow id="Flow_c4" name="нет" sourceRef="Gateway_Worse" targetRef="Gateway_Effect" />
+    <bpmn:sequenceFlow id="Flow_c5" name="нет" sourceRef="Gateway_Effect" targetRef="Gateway_Adjust" />
+    <bpmn:sequenceFlow id="Flow_c6" name="да" sourceRef="Gateway_Effect" targetRef="Gateway_Goal" />
+    <bpmn:sequenceFlow id="Flow_c7" name="дообследовать" sourceRef="Gateway_Adjust" targetRef="End_NeedWorkup" />
+    <bpmn:sequenceFlow id="Flow_c8" name="сменить лечение" sourceRef="Gateway_Adjust" targetRef="End_NeedTreat" />
+    <bpmn:sequenceFlow id="Flow_c9" name="да" sourceRef="Gateway_Goal" targetRef="Task_CloseCondition" />
+    <bpmn:sequenceFlow id="Flow_c10" name="нет" sourceRef="Gateway_Goal" targetRef="Task_ContinueWatch" />
+    <bpmn:sequenceFlow id="Flow_c11" sourceRef="Task_CloseCondition" targetRef="End_Recovered" />
+    <bpmn:sequenceFlow id="Flow_c12" sourceRef="Task_ContinueWatch" targetRef="End_NextVisit" />
+
+    <bpmn:textAnnotation id="Ann_AfterControl">
+      <bpmn:text>После коррекции или «ещё визит» — снова обычный амбулаторный приём</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Assoc_AfterControl" sourceRef="End_NextVisit" targetRef="Ann_AfterControl" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_control">
+    <bpmndi:BPMNPlane id="BPMNPlane_control" bpmnElement="care_outpatient_control">
+      <bpmndi:BPMNShape id="C_S" bpmnElement="Start_Control">
+        <dc:Bounds x="60" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="20" y="224" width="120" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_R" bpmnElement="Task_Reassess">
+        <dc:Bounds x="150" y="160" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_W" bpmnElement="Gateway_Worse" isMarkerVisible="true">
+        <dc:Bounds x="390" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="230" y="238" width="150" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_EH" bpmnElement="End_Hospital">
+        <dc:Bounds x="397" y="45" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="440" y="52" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Ef" bpmnElement="Gateway_Effect" isMarkerVisible="true">
+        <dc:Bounds x="520" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="390" y="238" width="110" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_GG" bpmnElement="Gateway_Goal" isMarkerVisible="true">
+        <dc:Bounds x="660" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="510" y="125" width="140" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Cl" bpmnElement="Task_CloseCondition">
+        <dc:Bounds x="800" y="70" width="160" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_Wa" bpmnElement="Task_ContinueWatch">
+        <dc:Bounds x="800" y="160" width="180" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_ER" bpmnElement="End_Recovered">
+        <dc:Bounds x="1040" y="92" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="990" y="65" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_EN" bpmnElement="End_NextVisit">
+        <dc:Bounds x="1040" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="990" y="230" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_GA" bpmnElement="Gateway_Adjust" isMarkerVisible="true">
+        <dc:Bounds x="520" y="320" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="360" y="375" width="150" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_EW" bpmnElement="End_NeedWorkup">
+        <dc:Bounds x="660" y="265" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="242" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_ET" bpmnElement="End_NeedTreat">
+        <dc:Bounds x="660" y="375" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="415" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="C_AA" bpmnElement="Ann_AfterControl">
+        <dc:Bounds x="1100" y="300" width="220" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Ce1" bpmnElement="Flow_c1">
+        <di:waypoint x="96" y="200" />
+        <di:waypoint x="150" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce2" bpmnElement="Flow_c2">
+        <di:waypoint x="330" y="200" />
+        <di:waypoint x="390" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce3" bpmnElement="Flow_c3">
+        <di:waypoint x="415" y="175" />
+        <di:waypoint x="415" y="81" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="430" y="115" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce4" bpmnElement="Flow_c4">
+        <di:waypoint x="440" y="200" />
+        <di:waypoint x="520" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="460" y="178" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce5" bpmnElement="Flow_c5">
+        <di:waypoint x="545" y="225" />
+        <di:waypoint x="545" y="320" />
+        <di:waypoint x="570" y="345" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="559.0" y="265.5" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce6" bpmnElement="Flow_c6">
+        <di:waypoint x="570" y="200" />
+        <di:waypoint x="660" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="595" y="178" width="18" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce7" bpmnElement="Flow_c7">
+        <di:waypoint x="570" y="345" />
+        <di:waypoint x="570" y="283" />
+        <di:waypoint x="660" y="283" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="584.0" y="307.0" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce8" bpmnElement="Flow_c8">
+        <di:waypoint x="570" y="345" />
+        <di:waypoint x="570" y="393" />
+        <di:waypoint x="660" y="393" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="584.0" y="362.0" width="90" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce9" bpmnElement="Flow_c9">
+        <di:waypoint x="685" y="175" />
+        <di:waypoint x="685" y="110" />
+        <di:waypoint x="800" y="110" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="699.0" y="135.5" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce10" bpmnElement="Flow_c10">
+        <di:waypoint x="710" y="200" />
+        <di:waypoint x="800" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="740" y="178" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce11" bpmnElement="Flow_c11">
+        <di:waypoint x="960" y="110" />
+        <di:waypoint x="1040" y="110" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Ce12" bpmnElement="Flow_c12">
+        <di:waypoint x="980" y="200" />
+        <di:waypoint x="1040" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="CeAA" bpmnElement="Assoc_AfterControl">
+        <di:waypoint x="1058" y="218" />
+        <di:waypoint x="1058" y="280" />
+        <di:waypoint x="1100" y="320" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
