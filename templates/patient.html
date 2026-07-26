@@ -1142,7 +1142,6 @@
       {% elif focus_now == 'cond' %}
         {{ cond_form(patient.id, e0.id, 'chips-cond-' ~ e0.id) }}
       {% elif focus_now == 'anam' %}
-        {{ complaint_form(patient.id, e0.id, e0.complaint or '') }}
         {% set _anam_now = namespace(parts=[]) %}
         {% for f in flags if f.category == 'anamnesis' and f.encounter_id == e0.id %}
           {% set _ = _anam_now.parts.append(f.key) %}
@@ -1473,7 +1472,8 @@
         {% set exam_obs = [] %}
         {% set lab_obs = [] %}
         {% for o in ed.obs %}{% if is_lab_loinc(o.code) %}{% set _ = lab_obs.append(o) %}{% else %}{% set _ = exam_obs.append(o) %}{% endif %}{% endfor %}
-        {% set anam_done = e.complaint or anam_notes|length > 0 or anam_risk|length > 0 %}
+        {% set complaint_done = e.complaint %}
+        {% set anam_done = anam_notes|length > 0 or anam_risk|length > 0 %}
         {% set exam_done = exam_obs|length > 0 or exam_flags|length > 0 or gc_flag %}
         {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 %}
         {% set cond_done = ed.cond|length > 0 %}
@@ -1482,13 +1482,17 @@
         {% set focus = (v.focus_stage if v is defined and v.focus_stage and not v.ok else none) %}
         {% set active_key = focus or 'med' %}
         {% if not focus %}
-          {% if not anam_done %}{% set active_key = 'anam' %}
+          {% if not complaint_done %}{% set active_key = 'complaint' %}
+          {% elif not anam_done %}{% set active_key = 'anam' %}
           {% elif not exam_done %}{% set active_key = 'exam' %}
           {% elif not cond_done %}{% set active_key = 'cond' %}
           {% elif not diag_done %}{% set active_key = 'diag' %}
           {% elif not med_done %}{% set active_key = 'med' %}
           {% endif %}
         {% endif %}
+        {% if active_key == 'complaint' %}{% set st_complaint = 'active' %}
+        {% elif complaint_done %}{% set st_complaint = 'done' %}
+        {% else %}{% set st_complaint = 'idle' %}{% endif %}
         {% if focus == 'anam' %}{% set st_anam = 'attention' %}
         {% elif anam_done %}{% set st_anam = 'done' %}
         {% elif active_key == 'anam' %}{% set st_anam = 'active' %}
@@ -1538,13 +1542,18 @@
         {% set lab_abn_n = lab_abn_list|length %}
         {% set ok_lab_n = result_n - lab_abn_n %}
 
+        {% set bj = namespace(kind='placeholder', text='Не указана') %}
+        {% if complaint_done %}
+          {% set bj.kind = 'neutral' %}
+          {% set bj.text = (e.complaint[:42] ~ '…') if e.complaint|length > 42 else e.complaint %}
+        {% endif %}
+
         {% set ba = namespace(kind='placeholder', text='Не заполнено') %}
         {% if focus == 'anam' and cds_short %}{% set ba.kind = 'danger' %}{% set ba.text = cds_short %}
         {% elif allergies %}{% set ba.kind = 'danger' %}{% set ba.text = allergies[0].display %}
         {% elif anam_done %}
           {% set ba.kind = 'neutral' %}
-          {% if e.complaint %}{% set ba.text = (e.complaint[:42] ~ '…') if e.complaint|length > 42 else e.complaint %}
-          {% elif anam_notes %}{% set ba.text = (anam_notes[0].key[:42] ~ '…') if anam_notes[0].key|length > 42 else anam_notes[0].key %}
+          {% if anam_notes %}{% set ba.text = (anam_notes[0].key[:42] ~ '…') if anam_notes[0].key|length > 42 else anam_notes[0].key %}
           {% else %}{% set ba.text = flag_options[anam_risk[0].key][0] if anam_risk and anam_risk[0].key in flag_options else 'Заполнено' %}{% endif %}
         {% endif %}
 
@@ -1594,6 +1603,7 @@
         {% endif %}
 
         <nav class="episode-rail" aria-label="Шаги приёма">
+          <a href="#flow-complaint" class="{{ 'att' if st_complaint=='attention' else ('on' if st_complaint=='active' else ('done' if st_complaint=='done' else '')) }}">Жалоба</a>
           <a href="#flow-anam" class="{{ 'att' if st_anam=='attention' else ('on' if st_anam=='active' else ('done' if st_anam=='done' else '')) }}">Анамнез</a>
           <a href="#flow-exam" class="{{ 'att' if st_exam=='attention' else ('on' if st_exam=='active' else ('done' if st_exam=='done' else '')) }}">Осмотр</a>
           <a href="#flow-cond" class="{{ 'att' if st_cond=='attention' else ('on' if st_cond=='active' else ('done' if st_cond=='done' else '')) }}">Диагноз</a>
@@ -1601,10 +1611,14 @@
           <a href="#flow-med" class="{{ 'att' if st_med=='attention' else ('on' if st_med=='active' else ('done' if st_med=='done' else '')) }}">Лечение</a>
         </nav>
         <div class="flow">
+          {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
+               open=st_complaint in ('active','attention')) %}
+            {{ complaint_form(patient.id, e.id, e.complaint or '') }}
+          {% endcall %}
+
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
                open=st_anam in ('active','attention')) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
-            {{ complaint_form(patient.id, e.id, e.complaint or '') }}
             {{ anam_form(patient.id, e.id, anam_text) }}
             <p class="section-label">Факторы риска</p>
             <div class="chips" id="chips-risk-{{ e.id }}">
