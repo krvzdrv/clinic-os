@@ -617,7 +617,10 @@
       <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>Общее состояние</label>
         <select name="key">
           {% for k in general_condition_order %}
-          <option value="{{ k }}" {{ 'selected' if current==k else '' }}>{{ general_condition_display(k) }}{{ ' — показание к госпитализации' if general_condition_needs_inpatient(k) else '' }}</option>
+          {# Чистое название без пояснения смысла — показание к госпитализации
+             считает и показывает CDS-карточка (protocol_cap.hospitalization_reasons),
+             а не сам выбор в списке. #}
+          <option value="{{ k }}" {{ 'selected' if current==k else '' }}>{{ general_condition_display(k) }}</option>
           {% endfor %}
         </select>
       </div>
