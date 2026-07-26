@@ -299,8 +299,10 @@ def scenario_anamnesis_exam_forms(page, audit: Audit):
             pass
 
     if _open_details(page, "Состояние") or _open_details(page, "Общее состояние"):
-        _fill_select_first_real(page, "select[name='value'], select[name='key']")
-        btn = page.locator("form[action*='flag'] button, form[action*='condition'] button, .fform button[type='submit']").first
+        btn = page.locator("form.gc-choice .gc-seg-btn").first
+        if not btn.count():
+            _fill_select_first_real(page, "select[name='value'], select[name='key']")
+            btn = page.locator("form[action*='flag'] button, form[action*='condition'] button, .fform button[type='submit']").first
         if btn.count():
             btn.click()
             page.wait_for_timeout(600)

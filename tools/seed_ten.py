@@ -190,7 +190,7 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "cyanosis", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "consciousness_disorder", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "shock", "true", "exam", encounter_id=e1)
-    fs.add_flag(pid, "bilateral_infiltration", "true", "exam", encounter_id=e1)
+    fs.add_flag(pid, "bilateral_infiltration", "true", "imaging", encounter_id=e1)
     _vitals(pid, e1, 1, t=39.5, spo2=86, rr=32, hr=118, sbp=85, dbp=55, wbc=22.0, crp=180)
     _cxr(pid, e1, "Двусторонняя инфильтрация — тяжёлая ВП", 1)
     cps.create_cap_plan(pid)

@@ -355,20 +355,10 @@ button.btn-small.primary:hover {
   line-height: 1.3;
 }
 
-/* Вложенный блок внутри секции приёма (анамнез → факторы риска):
-   connector rail = «это подраздел родителя», не соседняя секция. */
-.fstep-nested {
-  margin: 14px 0 0 6px;
-  padding: 2px 0 0 14px;
-  border-left: 2px solid var(--border);
-}
-.fstep-nested > .enc-sub:first-child {
-  border-top: none;
-  padding-top: 2px;
-}
-
-/* Подраздел приёма: заголовок → значения (chips / attr-rows) → форма добавления.
-   Один паттерн для факторов риска, общего состояния, показателей, осмотра. */
+/* Подраздел приёма: заголовок → значения → форма.
+   Один паттерн во всех секциях (жалоба / анамнез / осмотр / …).
+   Разделение: border-top у .enc-sub. Connector rail сюда не ставить —
+   он только у клинической иерархии диагноза (docs/ui/CLINICAL_HIERARCHY.md). */
 .enc-sub {
   margin: 0;
   padding: 16px 0 4px;
@@ -379,11 +369,7 @@ button.btn-small.primary:hover {
   border-top: none;
   padding-top: 4px;
 }
-.enc-sub--nested {
-  border-top: none;
-  padding-top: 2px;
-}
-/* Главный блок секции (описание жалобы/анамнеза) — тот же атом, что подразделы. */
+/* Первый блок секции (описание, общее состояние, код МКБ…) — без верхней черты. */
 .enc-sub--main {
   border-top: none;
   padding-top: 4px;
@@ -415,35 +401,84 @@ button.btn-small.primary:hover {
 .enc-sub .fform {
   margin: 0;
 }
-/* Форма подраздела: поля компактно слева, кнопка сразу за ними (не у края). */
-.enc-sub form.enc-sub-add {
+/* Компактная форма: поля + кнопка в одну линию (кнопка справа от полей).
+   Класс на <form> — работает и в .enc-sub, и в add-panel. */
+form.enc-sub-add {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: flex-end;
   justify-content: flex-start;
 }
-.enc-sub form.enc-sub-add .field {
+form.enc-sub-add .field {
   flex: 0 1 16rem;
   width: 16rem;
   max-width: 100%;
   min-width: 10rem;
   margin: 0;
 }
-.enc-sub form.enc-sub-add .field.field-full {
+form.enc-sub-add .field.field-full {
   flex: 1 1 100%;
   width: 100%;
 }
-.enc-sub form.enc-sub-add .form-actions {
+form.enc-sub-add .form-actions {
   width: auto;
   margin: 0;
   flex: 0 0 auto;
   justify-content: flex-start;
 }
-.enc-sub form.enc-sub-add select,
-.enc-sub form.enc-sub-add input[type="text"],
-.enc-sub form.enc-sub-add input[type="date"] {
+form.enc-sub-add select,
+form.enc-sub-add input[type="text"],
+form.enc-sub-add input[type="date"] {
   width: 100%;
+}
+
+/* Общее состояние — выбор одного из N (клик = сохранить). */
+.gc-choice {
+  margin: 0;
+}
+.gc-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 36rem;
+}
+.gc-seg-btn {
+  appearance: none;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--steel);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  padding: 8px 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.gc-seg-btn:hover:not(.is-selected) {
+  background: var(--tint);
+  border-color: var(--accent-line);
+}
+.gc-seg-btn.is-selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.gc-seg-btn.is-severe.is-selected {
+  background: var(--critical);
+  border-color: var(--critical);
+  color: #fff;
+}
+.gc-seg-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.gc-hint {
+  margin: 8px 0 0;
 }
 .enc-sub-empty {
   margin: 0;

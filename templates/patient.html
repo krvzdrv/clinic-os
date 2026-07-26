@@ -79,7 +79,7 @@
   .enc-head .enc-date{font-family:var(--font);font-weight:600;font-size:15px;}
   .enc-head .enc-complaint{font-size:13px;color:var(--soft);flex:1;min-width:160px;}
   .enc-body{padding:6px 14px 12px;}
-  /* .enc-sub / .section-label / .fstep-nested — SSOT в static/clinic.css */
+  /* .enc-sub / .section-label — SSOT в static/clinic.css */
   .enc-sub table{margin-top:2px;}
   .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:12px 0;padding:6px 14px 12px;}
   .unassigned h3{font-size:13px;color:var(--coral-deep);margin:8px 0 4px;}
@@ -197,8 +197,11 @@
      не под одну строку, как у input; высота растёт от rows, не фиксирована
      (height:auto перекрывает общий height:36px у .fform input/select/textarea). */
   .fform textarea{min-width:240px;height:auto;min-height:64px;resize:vertical;padding-top:7px;line-height:1.4;}
-  /* Кнопки форм приёма — всегда слева, рядом с полями (SSOT с enc-sub). */
-  .fform .form-actions{width:100%;display:flex;gap:8px;justify-content:flex-start;align-items:center;margin-top:2px;}
+  /* Кнопка — flex-элемент рядом с полями (справа от последнего), не width:100%
+     на новой строке. После field-full (textarea) естественно переносится вниз. */
+  .fform .form-actions{width:auto;flex:0 0 auto;display:flex;gap:8px;justify-content:flex-start;align-items:center;margin:0;}
+  /* Явно на всю строку — только если нужно (редко). */
+  .fform .form-actions.form-actions--row{width:100%;flex:1 1 100%;}
   .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
   .fform .note b{color:var(--ink);}
   .fform .note .ref{color:var(--faint);}
@@ -261,6 +264,9 @@
   .record-list .res,.rec-val{color:var(--soft);flex:1;min-width:120px;}
   .record-list .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
   .add-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:var(--tint);}
+  .add-bar .add-panel{flex:1 1 auto;min-width:0;max-width:100%;}
+  .study-add-kind{margin:0 0 10px;padding:0;}
+  .study-add-kind .field{max-width:20rem;}
   .add-panel{border:1px solid var(--line);border-radius:8px;background:#fff;flex:1 1 140px;min-width:140px;}
   .add-panel > summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12px;font-weight:600;color:var(--steel);}
   .add-panel > summary::-webkit-details-marker{display:none;}
@@ -812,26 +818,23 @@
   </div>
   {% endmacro %}
 
-  {# Общее состояние — клиническая оценка врача при осмотре (5 уровней).
-     По нему (наряду с тяжестью ВП) решается амбулаторно/стационар/ОРИТ. #}
-  {% macro gc_form(pid, eid, chip_target='', current='') %}
-  <div class="fform">
-    {# Без data-replace: soft_refresh обновляет весь .enc-sub. #}
-    <form class="enc-sub-add" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
-      <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">Общее состояние</label>
-        <select name="key" aria-label="Общее состояние">
-          {% for k in general_condition_order %}
-          {# Чистое название без пояснения смысла — показание к госпитализации
-             считает и показывает CDS-карточка (protocol_cap.hospitalization_reasons),
-             а не сам выбор в списке. #}
-          <option value="{{ k }}" {{ 'selected' if current==k else '' }}>{{ general_condition_display(k) }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
-    </form>
-  </div>
+  {# Общее состояние — 5 взаимоисключающих уровней (шкала).
+     Сегменты: один клик = выбор и сохранение, без select и «Сохранить».
+     Показание к госпитализации — бейдж под шкалой + CDS. #}
+  {% macro gc_form(pid, eid, current='') %}
+  <form class="gc-choice" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
+    <input type="hidden" name="encounter_id" value="{{ eid }}">
+    <div class="gc-seg" role="radiogroup" aria-label="Общее состояние">
+      {% for k in general_condition_order %}
+      <button type="submit" name="key" value="{{ k }}"
+        class="gc-seg-btn{% if current==k %} is-selected{% endif %}{% if general_condition_needs_inpatient(k) %} is-severe{% endif %}"
+        aria-pressed="{{ 'true' if current==k else 'false' }}">{{ general_condition_display(k) }}</button>
+      {% endfor %}
+    </div>
+    {% if current and general_condition_needs_inpatient(current) %}
+    <p class="gc-hint"><span class="badge red">показана госпитализация</span></p>
+    {% endif %}
+  </form>
   {% endmacro %}
 
   {# Список исследований: если категория заранее не сужена (cat='all') — группируем
@@ -848,12 +851,12 @@
 
   {% macro sr_form(pid, eid, cat='all', chip_target='') %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_service_request_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_service_request_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-scan" aria-hidden="true"></i>Исследование</label>
-        <select name="code">{{ study_code_options(cat) }}</select>
+      <div class="field"><label class="sr-only">Исследование</label>
+        <select name="code" aria-label="Исследование">{{ study_code_options(cat) }}</select>
       </div>
-      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="occurrence_date" value="{{ today }}"></div>
+      <div class="field"><label class="sr-only">Дата</label><input type="date" name="occurrence_date" value="{{ today }}" aria-label="Дата"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Заказать</button></div>
     </form>
   </div>
@@ -881,13 +884,13 @@
 
   {% macro cond_form(pid, eid, chip_target='', source_kind=none, source_id=none, source_label=none) %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       {% if source_kind and source_id %}
       <input type="hidden" name="source_kind" value="{{ source_kind }}">
       <input type="hidden" name="source_id" value="{{ source_id }}">
       <input type="hidden" name="source_label" value="{{ source_label }}">
-      <p class="src-hint"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
+      <p class="src-hint" style="flex:1 1 100%;"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
       <div class="field"><label class="sr-only">Диагноз (МКБ-10)</label>
         <select name="code" required aria-label="Диагноз (МКБ-10)">
@@ -903,8 +906,8 @@
           {% endfor %}
         </select>
       </div>
-      <div class="field"><label><i class="ti ti-tag" aria-hidden="true"></i>Название</label><input type="text" name="display" placeholder="Название по выбранному коду МКБ" required></div>
-      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="onset_date" value="{{ today }}"></div>
+      <div class="field"><label class="sr-only">Название</label><input type="text" name="display" placeholder="Название по коду МКБ" required aria-label="Название"></div>
+      <div class="field"><label class="sr-only">Дата</label><input type="date" name="onset_date" value="{{ today }}" aria-label="Дата"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Поставить диагноз</button></div>
     </form>
   </div>
@@ -1018,22 +1021,22 @@
   </div>
   {% endmacro %}
 
-  {# Данные объективного осмотра (хрипы/цианоз/локальные знаки…). #}
-  {% macro exam_flag_form(pid, eid, chip_target='', exclude_keys=None) %}
+  {# Клинические флаги из allowlist (чистые названия; значимость — chip + CDS). #}
+  {% macro flag_keys_form(pid, eid, keys, aria_label, exclude_keys=None) %}
   {% set exclude_keys = exclude_keys or [] %}
   {% set _opts = [] %}
-  {% for key, (label, cat) in flag_options.items() if cat == 'exam' and key not in exclude_keys %}
-    {% set _ = _opts.append((key, label, key in EXAM_RED_FLAG_KEYS)) %}
+  {% for key in keys if key not in exclude_keys and key in flag_options %}
+    {% set _ = _opts.append((key, flag_options[key][0])) %}
   {% endfor %}
   <div class="fform">
     {% if _opts %}
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">Признак осмотра</label>
-        <select name="key" required aria-label="Признак осмотра">
+      <div class="field"><label class="sr-only">{{ aria_label }}</label>
+        <select name="key" required aria-label="{{ aria_label }}">
           <option value="">— не выбран —</option>
-          {% for key, label, is_red in _opts %}
-          <option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if is_red else '' }}</option>
+          {% for key, label in _opts %}
+          <option value="{{ key }}">{{ label }}</option>
           {% endfor %}
         </select>
       </div>
@@ -1117,6 +1120,30 @@
     <summary>{{ label }}</summary>
     <div class="add-panel-b">{{ caller() }}</div>
   </details>
+  {% endmacro %}
+
+  {# Обследование: одна кнопка «Добавить», внутри — выбор типа записи
+     (заказ / число / заключение), а не три кнопки подряд. #}
+  {% macro study_add(pid, eid, cat, dlist_id, orders=None) %}
+  {% call add_panel('Добавить') %}
+    <div class="study-add" data-study-add>
+      <div class="fform study-add-kind">
+        <div class="field">
+          <label class="sr-only">Что добавить</label>
+          <select data-study-kind aria-label="Что добавить">
+            <option value="order">Заказ исследования</option>
+            {% if cat == 'lab' %}<option value="numeric">Числовой результат</option>{% endif %}
+            <option value="report">Текстовое заключение</option>
+          </select>
+        </div>
+      </div>
+      <div data-study-pane="order">{{ sr_form(pid, eid, cat, dlist_id) }}</div>
+      {% if cat == 'lab' %}
+      <div data-study-pane="numeric" hidden>{{ lab_obs_form(pid, eid, dlist_id, orders) }}</div>
+      {% endif %}
+      <div data-study-pane="report" hidden>{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
+    </div>
+  {% endcall %}
   {% endmacro %}
 
   {# —— Эпизод: диагноз-контейнер → лечение / цель / CDS (CLINICAL_HIERARCHY) —— #}
@@ -1528,13 +1555,19 @@
         {% set anam_notes = [] %}
         {% set anam_risk = [] %}
         {% for f in ed.flag %}{% if f.category == 'anamnesis' %}{% set _ = anam_notes.append(f) %}{% elif f.category == 'social_risk' %}{% set _ = anam_risk.append(f) %}{% endif %}{% endfor %}
+        {# Осмотр: только CAP_PHYSICAL_FLAG_KEYS. Рентген: CAP_IMAGING_FLAG_KEYS
+           (по ключу — чтобы старые записи с category=exam тоже попали к R-графии). #}
         {% set exam_flags = [] %}
-        {% for f in ed.flag if f.category == 'exam' %}{% set _ = exam_flags.append(f) %}{% endfor %}
+        {% set imaging_flags = [] %}
+        {% for f in ed.flag %}
+          {% if f.key in CAP_PHYSICAL_FLAG_KEYS %}{% set _ = exam_flags.append(f) %}
+          {% elif f.key in CAP_IMAGING_FLAG_KEYS %}{% set _ = imaging_flags.append(f) %}
+          {% endif %}
+        {% endfor %}
         {# Не {% set %} внутри for — в Jinja это не обновляет внешнюю переменную
            (оценка сохранялась в БД, а UI всегда показывал «Оценить»). #}
         {% set _gc_list = ed.flag|selectattr('category', 'equalto', 'general_condition')|list %}
         {% set gc_flag = _gc_list[0].key if _gc_list else none %}
-        {% set gc_flag_id = _gc_list[0].id if _gc_list else none %}
         {# Разделяем наблюдения: витальные (осмотр) и лабораторные (обследование). #}
         {% set exam_obs = [] %}
         {% set lab_obs = [] %}
@@ -1542,7 +1575,7 @@
         {% set complaint_done = e.complaint %}
         {% set anam_done = anam_notes|length > 0 or anam_risk|length > 0 %}
         {% set exam_done = exam_obs|length > 0 or exam_flags|length > 0 or gc_flag %}
-        {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 %}
+        {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 or imaging_flags|length > 0 %}
         {% set cond_done = ed.cond|length > 0 %}
         {% set med_done = ed.med|length > 0 %}
         {# Активный шаг = фокус протокола (что исправить) или первый незаполненный. #}
@@ -1648,8 +1681,8 @@
           {% set _rf_word = 'признака' if exam_red|length % 10 in (2, 3, 4) else 'признаков' %}
           {% if exam_red|length == 1 and not exam_abn_n %}{% set be.text = _rf %}
           {% elif exam_red|length == 1 and exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + ' ~ _rf %}
-          {% elif exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + ' ~ exam_red|length ~ ' тревожных ' ~ _rf_word %}
-          {% else %}{% set be.text = exam_red|length ~ ' тревожных ' ~ _rf_word %}{% endif %}
+          {% elif exam_abn_n %}{% set be.text = exam_abn_n ~ ' вне нормы + ' ~ exam_red|length ~ ' ' ~ _rf_word %}
+          {% else %}{% set be.text = exam_red|length ~ ' ' ~ _rf_word %}{% endif %}
         {% elif gc_flag and general_condition_needs_inpatient(gc_flag) %}{% set be.kind = 'danger' %}{% set be.text = general_condition_display(gc_flag) %}
         {% elif exam_abn_n %}{% set be.kind = 'danger' %}{% set be.text = exam_abn_n ~ ' вне нормы' %}
         {% elif not exam_done %}{% set be.kind = 'placeholder' %}{% set be.text = 'Не заполнено' %}
@@ -1671,7 +1704,14 @@
         {% set bd = namespace(kind='placeholder', text='Не назначено') %}
         {# Приоритет бейджа «Обследование» — docs/ui/encounter-sections-collapsed.html §3.
            CDS (missing_cbc и т.п.) — только в карточке диагноза сверху, не в бейдже секции. #}
-        {% if lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
+        {% if imaging_flags %}
+          {% set bd.kind = 'danger' %}
+          {% if imaging_flags|length == 1 %}
+            {% set bd.text = flag_options[imaging_flags[0].key][0] if imaging_flags[0].key in flag_options else 'R-признак' %}
+          {% else %}
+            {% set bd.text = imaging_flags|length ~ ' R-признака' %}
+          {% endif %}
+        {% elif lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
         {% elif pending_list and result_n == 0 %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
         {% elif result_n %}{% set bd.kind = 'neutral' %}{% set bd.text = (ok_lab_n ~ ' в норме') if ok_lab_n > 0 else (result_n|string ~ ' рез.') %}
         {% elif diag_done %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
@@ -1697,51 +1737,34 @@
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
                open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
-            {# Главный блок + подраздел (rail). Без id=sub-* на textarea —
-               soft-refresh не должен сбрасывать несохранённый текст. #}
+            {# Подразделы — как в Осмотре: .enc-sub + .section-label + border-top.
+               Без connector rail (rail только у диагноза → лечение/цели).
+               Без id=sub-* на textarea — soft-refresh не сбрасывает черновик. #}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Описание</h3>
               {{ anam_form(patient.id, e.id, anam_text) }}
             </section>
             {% set risk_keys = anam_risk|map(attribute='key')|list %}
-            <div class="fstep-nested">
-              <section class="enc-sub enc-sub--nested" id="sub-risk-{{ e.id }}" aria-label="Подраздел анамнеза: факторы риска">
-                <h3 class="section-label">Факторы риска</h3>
-                <div class="chips" id="chips-risk-{{ e.id }}">
-                  {% for f in anam_risk %}
-                  <span class="tag-chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
-                    <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
-                      <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
-                    </form>
-                  </span>
-                  {% endfor %}
-                </div>
-                {{ flag_form(patient.id, e.id, exclude_keys=risk_keys) }}
-              </section>
-            </div>
+            <section class="enc-sub" id="sub-risk-{{ e.id }}">
+              <h3 class="section-label">Факторы риска</h3>
+              <div class="chips" id="chips-risk-{{ e.id }}">
+                {% for f in anam_risk %}
+                <span class="tag-chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                  <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ flag_form(patient.id, e.id, exclude_keys=risk_keys) }}
+            </section>
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
                open=true) %}
             <section class="enc-sub enc-sub--main" id="sub-gc-{{ e.id }}">
               <h3 class="section-label">Общее состояние</h3>
-              <div class="obs-attrs" id="chips-gc-{{ e.id }}">
-                {% if gc_flag %}
-                <div class="attr-row">
-                  {# Заголовок уже .section-label — в строке только значение, как у температуры. #}
-                  <div class="attr-value-row">
-                    <p class="attr-value">{{ general_condition_display(gc_flag) }}</p>
-                    <div class="attr-actions">
-                      {% if general_condition_needs_inpatient(gc_flag) %}<span class="badge red">показана госпитализация</span>{% endif %}
-                      <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=gc_flag_id) }}">
-                        <button class="chip-x" type="submit" title="Убрать оценку общего состояния" aria-label="Убрать оценку общего состояния">×</button>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-                {% endif %}
-              </div>
-              {{ gc_form(patient.id, e.id, '', gc_flag) }}
+              {{ gc_form(patient.id, e.id, gc_flag or '') }}
             </section>
             {# Виталы: labeled row max 420px; АДс+АДд одной строкой; red flags — danger chip.
                Название показателя — из loinc_display (единый источник: то же имя, что в
@@ -1819,7 +1842,7 @@
 
             {% set exam_keys = exam_flags|map(attribute='key')|list %}
             <section class="enc-sub" id="sub-exam-flags-{{ e.id }}">
-              <h3 class="section-label">Данные объективного осмотра</h3>
+              <h3 class="section-label">Данные физического обследования</h3>
               <div class="chips" id="chips-exam-flags-{{ e.id }}">
                 {% for f in exam_flags %}
                 {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
@@ -1830,7 +1853,7 @@
                 </span>
                 {% endfor %}
               </div>
-              {{ exam_flag_form(patient.id, e.id, exclude_keys=exam_keys) }}
+              {{ flag_keys_form(patient.id, e.id, CAP_PHYSICAL_FLAG_KEYS, 'Данные физического обследования', exam_keys) }}
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
@@ -1883,15 +1906,7 @@
                   </div>{% endfor %}
                 </div>
                 <div class="add-bar">
-                  {% call add_panel('Заказать') %}
-                    {{ sr_form(patient.id, e.id, 'lab', 'dlist-lab-' ~ e.id) }}
-                  {% endcall %}
-                  {% call add_panel('Заключение') %}
-                    {{ rep_form(patient.id, e.id, 'lab', 'dlist-lab-' ~ e.id, lab_sr) }}
-                  {% endcall %}
-                  {% call add_panel('Результат') %}
-                    {{ lab_obs_form(patient.id, e.id, 'dlist-lab-' ~ e.id, lab_sr) }}
-                  {% endcall %}
+                  {{ study_add(patient.id, e.id, 'lab', 'dlist-lab-' ~ e.id, lab_sr) }}
                 </div>
               </div>
               <div class="diag-sub">
@@ -1910,13 +1925,24 @@
                   </div>{% endfor %}
                 </div>
                 <div class="add-bar">
-                  {% call add_panel('Заказать') %}
-                    {{ sr_form(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id) }}
-                  {% endcall %}
-                  {% call add_panel('Заключение') %}
-                    {{ rep_form(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id, ins_sr) }}
-                  {% endcall %}
+                  {{ study_add(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id, ins_sr) }}
                 </div>
+                {# Рентген-критерии КП №768 — у инструментальных, не в осмотре. #}
+                {% set imaging_keys = imaging_flags|map(attribute='key')|list %}
+                <section class="enc-sub" id="sub-imaging-flags-{{ e.id }}">
+                  <h3 class="section-label">Рентгенологические признаки</h3>
+                  <div class="chips" id="chips-imaging-flags-{{ e.id }}">
+                    {% for f in imaging_flags %}
+                    {% set is_red = f.key in IMAGING_RED_FLAG_KEYS %}
+                    <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                      <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                        <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                      </form>
+                    </span>
+                    {% endfor %}
+                  </div>
+                  {{ flag_keys_form(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, 'Рентгенологические признаки', imaging_keys) }}
+                </section>
               </div>
             </div>
           {% endcall %}
@@ -1993,7 +2019,7 @@
     </div>
     {% endif %}
     {% if unassigned.flag %}
-    <div class="enc-sub"><h3>Данные объективного осмотра</h3>
+    <div class="enc-sub"><h3>Клинические признаки</h3>
       <table><thead><tr><th>Признак</th><th>Категория</th><th>Дата</th><th></th></tr></thead><tbody>
       {% for f in unassigned.flag %}{% set fl = flag_options[f.key][0] if f.key in flag_options else f.key %}<tr><td>{{ fl }}</td><td>{{ flag_category_display(f.category) }}</td><td>{{ f.recorded_date }}</td><td><form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}"><button class="btn-small" type="submit">убрать</button></form></td></tr>{% endfor %}
       </tbody></table>
@@ -2038,6 +2064,18 @@
 </main>
 <script>
 (function(){
+  // Обследование: одна «Добавить» → выбор типа (заказ / число / заключение).
+  document.addEventListener('change', function(e){
+    var sel = e.target;
+    if(!sel || !sel.matches || !sel.matches('[data-study-kind]')) return;
+    var root = sel.closest('[data-study-add]');
+    if(!root) return;
+    var kind = sel.value;
+    root.querySelectorAll('[data-study-pane]').forEach(function(pane){
+      pane.hidden = pane.getAttribute('data-study-pane') !== kind;
+    });
+  });
+
   // Плавное раскрытие секций/форм (fstep/add-panel/status-add) — без прыжка
   // контента ниже при клике на summary. Высота анимируется по scrollHeight
   // содержимого; open-атрибут выставляется синхронно, чтобы CSS-правила
@@ -2358,8 +2396,8 @@
     sync();
   });
 
-  function _ajaxSubmit(form){
-    var btn=form.querySelector('button[type="submit"]');
+  function _ajaxSubmit(form, submitter){
+    var btn=submitter || form.querySelector('button[type="submit"]');
     var isSaveBtn = btn && btn.classList.contains('btn-save');
     var note=form.parentNode.querySelector('.note, .hint');
     var targetSel=form.getAttribute('data-chip-target');
@@ -2385,7 +2423,14 @@
 
     if(btn && !isSaveBtn){ btn.disabled=true; btn.style.opacity='0.6'; }
     _setSaveStatus(form, 'Сохраняю…', null);
-    var fd=new FormData(form);
+    // submitter обязателен для сегментов (несколько button[name=key]) — иначе key не уйдёт.
+    var fd;
+    try {
+      fd = submitter ? new FormData(form, submitter) : new FormData(form);
+    } catch (err) {
+      fd = new FormData(form);
+      if (submitter && submitter.name) fd.append(submitter.name, submitter.value);
+    }
     fetch(form.getAttribute('action'),{
       method:'POST', body:fd,
       headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
@@ -2557,7 +2602,7 @@
     var form = e.target;
     if(!form || form.tagName !== 'FORM' || form.getAttribute('data-ajax') !== '1') return;
     e.preventDefault();
-    _ajaxSubmit(form);
+    _ajaxSubmit(form, e.submitter || null);
   }, true);
 
   // AJAX-удаление чипов (кнопка × внутри чипа): убираем чип из DOM без перезагрузки.

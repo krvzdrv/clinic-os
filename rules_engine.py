@@ -338,16 +338,17 @@ def general_condition(pid):
 def diagnosis_support(pid):
     """Подтверждён ли диагноз данными. Возвращает (has_anamnesis, has_exam).
 
-    Диагноз должен подтверждаться жалобами/анамнезом ИЛИ объективными данными осмотра:
+    Диагноз должен подтверждаться жалобами/анамнезом ИЛИ данными осмотра:
       - анамнез: clinical_flag категории anamnesis/social_risk/context;
-      - осмотр: observation с витальным кодом (EXAM_LOINC) ИЛИ clinical_flag категории exam.
+      - осмотр: витал (EXAM_LOINC) ИЛИ флаг из CAP_PHYSICAL_FLAG_KEYS (КП №768).
+    Рентген-признаки и наследие КП №204 в «осмотр» для основания диагноза не входят.
     """
     from fhir_store import get_flags, get_observations
-    from terminology import EXAM_LOINC
+    from terminology import EXAM_LOINC, CAP_PHYSICAL_FLAG_KEYS
     anam = any(f.get("category") in ("anamnesis", "social_risk", "context")
                for f in get_flags(pid))
     exam = (any(o.get("code") in EXAM_LOINC for o in get_observations(pid))
-            or any(f.get("category") == "exam" for f in get_flags(pid)))
+            or any(f.get("key") in CAP_PHYSICAL_FLAG_KEYS for f in get_flags(pid)))
     return anam, exam
 
 
@@ -378,13 +379,19 @@ def has_complication(pid):
 
 
 def has_emergency_sign(pid):
-    """Экстренные/неотложные признаки (п.26.6): судороги, шок, тяжёлая ДН, нарушение сознания."""
+    """Клинические признаки тяжёлого/неотложного состояния для проверок симптоматики.
+
+    Для взрослых (КП №768): септический шок и нарушение сознания.
+    Судороги — формулировка детского КП №204 п.26.6; в №768 отдельным критерием
+    не названы (оставлены в проверке для совместимости старых карт).
+    """
     return any(has_clinical_flag(pid, k) for k in
                ("seizures", "shock", "consciousness_disorder"))
 
 
 def has_severe_background(pid):
-    """Тяжёлый фон (п.26.7): иммунодефицит, онкология, глюкокортикоиды, ХБП лёгких, СД, пороки сердца и др."""
+    """Тяжёлый фон / сопутствующие (КП №768 — предпочтительность стационара;
+    нумерация п.26.7 относится к детскому КП №204)."""
     if has_clinical_flag(pid, "immunosuppression") or has_clinical_flag(pid, "glucocorticoids"):
         return True
     if has_chronic_lung_disease(pid) or has_diabetes(pid):
