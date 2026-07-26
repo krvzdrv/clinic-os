@@ -57,7 +57,7 @@
   .mini-form select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
   .mini-form textarea{min-width:280px;resize:vertical;padding-top:7px;line-height:1.3;}
-  .mini-form .form-actions{width:100%;display:flex;justify-content:flex-end;margin-top:2px;}
+  .mini-form .form-actions{width:100%;display:flex;justify-content:flex-start;margin-top:2px;}
   .gap{padding:8px 12px;border-radius:8px;margin:6px 0;font-size:13px;line-height:1.5;}
   .gap.warning{background:var(--red-bg);border:1px solid var(--red-line);}
   .gap.info{background:var(--tint);border:1px solid var(--line);}
@@ -79,8 +79,7 @@
   .enc-head .enc-date{font-family:var(--font);font-weight:600;font-size:15px;}
   .enc-head .enc-complaint{font-size:13px;color:var(--soft);flex:1;min-width:160px;}
   .enc-body{padding:6px 14px 12px;}
-  .enc-sub{margin-top:10px;}
-  .enc-sub h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:700;margin:6px 0 4px;}
+  /* .enc-sub / .section-label / .fstep-nested — SSOT в static/clinic.css */
   .enc-sub table{margin-top:2px;}
   .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:12px 0;padding:6px 14px 12px;}
   .unassigned h3{font-size:13px;color:var(--coral-deep);margin:8px 0 4px;}
@@ -198,7 +197,8 @@
      не под одну строку, как у input; высота растёт от rows, не фиксирована
      (height:auto перекрывает общий height:36px у .fform input/select/textarea). */
   .fform textarea{min-width:240px;height:auto;min-height:64px;resize:vertical;padding-top:7px;line-height:1.4;}
-  .fform .form-actions{width:100%;display:flex;gap:8px;justify-content:flex-end;margin-top:2px;}
+  /* Кнопки форм приёма — всегда слева, рядом с полями (SSOT с enc-sub). */
+  .fform .form-actions{width:100%;display:flex;gap:8px;justify-content:flex-start;align-items:center;margin-top:2px;}
   .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
   .fform .note b{color:var(--ink);}
   .fform .note .ref{color:var(--faint);}
@@ -340,7 +340,8 @@
   .flag-chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-primary);line-height:1.3;}
   .flag-chip.warn{background:var(--bg-warning);border-color:transparent;color:var(--text-warning);}
   .flag-chip.allergy{background:var(--bg-danger);border-color:transparent;color:var(--text-danger);}
-  .flag-chip .chip-k{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;}
+  /* Подпись «Аллергия» — тот же кегль/вес/цвет, что и значение (не ALL CAPS). */
+  .flag-chip .chip-k{font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none;opacity:1;color:inherit;}
   .flag-chip.allergy form{display:inline;margin:0;}
   .flag-chip.allergy .chip-x{
     width:16px;height:16px;min-width:16px;margin:0 0 0 2px;padding:0;border:none;
@@ -533,7 +534,6 @@
   .enc-toolbar-meta .enc-k{color:var(--text-muted);font-weight:500;margin-right:4px;}
   .enc-toolbar-meta .enc-k::after{content:":";}
   .anam-text-form{margin:0 0 12px;}
-  .anam-text-form .form-actions{justify-content:flex-start;align-items:center;}
   .save-status{font-size:12px;color:var(--text-muted);margin-left:8px;min-height:1em;}
   .save-status.is-ok{color:var(--text-success);}
   .save-status.is-err{color:var(--text-danger);}
@@ -635,7 +635,7 @@
         {% if allergies %}
           {% for a in allergies %}
           <span class="flag-chip allergy">
-            <span class="chip-k">Аллергия</span> {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}
+            <span class="chip-k">Аллергия</span> · {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}
             <form method="POST" action="{{ url_for('delete_allergy_route', pid=patient.id, aid=a.id) }}">
               <button class="chip-x" type="submit" title="Убрать" aria-label="Убрать аллергию">×</button>
             </form>
@@ -764,18 +764,21 @@
   {% macro obs_form(pid, eid, chip_target='', uid=None) %}
   {% set uid = uid or eid %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <div class="field"><label class="sr-only">Показатель</label>
-        <select name="code" id="obs-code-{{ uid }}" aria-label="Показатель">{% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
+        <select name="code" id="obs-code-{{ uid }}" required aria-label="Показатель">
+          <option value="">— не выбран —</option>
+          {% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}
+        </select>
       </div>
-      <div class="field"><label><i class="ti ti-number-123" aria-hidden="true"></i>Значение</label>
+      <div class="field"><label class="sr-only">Значение</label>
         <div class="input-group">
-          <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ uid }}" placeholder="значение" required>
+          <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ uid }}" placeholder="Значение" required aria-label="Значение">
           <span class="unit-suffix" id="obs-unit-{{ uid }}"></span>
         </div>
       </div>
-      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="date" value="{{ today }}"></div>
+      <div class="field"><label class="sr-only">Дата</label><input type="date" name="date" value="{{ today }}" aria-label="Дата"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
     <div class="note" id="obs-note-{{ uid }}"></div>
@@ -803,7 +806,7 @@
         </div>
       </div>
       <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="date" value="{{ today }}"></div>
-      <div class="form-actions"><button class="btn-small" type="submit">Сохранить результат</button></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
     <div class="note" id="labobs-note-{{ eid }}"></div>
   </div>
@@ -813,9 +816,8 @@
      По нему (наряду с тяжестью ВП) решается амбулаторно/стационар/ОРИТ. #}
   {% macro gc_form(pid, eid, chip_target='', current='') %}
   <div class="fform">
-    {# Без data-replace: блок chips-gc держит и значение (attr-row), и форму смены.
-       После записи UI обновляет soft_refresh, как у виталов. #}
-    <form method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
+    {# Без data-replace: soft_refresh обновляет весь .enc-sub. #}
+    <form class="enc-sub-add" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <div class="field"><label class="sr-only">Общее состояние</label>
         <select name="key" aria-label="Общее состояние">
@@ -827,7 +829,7 @@
           {% endfor %}
         </select>
       </div>
-      <div class="form-actions"><button class="btn-small" type="submit">{{ 'Изменить' if current else 'Оценить' }}</button></div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
   </div>
   {% endmacro %}
@@ -992,30 +994,54 @@
   </div>
   {% endmacro %}
 
-  {% macro flag_form(pid, eid, chip_target='') %}
+  {% macro flag_form(pid, eid, chip_target='', exclude_keys=None) %}
+  {% set exclude_keys = exclude_keys or [] %}
+  {% set _opts = [] %}
+  {% for key, (label, cat) in flag_options.items() if cat == 'social_risk' and key not in exclude_keys %}
+    {% set _ = _opts.append((key, label)) %}
+  {% endfor %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    {% if _opts %}
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      {# Label скрыт: заголовок секции «Факторы риска» уже на экране. #}
       <div class="field"><label class="sr-only">Фактор риска</label>
-        <select name="key" aria-label="Фактор риска">{% for key, (label, cat) in flag_options.items() if cat == 'social_risk' %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+        <select name="key" required aria-label="Фактор риска">
+          <option value="">— не выбран —</option>
+          {% for key, label in _opts %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+        </select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
+    {% else %}
+    <p class="enc-sub-empty">Все факторы из списка уже отмечены</p>
+    {% endif %}
   </div>
   {% endmacro %}
 
   {# Данные объективного осмотра (хрипы/цианоз/локальные знаки…). #}
-  {% macro exam_flag_form(pid, eid, chip_target='') %}
+  {% macro exam_flag_form(pid, eid, chip_target='', exclude_keys=None) %}
+  {% set exclude_keys = exclude_keys or [] %}
+  {% set _opts = [] %}
+  {% for key, (label, cat) in flag_options.items() if cat == 'exam' and key not in exclude_keys %}
+    {% set _ = _opts.append((key, label, key in EXAM_RED_FLAG_KEYS)) %}
+  {% endfor %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    {% if _opts %}
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      {# Label скрыт: section-label «Данные объективного осмотра» уже выше. #}
       <div class="field"><label class="sr-only">Признак осмотра</label>
-        <select name="key" aria-label="Признак осмотра">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
+        <select name="key" required aria-label="Признак осмотра">
+          <option value="">— не выбран —</option>
+          {% for key, label, is_red in _opts %}
+          <option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if is_red else '' }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
+    {% else %}
+    <p class="enc-sub-empty">Все признаки из списка уже отмечены</p>
+    {% endif %}
   </div>
   {% endmacro %}
 
@@ -1668,29 +1694,33 @@
                open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {{ anam_form(patient.id, e.id, anam_text) }}
-            <p class="section-label">Факторы риска</p>
-            <div class="chips" id="chips-risk-{{ e.id }}">
-              {% for f in anam_risk %}
-              <span class="tag-chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
-                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
-                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
-                </form>
-              </span>
-              {% endfor %}
+            {# Подраздел анамнеза (не соседняя секция приёма): rail = вложенность. #}
+            {% set risk_keys = anam_risk|map(attribute='key')|list %}
+            <div class="fstep-nested">
+              <section class="enc-sub enc-sub--nested" id="sub-risk-{{ e.id }}" aria-label="Подраздел анамнеза: факторы риска">
+                <h3 class="section-label">Факторы риска</h3>
+                <div class="chips" id="chips-risk-{{ e.id }}">
+                  {% for f in anam_risk %}
+                  <span class="tag-chip">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                    <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                      <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                    </form>
+                  </span>
+                  {% endfor %}
+                </div>
+                {{ flag_form(patient.id, e.id, exclude_keys=risk_keys) }}
+              </section>
             </div>
-            {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) }}
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
                open=true) %}
-            {# Тот же атом, что температура/АД: attr-row в .obs-attrs + форма ниже
-               (смена без удаления). Раньше после «Оценить» форма пропадала — только
-               значение без возможности изменить; × снимал строку, но не возвращал ввод. #}
-            <div id="chips-gc-{{ e.id }}">
-              {% if gc_flag %}
-              <div class="obs-attrs">
+            <section class="enc-sub" id="sub-gc-{{ e.id }}">
+              <h3 class="section-label">Общее состояние</h3>
+              <div class="obs-attrs" id="chips-gc-{{ e.id }}">
+                {% if gc_flag %}
                 <div class="attr-row">
-                  <p class="attr-label"><i class="ti ti-activity" aria-hidden="true"></i>Общее состояние</p>
+                  {# Заголовок уже .section-label — в строке только значение, как у температуры. #}
                   <div class="attr-value-row">
                     <p class="attr-value">{{ general_condition_display(gc_flag) }}</p>
                     <div class="attr-actions">
@@ -1701,13 +1731,10 @@
                     </div>
                   </div>
                 </div>
+                {% endif %}
               </div>
-              {% endif %}
-              {% if not gc_flag %}
-              <p class="section-label" style="margin-top:0;">Общее состояние</p>
-              {% endif %}
               {{ gc_form(patient.id, e.id, '', gc_flag) }}
-            </div>
+            </section>
             {# Виталы: labeled row max 420px; АДс+АДд одной строкой; red flags — danger chip.
                Название показателя — из loinc_display (единый источник: то же имя, что в
                форме выбора показателя), не отдельный локальный словарь. #}
@@ -1725,73 +1752,78 @@
             {% endfor %}
             {# Порядок как в form: SpO2 → t → АД → ЧСС → ЧД #}
             {% set VITAL_ORDER = [SPO2_CODE, TEMP_CODE, '__bp__', HR_CODE, RR_CODE] %}
-            <div class="obs-attrs" id="chips-obs-{{ e.id }}">
-              {% for code in VITAL_ORDER %}
-                {% if code == '__bp__' and (bp.sbp or bp.dbp) %}
-                  {% set bp_label = bp_status_label(bp.sbp.value_numeric if bp.sbp else none, bp.dbp.value_numeric if bp.dbp else none) %}
-                  <div class="attr-row">
-                    <p class="attr-label"><i class="ti ti-heart-rate-monitor" aria-hidden="true"></i>АД систолическое / диастолическое</p>
-                    <div class="attr-value-row">
-                      <p class="attr-value">{% if bp.sbp and bp.dbp %}{{ bp.sbp.value_numeric }} / {{ bp.dbp.value_numeric }} mmHg{% elif bp.sbp %}{{ bp.sbp.value_numeric }} mmHg{% else %}{{ bp.dbp.value_numeric }} mmHg{% endif %}</p>
-                      <div class="attr-actions">
-                        {% if bp_label %}<span class="badge red">{{ bp_label }}</span>{% endif %}
-                        <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=(bp.sbp.id if bp.sbp else bp.dbp.id)) }}">
-                          {% if bp.sbp and bp.dbp %}<input type="hidden" name="also" value="{{ bp.dbp.id }}">{% endif %}
-                          <button class="chip-x" type="submit" title="Удалить АД" aria-label="Удалить АД">×</button>
-                        </form>
+            <section class="enc-sub" id="sub-vitals-{{ e.id }}">
+              <h3 class="section-label">Показатели</h3>
+              <div class="obs-attrs" id="chips-obs-{{ e.id }}">
+                {% for code in VITAL_ORDER %}
+                  {% if code == '__bp__' and (bp.sbp or bp.dbp) %}
+                    {% set bp_label = bp_status_label(bp.sbp.value_numeric if bp.sbp else none, bp.dbp.value_numeric if bp.dbp else none) %}
+                    <div class="attr-row">
+                      <p class="attr-label"><i class="ti ti-heart-rate-monitor" aria-hidden="true"></i>АД систолическое / диастолическое</p>
+                      <div class="attr-value-row">
+                        <p class="attr-value">{% if bp.sbp and bp.dbp %}{{ bp.sbp.value_numeric }} / {{ bp.dbp.value_numeric }} mmHg{% elif bp.sbp %}{{ bp.sbp.value_numeric }} mmHg{% else %}{{ bp.dbp.value_numeric }} mmHg{% endif %}</p>
+                        <div class="attr-actions">
+                          {% if bp_label %}<span class="badge red">{{ bp_label }}</span>{% endif %}
+                          <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=(bp.sbp.id if bp.sbp else bp.dbp.id)) }}">
+                            {% if bp.sbp and bp.dbp %}<input type="hidden" name="also" value="{{ bp.dbp.id }}">{% endif %}
+                            <button class="chip-x" type="submit" title="Удалить АД" aria-label="Удалить АД">×</button>
+                          </form>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                {% elif code != '__bp__' and code in by_code %}
-                  {% set o = by_code[code] %}
-                  {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
-                  {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
-                  <div class="attr-row">
-                    <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
-                    <div class="attr-value-row">
-                      <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
-                      <div class="attr-actions">
-                        {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
-                        <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
-                          <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
-                        </form>
+                  {% elif code != '__bp__' and code in by_code %}
+                    {% set o = by_code[code] %}
+                    {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
+                    {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
+                    <div class="attr-row">
+                      <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
+                      <div class="attr-value-row">
+                        <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
+                        <div class="attr-actions">
+                          {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                          <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
+                            <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
+                          </form>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                {% endif %}
-              {% endfor %}
-              {% for code, o in by_code.items() if code not in [SPO2_CODE, TEMP_CODE, HR_CODE, RR_CODE] %}
-              {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
-              {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
-              <div class="attr-row">
-                <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
-                <div class="attr-value-row">
-                  <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
-                  <div class="attr-actions">
-                    {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
-                      <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
-                    </form>
+                  {% endif %}
+                {% endfor %}
+                {% for code, o in by_code.items() if code not in [SPO2_CODE, TEMP_CODE, HR_CODE, RR_CODE] %}
+                {% set vlabel = vital_status_label(o.code, o.value_numeric) %}
+                {% set olabel = loinc_display(o.code) if o.code in loinc_options else o.display %}
+                <div class="attr-row">
+                  <p class="attr-label"><i class="ti {{ OBS_ICO.get(o.code, 'ti-activity') }}" aria-hidden="true"></i>{{ olabel }}</p>
+                  <div class="attr-value-row">
+                    <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
+                    <div class="attr-actions">
+                      {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                      <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
+                        <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
+                      </form>
+                    </div>
                   </div>
                 </div>
+                {% endfor %}
               </div>
-              {% endfor %}
-            </div>
-            <p class="section-label" style="margin-top:8px;">Показатели</p>
-            {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
+              {{ obs_form(patient.id, e.id) }}
+            </section>
 
-            <p class="section-label" style="margin-top:12px;">Данные объективного осмотра</p>
-            <div class="chips" id="chips-exam-flags-{{ e.id }}">
-              {% for f in exam_flags %}
-              {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
-              <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
-                <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
-                  <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
-                </form>
-              </span>
-              {% endfor %}
-            </div>
-            {{ exam_flag_form(patient.id, e.id, 'chips-exam-flags-' ~ e.id) }}
+            {% set exam_keys = exam_flags|map(attribute='key')|list %}
+            <section class="enc-sub" id="sub-exam-flags-{{ e.id }}">
+              <h3 class="section-label">Данные объективного осмотра</h3>
+              <div class="chips" id="chips-exam-flags-{{ e.id }}">
+                {% for f in exam_flags %}
+                {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
+                <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                  <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ exam_flag_form(patient.id, e.id, exclude_keys=exam_keys) }}
+            </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
                open=true) %}
@@ -2219,10 +2251,16 @@
         else if(cur && !neu) cur.remove();
         else if(!cur && neu && list) list.after(document.importNode(neu, true));
       })();
-      // Списки внутри приёма (чипы/виталы/заказы) — по актуальным id на странице.
+      // Подразделы приёма (.enc-sub) целиком — форма + чипы обновляются вместе
+      // (исключаем уже добавленное из select). Вложенные chips-* внутри sub-* не трогаем.
       var listIds = [];
-      document.querySelectorAll('[id^="chips-"],[id^="dlist-"]').forEach(function(el){
+      document.querySelectorAll('[id^="sub-"]').forEach(function(el){
         if(el.id && listIds.indexOf(el.id) === -1) listIds.push(el.id);
+      });
+      document.querySelectorAll('[id^="chips-"],[id^="dlist-"]').forEach(function(el){
+        if(!el.id || listIds.indexOf(el.id) !== -1) return;
+        if(el.closest('[id^="sub-"]')) return;
+        listIds.push(el.id);
       });
       listIds.forEach(function(id){ swapId(id, true); });
       // Бейджи и CSS-класс секции — без смены details.open.

@@ -147,9 +147,18 @@ h1, h2, h3,
 
 /* Единый размер кнопки — приоритет действия показывает цвет, не размер.
    Иерархия (Linear / clinical dense UI):
-   - .btn / .action-btn — primary fill (CDS, «добавить пациента», редкий CTA)
-   - .btn-small — secondary outline (рутинные «Сохранить / Добавить / Назначить»
-     в карточке; не конкурируют с заголовком секции и полем)
+   - .btn / .action-btn — primary fill (только CDS «сделать сейчас», дашборд CTA)
+   - .btn-small — secondary outline (все формы приёма)
+   - .btn.ghost — тихие админ-действия (очистить приём, отмена)
+   - .chip-x — удалить уже сохранённое значение (не кнопка-подпись)
+
+   Подписи в карточке (предсказуемый словарь):
+   - «Сохранить» — записать/обновить значение блока (жалоба, анамнез, состояние,
+     показатель, заключение)
+   - «Добавить» — добавить элемент в список (фактор риска, признак, аллергия)
+   - «Назначить» / «Заказать» / «Поставить диагноз» — клинический глагол шага
+   Расположение .form-actions: всегда слева (flex-start), кнопка рядом с полями —
+   не у правого края экрана.
    Не переопределять height/padding/font-size локально — только здесь (SSOT). */
 .btn,
 .btn-small,
@@ -334,14 +343,100 @@ button.btn-small.primary:hover {
   background: transparent !important;
 }
 
-/* Section label — разделитель внутри Encounter, без avatar/rail */
+/* Section label — подзаголовок внутри открытой секции приёма (не ALL CAPS:
+   иначе слабее полей и кнопки). Sentence case, вес выше полей. */
 .section-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+  line-height: 1.3;
+}
+
+/* Вложенный блок внутри секции приёма (анамнез → факторы риска):
+   connector rail = «это подраздел родителя», не соседняя секция. */
+.fstep-nested {
+  margin: 14px 0 0 6px;
+  padding: 2px 0 0 14px;
+  border-left: 2px solid var(--border);
+}
+.fstep-nested > .enc-sub:first-child {
+  border-top: none;
+  padding-top: 2px;
+}
+
+/* Подраздел приёма: заголовок → значения (chips / attr-rows) → форма добавления.
+   Один паттерн для факторов риска, общего состояния, показателей, осмотра. */
+.enc-sub {
+  margin: 0;
+  padding: 16px 0 4px;
+  border-top: 1px solid var(--border);
+}
+.enc-sub:first-child,
+.fstep-b > .enc-sub:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+.enc-sub--nested {
+  border-top: none;
+  padding-top: 2px;
+}
+.enc-sub .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.enc-sub .chips:empty {
+  display: none;
+  margin: 0;
+}
+.enc-sub .obs-attrs {
+  margin: 0 0 10px;
+}
+.enc-sub .obs-attrs:empty {
+  display: none;
+  margin: 0;
+}
+.enc-sub .fform {
+  margin: 0;
+}
+/* Форма подраздела: поля компактно слева, кнопка сразу за ними (не у края). */
+.enc-sub form.enc-sub-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+.enc-sub form.enc-sub-add .field {
+  flex: 0 1 16rem;
+  width: 16rem;
+  max-width: 100%;
+  min-width: 10rem;
+  margin: 0;
+}
+.enc-sub form.enc-sub-add .field.field-full {
+  flex: 1 1 100%;
+  width: 100%;
+}
+.enc-sub form.enc-sub-add .form-actions {
+  width: auto;
+  margin: 0;
+  flex: 0 0 auto;
+  justify-content: flex-start;
+}
+.enc-sub form.enc-sub-add select,
+.enc-sub form.enc-sub-add input[type="text"],
+.enc-sub form.enc-sub-add input[type="date"] {
+  width: 100%;
+}
+.enc-sub-empty {
+  margin: 0;
   font-size: 12px;
-  font-weight: 500;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin: 16px 0 8px;
 }
 
 /* Page banner (guest и системные) — без левой полосы */
