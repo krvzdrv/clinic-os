@@ -107,26 +107,51 @@ def _labs_done(pid, eid, days_ago=0):
                            occurrence_date=_ago(days_ago), status="completed")
 
 
+def _history_episode(pid, dr_id, code, display, days_ago, complaint, *, med=None):
+    """Прошлый завершённый эпизод (не по ВП/ЖДА — не триггерит протокол) —
+    для истории на карте: несколько диагнозов, закрытые приёмы в списке.
+    Диагноз ставится resolved: видна серая карточка без CDS-вердикта,
+    рядом с активным диагнозом по текущему протоколу."""
+    eid = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
+                           start=_ago(days_ago), complaint=complaint)
+    fs.add_condition(pid, code, display, onset_date=_ago(days_ago), encounter_id=eid,
+                     clinical_status="resolved")
+    if med:
+        mcode, mdisplay, mdose, mfreq, mdur = med
+        _med(pid, eid, mcode, mdisplay, route="oral", days_ago=days_ago,
+             duration_days=mdur, dose=mdose, frequency=mfreq, status="completed")
+    fs.finish_encounter(eid, end=_ago(max(days_ago - (mdur if med else 5), 0)))
+    return eid
+
+
 def seed_ten(dr_id: str):
     """
-    Карта покрытия UI/протокола:
-      1 Орлов       — эталон амбулаторно (compliant, контроль R-графии)
-      2 Соколов       — гость: неверная АБТ (азитромицин)
-      3 Морозов       — тяжёлая амбулаторно без АБТ → госпитализация/ОРИТ
-      4 Стационаров — стационар OK, динамика, step-down / выписка
-      5 Клавуланова — риск АБТ 3 мес, простой амоксициллин (нужен амокс/клав)
-      6 Аллергова   — IgE на β-лактамы + ошибочный амоксициллин
-      7 Аспиратов   — аспирация + MRSA, мультирежим, исследования
-      8 Бронхов     — бронхолитик без обструкции + короткий курс
-      9 Контролёв   — 3 визита, АБТ без эффекта (лихорадка)
-     10 Пустова     — почти пустая карта (пустые этапы UI)
-     11 Феррова     — ВП (контроль) + вторым диагнозом впервые выявленная ЖДА
-                       (два протокола одновременно на одной карте, терапия железом не назначена)
+    Карта покрытия UI/протокола. У каждого пациента — история (2–4 приёма,
+    старые закрыты) и 2–3 диагноза (текущий активный + resolved/хронический
+    сопутствующий), чтобы на карте было что посмотреть помимо одного эпизода.
+    Первичный (протокольный) сценарий каждого пациента не менялся — на нём
+    завязаны doctor_gate/http_smoke/quality_gate/protocol_audit/live_ui_audit.
+
+      1 Орлов       — эталон амбулаторно (compliant, контроль R-графии); 3 приёма
+      2 Соколов       — гость: неверная АБТ (азитромицин); 2 приёма
+      3 Морозов       — тяжёлая амбулаторно без АБТ → госпитализация/ОРИТ; 2 приёма
+      4 Стационаров — стационар OK, динамика, step-down / выписка; 3 приёма
+      5 Клавуланова — риск АБТ 3 мес, простой амоксициллин (нужен амокс/клав); 2 приёма
+      6 Аллергова   — IgE на β-лактамы + ошибочный амоксициллин; 2 приёма
+      7 Аспиратов   — аспирация + MRSA, мультирежим, исследования; 3 приёма
+      8 Бронхов     — бронхолитик без обструкции + короткий курс; 2 приёма
+      9 Контролёв   — 4 визита, АБТ без эффекта + хроническая ГБ (3 диагноза)
+     10 Пустова     — почти пустая карта (пустые этапы UI), но с историей; 2 приёма
+     11 Феррова     — ВП (контроль) + впервые выявленная ЖДА + история цистита;
+                       3 приёма, 3 диагноза, два протокола одновременно
     """
     stories = []
 
-    # ── 1. Орлов — золотой амбулаторный путь (2 встречи) ──────────────────
+    # ── 1. Орлов — золотой амбулаторный путь (3 приёма, 2 диагноза) ───────
     pid = fs.add_patient("Орлов", "Антон", "Петрович", "male", "1985-03-12")
+    _history_episode(pid, dr_id, "J20.9", "Острый бронхит неуточнённый", 210,
+                     "Кашель, першение в горле 5 дней",
+                     med=("J01CA04", "Амоксициллин", "500 мг", "3 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(5), complaint="Кашель с мокротой 4 дня, t 38.2")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -148,10 +173,12 @@ def seed_ten(dr_id: str):
     _vitals(pid, e2, 2, t=36.7, spo2=97, rr=16, hr=76, sbp=118, dbp=76, crp=18)
     fs.finish_encounter(e2, end=_ago(2))
     fs.set_pathway(pid, "controlled", "Выздоровление, контроль")
-    stories.append((pid, "Орлов", "эталон амбулаторно, 2 визита"))
+    stories.append((pid, "Орлов", "эталон амбулаторно, 3 приёма, 2 диагноза"))
 
-    # ── 2. Соколов — гостевой сценарий, неверная АБТ ────────────────────────
+    # ── 2. Соколов — гостевой сценарий, неверная АБТ (2 приёма, 2 диагноза) ─
     pid = fs.add_patient("Соколов", "Борис", "Иванович", "male", "1978-06-05")
+    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 320,
+                     "ОРВИ, температура 2 дня")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(2), complaint="Кашель, слабость, t 37.8")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
@@ -168,10 +195,12 @@ def seed_ten(dr_id: str):
          duration_days=5, dose="500 мг", frequency="1 раз в день")
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Терапия ВП (отклонение АБТ)")
-    stories.append((pid, "Соколов", "гость: неверная АБТ (макролид)"))
+    stories.append((pid, "Соколов", "гость: неверная АБТ (макролид), 2 приёма"))
 
-    # ── 3. Морозов — тяжёлая амбулаторно, без АБТ ───────────────────────────
+    # ── 3. Морозов — тяжёлая амбулаторно, без АБТ (2 приёма, 2 диагноза) ───
     pid = fs.add_patient("Морозов", "Виктор", "Сергеевич", "male", "1975-04-18")
+    _history_episode(pid, dr_id, "K52.9", "Гастроэнтерит и колит неуточнённые", 260,
+                     "Расстройство желудка, диарея 2 дня")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(1), complaint="Одышка, t 39.5, слабость")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
@@ -187,10 +216,12 @@ def seed_ten(dr_id: str):
                              rep_date=_ago(1), encounter_id=e1)
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Тяжёлая ВП — нужна госпитализация")
-    stories.append((pid, "Морозов", "тяжёлая амбулаторно → госпитализация"))
+    stories.append((pid, "Морозов", "тяжёлая амбулаторно → госпитализация, 2 приёма"))
 
-    # ── 4. Стационаров — корректный стационар, путь к выписке (2) ─────────
+    # ── 4. Стационаров — корректный стационар (3 приёма, 2 диагноза) ──────
     pid = fs.add_patient("Стационаров", "Павел", "Игоревич", "male", "1972-01-18")
+    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 400,
+                     "ОРВИ, лечился амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
                           start=_ago(6), complaint="Госпитализация: ВП средней тяжести")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -220,10 +251,13 @@ def seed_ten(dr_id: str):
                            encounter_id=e2, occurrence_date=_ago(1), status="active")
     cps.create_cap_plan(pid)
     fs.set_pathway(pid, "treatment", "Стационар — улучшение")
-    stories.append((pid, "Стационаров", "стационар OK, путь к выписке"))
+    stories.append((pid, "Стационаров", "стационар OK, путь к выписке, 3 приёма"))
 
-    # ── 5. Клавуланова — фактор риска АБТ 3 мес, неверный выбор ───────────
+    # ── 5. Клавуланова — фактор риска АБТ 3 мес (2 приёма, 2 диагноза) ────
     pid = fs.add_patient("Клавуланова", "Мария", "Сергеевна", "female", "1988-05-09")
+    _history_episode(pid, dr_id, "J20.9", "Острый бронхит неуточнённый", 40,
+                     "Кашель, температура — предыдущий эпизод",
+                     med=("J01CA04", "Амоксициллин", "500 мг", "3 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(3), complaint="Кашель, t 38.0; АБТ месяц назад")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -231,9 +265,6 @@ def seed_ten(dr_id: str):
     fs.add_flag(pid, "abt_3mo", "true", "social_risk", encounter_id=e1)
     _gc(pid, e1, "satisfactory")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
-    # Предшествующая АБТ до onset
-    _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=40,
-         duration_days=5, dose="500 мг", frequency="3 раза в день", status="completed")
     _vitals(pid, e1, 3, t=38.0, spo2=96, rr=18, hr=90, sbp=124, dbp=80, wbc=12.0, crp=55)
     _labs_done(pid, e1, 3)
     fs.add_diagnostic_report(pid, "CXR", "Рентгенография ОГК",
@@ -242,10 +273,12 @@ def seed_ten(dr_id: str):
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=3,
          duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Клавуланова", "риск АБТ 3 мес → нужен амокс/клав"))
+    stories.append((pid, "Клавуланова", "риск АБТ 3 мес → нужен амокс/клав, 2 приёма"))
 
-    # ── 6. Аллергова — IgE β-лактамы + ошибочный пенициллин ───────────────
+    # ── 6. Аллергова — IgE β-лактамы (2 приёма, 2 диагноза) ────────────────
     pid = fs.add_patient("Аллергова", "Елена", "Викторовна", "female", "1995-09-14")
+    _history_episode(pid, dr_id, "J02.9", "Острый фарингит неуточнённый", 180,
+                     "Боль в горле, температура")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(2),
                           complaint="Кашель, t 37.9; анафилаксия на пенициллин")
@@ -263,10 +296,12 @@ def seed_ten(dr_id: str):
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=2,
          duration_days=7, dose="500 мг", frequency="3 раза в день")
     cps.create_cap_plan(pid)
-    stories.append((pid, "Аллергова", "IgE на β-лактамы + ошибочный амокс"))
+    stories.append((pid, "Аллергова", "IgE на β-лактамы + ошибочный амокс, 2 приёма"))
 
-    # ── 7. Аспиратов — аспирация + MRSA, мультирежим (2) ──────────────────
+    # ── 7. Аспиратов — аспирация + MRSA (3 приёма, 2 диагноза) ────────────
     pid = fs.add_patient("Аспиратов", "Игорь", "Николаевич", "male", "1965-04-28")
+    _history_episode(pid, dr_id, "K52.9", "Гастроэнтерит и колит неуточнённые", 500,
+                     "Расстройство желудка, амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="inpatient",
                           start=_ago(8), complaint="Аспирационная пневмония, подозрение MRSA")
     # J18.9 — в зоне применимости CAP; аспирация задаётся флагом (не отдельным МКБ вне PNEUMONIA_CODES)
@@ -297,10 +332,14 @@ def seed_ten(dr_id: str):
                           start=_ago(3), complaint="Контроль терапии")
     _vitals(pid, e2, 3, t=37.2, spo2=94, rr=20, hr=92, sbp=112, dbp=70, crp=68)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Аспиратов", "аспирация+MRSA, мультирежим, исследования"))
+    stories.append((pid, "Аспиратов", "аспирация+MRSA, мультирежим, 3 приёма"))
 
-    # ── 8. Бронхов — бронхолитик без обструкции + короткий курс ───────────
+    # ── 8. Бронхов — бронхолитик без обструкции (2 приёма, 2 диагноза) ────
+    # Историю подбираем не-респираторную: диагноз ХОБЛ/астмы сломал бы саму
+    # суть сценария (бронхолитик оправдан только при подтверждённой обструкции).
     pid = fs.add_patient("Бронхов", "Олег", "Андреевич", "male", "1980-12-01")
+    _history_episode(pid, dr_id, "K29.7", "Гастрит неуточнённый", 150,
+                     "Боли в эпигастрии после еды")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(4),
                           complaint="Кашель, t 37.6; сальбутамол «на всякий»")
@@ -319,14 +358,20 @@ def seed_ten(dr_id: str):
     _med(pid, e1, "R03AC02", "Сальбутамол", route="inhalation", days_ago=4,
          duration_days=5, dose="100 мкг", frequency="по потребности")
     cps.create_cap_plan(pid)
-    stories.append((pid, "Бронхов", "бронхолитик без обструкции + короткий курс"))
+    stories.append((pid, "Бронхов", "бронхолитик без обструкции + короткий курс, 2 приёма"))
 
-    # ── 9. Контролёв — 3 визита, АБТ без эффекта ──────────────────────────
+    # ── 9. Контролёв — 4 визита, 2 диагноза (ВП + хроническая ГБ) ─────────
     pid = fs.add_patient("Контролёв", "Андрей", "Павлович", "male", "1978-06-20")
+    _history_episode(pid, dr_id, "J02.9", "Острый фарингит неуточнённый", 120,
+                     "Боль в горле, температура")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(8), complaint="Первичный осмотр: кашель, t 38.4")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
                      onset_date=_ago(8), encounter_id=e1)
+    # Сопутствующий хронический диагноз — не респираторный, не триггерит
+    # протокол ВП, просто «второй активный диагноз» на карте.
+    fs.add_condition(pid, "I10", "Артериальная гипертензия",
+                     onset_date=_ago(900), encounter_id=e1)
     _gc(pid, e1, "satisfactory")
     fs.add_flag(pid, "local_signs", "true", "exam", encounter_id=e1)
     fs.add_flag(pid, "Кашель", "true", "anamnesis", encounter_id=e1)
@@ -346,20 +391,27 @@ def seed_ten(dr_id: str):
                           start=_ago(1), complaint="Повтор: сохраняется лихорадка на АБТ")
     _vitals(pid, e3, 1, t=38.5, spo2=94, rr=21, hr=98, sbp=118, dbp=74, crp=78)
     cps.create_cap_plan(pid)
-    stories.append((pid, "Контролёв", "3 визита: АБТ без эффекта / смена"))
+    stories.append((pid, "Контролёв", "4 визита: АБТ без эффекта / смена, 3 диагноза"))
 
-    # ── 10. Пустова — почти пустая карта ──────────────────────────────────
+    # ── 10. Пустова — почти пустая карта (2 приёма, 2 диагноза) ───────────
     pid = fs.add_patient("Пустова", "Наталья", "Олеговна", "female", "1992-02-11")
+    _history_episode(pid, dr_id, "J06.9", "Острая инфекция верхних дыхательных путей", 240,
+                     "ОРВИ, наблюдалась амбулаторно")
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(0), complaint="Первичный приём: кашель 2 дня")
     fs.add_condition(pid, "J18.9", "Пневмония неуточнённая",
                      onset_date=_ago(0), encounter_id=e1)
-    # Только жалоба/диагноз — без виталов, R-графии, АБТ
+    # Текущий приём остаётся почти пустым намеренно — без виталов, R-графии,
+    # АБТ (тест «gap»-подсказок и пустых этапов UI). История выше — для
+    # контраста: у пациентки обычно есть записи, этот приём просто неполный.
     cps.create_cap_plan(pid)
-    stories.append((pid, "Пустова", "пустая карта: gaps + пустые этапы UI"))
+    stories.append((pid, "Пустова", "почти пустая карта: gaps + пустые этапы UI, 2 приёма"))
 
-    # ── 11. Феррова — ВП пролечена + впервые выявленная ЖДА (2 протокола) ─
+    # ── 11. Феррова — ВП + впервые выявленная ЖДА (3 приёма, 3 диагноза) ──
     pid = fs.add_patient("Феррова", "Ирина", "Дмитриевна", "female", "1982-11-03")
+    _history_episode(pid, dr_id, "N30.9", "Цистит неуточнённый", 260,
+                     "Учащённое болезненное мочеиспускание",
+                     med=("J01XE01", "Нитрофурантоин", "100 мг", "2 раза в день", 5))
     e1 = fs.add_encounter(pid, practitioner_id=dr_id, cls="ambulatory",
                           start=_ago(20), complaint="Кашель, t 38.0")
     fs.add_condition(pid, "J15.9", "Бактериальная пневмония неуточнённая",
@@ -390,7 +442,7 @@ def seed_ten(dr_id: str):
                      onset_date=_ago(2), encounter_id=e2)
     fs.finish_encounter(e2, end=_ago(2))
     fs.set_pathway(pid, "treatment", "ВП на контроле; ЖДА впервые выявлена — терапия не назначена")
-    stories.append((pid, "Феррова", "ВП (контроль) + впервые выявленная ЖДА — два протокола, обе карточки видны"))
+    stories.append((pid, "Феррова", "ВП (контроль) + впервые выявленная ЖДА, 3 приёма, 3 диагноза"))
 
     return stories
 

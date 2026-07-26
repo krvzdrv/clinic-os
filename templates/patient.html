@@ -1003,7 +1003,9 @@
         <div class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
-          <span class="badge {{ 'green' if (c.clinical_status or 'active') == 'active' else 'grey' }}">{{ 'активный' if (c.clinical_status or 'active') == 'active' else (c.clinical_status or '') }}</span>
+          {% set cstat = c.clinical_status or 'active' %}
+          {% set cstat_ru = {'active': 'активный', 'resolved': 'разрешён', 'remission': 'ремиссия', 'inactive': 'неактивный'}.get(cstat, cstat) %}
+          <span class="badge {{ 'green' if cstat == 'active' else 'grey' }}">{{ cstat_ru }}</span>
         </div>
         {% if c.source_label %}
         <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
