@@ -327,6 +327,12 @@
   .flag-chip.warn{background:var(--bg-warning);border-color:transparent;color:var(--text-warning);}
   .flag-chip.allergy{background:var(--bg-danger);border-color:transparent;color:var(--text-danger);}
   .flag-chip .chip-k{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;}
+  .flag-chip.allergy form{display:inline;margin:0;}
+  .flag-chip.allergy .chip-x{
+    width:16px;height:16px;min-width:16px;margin:0 0 0 2px;padding:0;border:none;
+    background:transparent;color:inherit;opacity:.65;font-size:14px;line-height:1;cursor:pointer;
+  }
+  .flag-chip.allergy .chip-x:hover{opacity:1;}
   .patient-head .head-tools{margin-top:8px;}
   .patient-head .head-tools summary{cursor:pointer;font-size:12px;color:var(--faint);font-weight:600;list-style:none;}
   /* Аллергия внесена после назначения — конфликт всё равно виден на карте. */
@@ -590,7 +596,13 @@
       <div class="head-flags" aria-label="Аллергии">
         {% if allergies %}
           {% for a in allergies %}
-          <span class="flag-chip allergy"><span class="chip-k">Аллергия</span> {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}</span>
+          <span class="flag-chip allergy">
+            <span class="chip-k">Аллергия</span> {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}
+            <form method="POST" action="{{ url_for('delete_allergy_route', pid=patient.id, aid=a.id) }}"
+                  onsubmit="return confirm('Убрать аллергию «{{ a.display }}»?');">
+              <button class="chip-x" type="submit" title="Убрать" aria-label="Убрать аллергию">×</button>
+            </form>
+          </span>
           {% endfor %}
         {% else %}
           <span class="flag-chip warn" title="Перед назначением АБТ уточните аллергоанамнез"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Аллергия отсутствует</span>

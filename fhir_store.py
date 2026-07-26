@@ -684,7 +684,21 @@ def add_allergy(pid, code, display, criticality="high", reaction_type="unknown",
         "INSERT INTO allergy_intolerance (id, patient_id, code, display, criticality, reaction_type, recorded_date) "
         "VALUES (%s,%s,%s,%s,%s,%s,%s)",
         (aid, pid, code, display, criticality, reaction_type, recorded_date))
+    clear_pid_cache(pid)
     return aid
+
+
+def delete_allergy(pid, aid):
+    """Убрать запись аллергии (ошибка ввода / уточнение анамнеза)."""
+    row = db.fetchone(
+        "SELECT id FROM allergy_intolerance WHERE id = %s AND patient_id = %s",
+        (aid, pid),
+    )
+    if not row:
+        return False
+    db.execute("DELETE FROM allergy_intolerance WHERE id = %s AND patient_id = %s", (aid, pid))
+    clear_pid_cache(pid)
+    return True
 
 
 # ============ CarePlan + Goal ============

@@ -1064,6 +1064,16 @@ def add_allergy_route(pid):
     return redirect(url)
 
 
+@app.route("/patient/<pid>/allergy/<aid>/delete", methods=["POST"])
+def delete_allergy_route(pid, aid):
+    if not fs.get_patient(pid):
+        return "Пациент не найден", 404
+    if not fs.delete_allergy(pid, aid):
+        return "Аллергия не найдена", 404
+    _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid))
+
+
 # ---------- План лечения + цель (ВП, КП №768) ----------
 @app.route("/patient/<pid>/careplan", methods=["POST"])
 def create_careplan_route(pid):
