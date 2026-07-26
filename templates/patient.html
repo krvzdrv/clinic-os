@@ -400,9 +400,6 @@
   .enc-summary .enc-title{flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--text-primary);}
   .enc-summary .enc-meta{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:6px;}
   .enc-summary .enc-end{display:flex;align-items:center;gap:8px;flex:none;margin-left:auto;}
-  .enc-summary .enc-expanded{display:none;align-items:center;gap:8px;}
-  .history-fold[open] > summary.enc-summary .enc-expanded{display:inline-flex;}
-  .history-fold[open] > summary.enc-summary .enc-collapsed-only{display:none;}
   .enc-summary .enc-chev{font-size:18px;color:var(--text-muted);flex:none;}
   .history-fold:not([open]) > summary.enc-summary .enc-chev-down{display:none;}
   .history-fold[open] > summary.enc-summary .enc-chev-right{display:none;}
@@ -415,6 +412,9 @@
     display:flex;align-items:center;flex-wrap:wrap;gap:8px;
     margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid var(--border);
   }
+  /* Дата/тип/статус ЭТОГО приёма — здесь, а не в общем summary списка приёмов,
+     чтобы не выглядело так, будто один приём вложен внутрь другого. */
+  .enc-id{display:flex;align-items:center;gap:8px;flex:0 0 auto;font-size:13px;color:var(--text-primary);}
   .enc-toolbar .enc-complaint{flex:1;min-width:12em;font-size:13px;color:var(--text-secondary);margin:0;}
   /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost) и тот же
      размер, что .btn/.btn-small (static/clinic.css), иначе рядом смотрится «слепленным». */
@@ -1131,27 +1131,21 @@
   {% set enc_open = current_ed and current_ed.encounter.status != 'finished' %}
   {% set enc_cls = current_ed.encounter.class if current_ed else none %}
   {% set enc_title = 'Контрольный визит' if enc_cls == 'followup' else 'Приём' %}
+  {# Заголовок этого блока — про сам список приёмов, а не про один из них: раньше
+     сюда попадала дата ТЕКУЩЕГО приёма, а сразу под ней открывался visit-list с
+     ДРУГИМИ приёмами — выглядело как «приём внутри приёма». Дата/тип/статус
+     конкретного приёма — в его собственной карточке (enc-toolbar) ниже. #}
+  {% set enc_total_n = encounters_total if encounters_total is defined and encounters_total else (encounters_data|length if encounters_data else (1 if current_ed else 0)) %}
+  {% set enc_multi = enc_total_n > 1 %}
   <details class="history-fold"{% if current_ed %} open{% endif %}>
     <summary class="enc-summary">
       <div class="icon-avatar{% if enc_open %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
-      <span class="enc-title">{{ enc_title }}{% if current_ed %}<span class="enc-meta">{{ current_ed.encounter.start }}</span>{% elif encounters_data %}<span class="enc-meta">{{ encounters_data|length }}</span>{% endif %}</span>
+      {% if enc_multi %}
+      <span class="enc-title">Приёмы<span class="enc-meta">{{ enc_total_n }}</span></span>
+      {% else %}
+      <span class="enc-title">{{ enc_title }}{% if current_ed %}<span class="enc-meta">{{ current_ed.encounter.start }}</span>{% endif %}</span>
+      {% endif %}
       <span class="enc-end">
-        {% if current_ed %}
-        <span class="enc-expanded">
-          {% if enc_cls == 'inpatient' %}<span class="category-tag">стационарный</span>
-          {% elif enc_cls == 'followup' %}<span class="category-tag">контроль</span>
-          {% else %}<span class="category-tag">амбулаторный</span>{% endif %}
-          {% if enc_open %}
-          <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}" style="display:inline;" onclick="event.stopPropagation()">
-            <button class="btn ghost btn-small" type="submit" onclick="event.stopPropagation()">Закрыть</button>
-          </form>
-          {% endif %}
-        </span>
-        <span class="enc-collapsed-only">
-          {% if enc_open %}<span class="badge accent">открыт</span>
-          {% else %}<span class="badge grey">закрыт</span>{% endif %}
-        </span>
-        {% endif %}
         <i class="ti ti-chevron-right enc-chev enc-chev-right" aria-hidden="true"></i>
         <i class="ti ti-chevron-down enc-chev enc-chev-down" aria-hidden="true"></i>
       </span>
@@ -1194,6 +1188,19 @@
     {% set e = ed.encounter %}
     <div class="enc-card">
       <div class="enc-toolbar">
+        <span class="enc-id">
+          <b>{{ enc_title }} {{ e.start }}</b>
+          {% if enc_cls == 'inpatient' %}<span class="category-tag">стационарный</span>
+          {% elif enc_cls == 'followup' %}<span class="category-tag">контроль</span>
+          {% else %}<span class="category-tag">амбулаторный</span>{% endif %}
+          {% if enc_open %}<span class="badge accent">открыт</span>
+          {% else %}<span class="badge grey">закрыт</span>{% endif %}
+          {% if enc_open %}
+          <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}" style="display:inline;">
+            <button class="btn ghost btn-small" type="submit">Закрыть приём</button>
+          </form>
+          {% endif %}
+        </span>
         {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
         <details class="add-panel">
           <summary>Новый приём</summary>
