@@ -301,3 +301,30 @@ def evaluate_medication(pid, atc_code):
         "issues": issues,
         "knowledge": dict(knowledge) if knowledge else None,
     }
+
+
+def active_allergy_conflicts(pid):
+    """Активные назначения vs уже известные аллергии.
+
+    Срабатывает и когда аллергию внесли *после* назначения: order-sign тогда
+    уже прошёл, но конфликт всё равно должен быть виден на карте.
+    """
+    out = []
+    for med in fs.get_medications(pid, status="active"):
+        code = med.get("code")
+        if not code:
+            continue
+        verdict = evaluate_medication(pid, code)
+        allergy_issues = [
+            i for i in (verdict.get("issues") or [])
+            if i.get("category") in ("allergy", "allergy_caution")
+        ]
+        if not allergy_issues:
+            continue
+        out.append({
+            "medication": med,
+            "issues": allergy_issues,
+            "hard": any(i.get("severity") == "hard-stop" for i in allergy_issues),
+            "message": allergy_issues[0].get("message") or "",
+        })
+    return out

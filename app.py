@@ -449,6 +449,7 @@ def patient_detail(pid):
             diagnosis_groups=protocol_rules.diagnosis_select_groups(),
             protocol_id_for_icd=protocol_rules.protocol_id_for_icd,
             allergies=fs.get_allergies(pid),
+            allergy_med_conflicts=drug_service.active_allergy_conflicts(pid),
             flags=fs.get_flags(pid),
             encounters=page,
             encounters_data=encounters_data,
@@ -1044,7 +1045,12 @@ def add_allergy_route(pid):
     fs.add_allergy(pid, code, display,
                     reaction_type=request.form.get("reaction_type", "unknown"))
     _refresh_protocol(pid)
-    return redirect(url_for("patient_detail", pid=pid))
+    # Если уже есть активные назначения против новой аллергии — якорь на баннер.
+    conflicts = drug_service.active_allergy_conflicts(pid)
+    url = url_for("patient_detail", pid=pid)
+    if conflicts:
+        url = url + "#allergy-conflict"
+    return redirect(url)
 
 
 # ---------- План лечения + цель (ВП, КП №768) ----------

@@ -326,6 +326,22 @@
   .flag-chip .chip-k{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.75;}
   .patient-head .head-tools{margin-top:8px;}
   .patient-head .head-tools summary{cursor:pointer;font-size:12px;color:var(--faint);font-weight:600;list-style:none;}
+  /* Аллергия внесена после назначения — конфликт всё равно виден на карте. */
+  .allergy-conflict{
+    margin:0 0 16px;padding:12px 14px;border-radius:10px;
+    border:1px solid var(--border-danger);background:var(--bg-danger);
+  }
+  .allergy-conflict.warn{
+    border-color:var(--border-warning);background:var(--bg-warning);
+  }
+  .allergy-conflict-title{
+    margin:0 0 8px;font-size:13px;font-weight:700;color:var(--text-danger);
+    display:flex;align-items:center;gap:6px;
+  }
+  .allergy-conflict.warn .allergy-conflict-title{color:var(--text-warning);}
+  .allergy-conflict ul{margin:0;padding-left:1.2em;font-size:13px;color:var(--text-primary);}
+  .allergy-conflict li{margin:0 0 4px;}
+  .allergy-conflict .hint{margin:8px 0 0;font-size:12px;color:var(--text-secondary);}
 
   /* ---- Nested clinical hierarchy (docs/ui/CLINICAL_HIERARCHY.md) ---- */
   .status-strip{margin:0 0 16px;padding:0;border:none;background:transparent;}
@@ -586,6 +602,25 @@
       </div>
     </details>
   </header>
+
+  {% if allergy_med_conflicts %}
+  {% set _hard = allergy_med_conflicts|selectattr('hard')|list %}
+  <section class="allergy-conflict{% if not _hard %} warn{% endif %}" id="allergy-conflict" role="alert">
+    <p class="allergy-conflict-title">
+      <i class="ti ti-alert-octagon" aria-hidden="true"></i>
+      {% if _hard %}Конфликт аллергии и назначений{% else %}Аллергия: осторожность к назначению{% endif %}
+    </p>
+    <ul>
+      {% for c in allergy_med_conflicts %}
+      <li>
+        <strong>{{ c.medication.display or c.medication.code }}</strong>
+        — {{ c.message }}
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="hint">Аллергию учли после назначения — отмените препарат или смените терапию. При осознанном продолжении зафиксируйте причину при следующем изменении назначения.</p>
+  </section>
+  {% endif %}
 
   {# ClinicalVerdict: готовый verdict от backend или fallback из cap без ATC/кодов #}
   {% if verdict is defined %}
