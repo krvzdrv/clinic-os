@@ -607,6 +607,8 @@ def get_care_plans(pid, status="active"):
     cached = _cached(pid, "care_plans")
     if cached is not None:
         return [cp for cp in cached if status is None or cp["status"] == status]
+    if status is None:
+        return db.fetchall("SELECT * FROM care_plan WHERE patient_id = %s", (pid,))
     return db.fetchall("SELECT * FROM care_plan WHERE patient_id = %s AND status = %s",
                        (pid, status))
 

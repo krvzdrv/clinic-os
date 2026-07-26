@@ -326,7 +326,7 @@
   .dx-card .dx-issue.cds-warn{border-color:var(--border-warning);}
   .dx-card .dx-issue.cds-warn .cds-tier{color:var(--text-warning);}
   .dx-head .dx-title{flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--text-primary);line-height:1.35;margin:0;}
-  .dx-head .dx-code{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:6px;}
+  .dx-head .dx-code, .vs .dx-code{font-size:12px;font-weight:400;color:var(--text-muted);margin-left:6px;}
   .dx-head .badge{margin:0;flex:none;border-radius:6px;white-space:nowrap;}
   .dx-empty{font-size:13px;color:var(--text-muted);padding:4px 0 8px;}
 
@@ -434,6 +434,7 @@
   .visit-row.current{border-color:var(--border-accent);background:var(--bg-accent);}
   .visit-row .vd{font-weight:500;min-width:5.5em;color:var(--text-primary);}
   .visit-row .vs{flex:1;color:var(--text-secondary);min-width:120px;}
+  .visit-row-static{cursor:default;}
   .obs-attrs{display:flex;flex-direction:column;gap:10px;margin:0 0 10px;}
 </style>
 </head>
@@ -999,17 +1000,15 @@
   <script type="application/json" id="triage-data">{{ triage_conditions|tojson }}</script>
 
   <section class="status-strip" id="conditions-list" aria-label="Клинический статус">
-    {% if conditions %}
-      {% for c in conditions %}
+    {% if active_conditions %}
+      {% for c in active_conditions %}
       {% set is_cap = c.code in PN_CODES %}
       {% set cond_verdict = verdict_by_condition.get(c.id) %}
       <article class="dx-card" id="condition-{{ c.id }}">
         <div class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
           <h2 class="dx-title">{{ c.display }}<span class="dx-code">{{ c.code }}</span></h2>
-          {% set cstat = c.clinical_status or 'active' %}
-          {% set cstat_ru = {'active': 'активный', 'resolved': 'разрешён', 'remission': 'ремиссия', 'inactive': 'неактивный'}.get(cstat, cstat) %}
-          <span class="badge {{ 'green' if cstat == 'active' else 'grey' }}">{{ cstat_ru }}</span>
+          <span class="badge green">активный</span>
         </div>
         {% if c.source_label %}
         <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
@@ -1034,8 +1033,9 @@
               {% endif %}
             </div>
           </div>
-          {% if goals %}
-            {% for g in goals %}
+          {% set cond_goals = goals_by_condition.get(c.id, []) %}
+          {% if cond_goals %}
+            {% for g in cond_goals %}
             <div class="attr-row">
               <p class="attr-label"><i class="ti ti-target-arrow" aria-hidden="true"></i>Цель терапии</p>
               <div class="attr-value-row">
@@ -1059,6 +1059,16 @@
         {% endif %}
       </article>
       {% endfor %}
+    {% elif history_conditions %}
+      <article class="dx-card" id="condition-empty">
+        <div class="dx-head">
+          <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
+          <h2 class="dx-title">Нет активного диагноза</h2>
+        </div>
+        <div class="dx-rail">
+          <p class="attr-value"><span class="none">Все диагнозы разрешены — история ниже</span></p>
+        </div>
+      </article>
     {% else %}
       <article class="dx-card" id="condition-empty">
         <div class="dx-head">
@@ -1073,6 +1083,36 @@
           {% endif %}
         </div>
       </article>
+    {% endif %}
+    {% if history_conditions %}
+    <details class="history-fold" id="dx-history">
+      <summary class="enc-summary">
+        <div class="icon-avatar sm" aria-hidden="true"><i class="ti ti-history"></i></div>
+        <span class="enc-title">История диагнозов<span class="enc-meta">{{ history_conditions|length }}</span></span>
+        <span class="enc-end">
+          <i class="ti ti-chevron-right enc-chev enc-chev-right" aria-hidden="true"></i>
+          <i class="ti ti-chevron-down enc-chev enc-chev-down" aria-hidden="true"></i>
+        </span>
+      </summary>
+      <div class="enc-panel">
+        <div class="visit-list">
+          {% for c in history_conditions %}
+          {% set cstat = c.clinical_status or 'active' %}
+          {% set cstat_ru = {'resolved': 'разрешён', 'remission': 'ремиссия', 'inactive': 'неактивный'}.get(cstat, cstat) %}
+          {% if c.encounter_id %}
+          <a class="visit-row" href="{{ url_for('patient_detail', pid=patient.id, e=c.encounter_id) }}">
+          {% else %}
+          <span class="visit-row visit-row-static">
+          {% endif %}
+            <div class="icon-avatar sm" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
+            <span class="vd">{{ c.onset_date or '—' }}</span>
+            <span class="vs">{{ c.display }}<span class="dx-code">{{ c.code }}</span></span>
+            <span class="badge grey">{{ cstat_ru }}</span>
+          {% if c.encounter_id %}</a>{% else %}</span>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </details>
     {% endif %}
     {% if followups %}
     <div class="dx-follow">

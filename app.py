@@ -364,6 +364,28 @@ def patient_detail(pid):
 
         has_unassigned = any(unassigned[k] for k in unassigned)
         conditions = fs.get_conditions(pid)
+        # Активные — полные карточки (параллельно обычно 1-3 диагноза, все на виду).
+        # История (разрешённые/неактивные) копится годами — не карточками, а
+        # свёрнутым списком строк (тот же паттерн, что уже решает эту же задачу
+        # для старых приёмов: history-fold + компактная строка вместо карточки).
+        active_conditions = [c for c in conditions if (c.get("clinical_status") or "active") == "active"]
+        history_conditions = [c for c in conditions if (c.get("clinical_status") or "active") != "active"]
+        # Кому нужно внимание (вердикт не ok) — наверх; conditions уже
+        # ORDER BY onset_date DESC, стабильная сортировка сохранит порядок по
+        # дате внутри каждой из двух групп (срочные / остальные активные).
+        active_conditions.sort(
+            key=lambda c: 0 if (verdict_by_condition.get(c["id"]) or {}).get("ok") is False else 1
+        )
+        # Цель терапии — по конкретному диагнозу (через care_plan.condition_id),
+        # не все цели пациента под каждой карточкой: иначе цель прошлого,
+        # давно разрешённого эпизода ВП всплывала бы и под новым диагнозом.
+        all_care_plans = fs.get_care_plans(pid, status=None)
+        cp_condition = {cp["id"]: cp.get("condition_id") for cp in all_care_plans}
+        goals_by_condition = {}
+        for g in goals:
+            gcid = cp_condition.get(g.get("care_plan_id"))
+            if gcid:
+                goals_by_condition.setdefault(gcid, []).append(g)
         # По каждому применимому протоколу отдельно — не только ВП (см. protocol_dispatch).
         triage_conditions = []
         for item in verdicts:
@@ -378,6 +400,9 @@ def patient_detail(pid):
             age=fs.get_age(pid),
             condition=fs.get_condition(pid),
             conditions=conditions,
+            active_conditions=active_conditions,
+            history_conditions=history_conditions,
+            goals_by_condition=goals_by_condition,
             observations=fs.get_observations(pid),
             reports=fs.get_diagnostic_reports(pid),
             service_requests=fs.get_service_requests(pid),
