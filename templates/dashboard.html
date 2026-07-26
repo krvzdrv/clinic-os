@@ -189,7 +189,8 @@
             <div class="pat-text">
               <p class="pat-name">{{ p.full or p.name }}</p>
               <p class="pat-meta">
-                {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}{% if p.dx_meta %} · {{ p.dx_meta }}{% endif %}
+                {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}
+                · {{ p.dx_meta or "без диагноза" }}
               </p>
             </div>
           </div>
