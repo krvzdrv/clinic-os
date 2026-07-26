@@ -30,7 +30,7 @@
       <bpmn:sequenceFlow id="Flow_i5" sourceRef="Task_IdaSeverity" targetRef="End_Confirm" />
     </bpmn:subProcess>
 
-    <bpmn:exclusiveGateway id="Gateway_IdaHospitalization" name="Нужна госпитализация или переливание?" default="Flow_Top_Hosp_No">
+    <bpmn:exclusiveGateway id="Gateway_IdaHospitalization" name="Нужна госпитализация или переливание?">
       <bpmn:incoming>Flow_Top_Confirm_To_Hosp</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Hosp_Yes</bpmn:outgoing>
       <bpmn:outgoing>Flow_Top_Hosp_No</bpmn:outgoing>
@@ -49,12 +49,17 @@
       <bpmn:sequenceFlow id="Flow_l3" sourceRef="Task_IdaRecordLabs" targetRef="End_Labs" />
     </bpmn:subProcess>
 
-    <bpmn:subProcess id="SubProcess_IdaTherapy" name="Назначить терапию железом">
+    <bpmn:exclusiveGateway id="Gateway_TherapyEntry" name="">
       <bpmn:incoming>Flow_Top_Labs_To_Therapy</bpmn:incoming>
       <bpmn:incoming>Flow_Top_Retry_Therapy</bpmn:incoming>
+      <bpmn:outgoing>Flow_Top_To_Therapy</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:subProcess id="SubProcess_IdaTherapy" name="Назначить терапию железом">
+      <bpmn:incoming>Flow_Top_To_Therapy</bpmn:incoming>
       <bpmn:outgoing>Flow_Top_Therapy_To_Control</bpmn:outgoing>
       <bpmn:startEvent id="Start_Iron" name="Начало"><bpmn:outgoing>Flow_r1</bpmn:outgoing></bpmn:startEvent>
-      <bpmn:exclusiveGateway id="Gateway_OralIron" name="Можно железо внутрь?" default="Flow_r3">
+      <bpmn:exclusiveGateway id="Gateway_OralIron" name="Можно железо внутрь?">
         <bpmn:incoming>Flow_r1</bpmn:incoming>
         <bpmn:outgoing>Flow_r2</bpmn:outgoing>
         <bpmn:outgoing>Flow_r3</bpmn:outgoing>
@@ -82,7 +87,7 @@
       <bpmn:outgoing>Flow_Top_Control_Ok</bpmn:outgoing>
       <bpmn:startEvent id="Start_Ctrl" name="Начало"><bpmn:outgoing>Flow_k1</bpmn:outgoing></bpmn:startEvent>
       <bpmn:task id="Task_IdaControlLabs" name="Назначить контрольные анализы"><bpmn:incoming>Flow_k1</bpmn:incoming><bpmn:outgoing>Flow_k2</bpmn:outgoing></bpmn:task>
-      <bpmn:exclusiveGateway id="Gateway_IronEffect" name="Есть эффект?" default="Flow_k4">
+      <bpmn:exclusiveGateway id="Gateway_IronEffect" name="Есть эффект?">
         <bpmn:incoming>Flow_k2</bpmn:incoming>
         <bpmn:outgoing>Flow_k3</bpmn:outgoing>
         <bpmn:outgoing>Flow_k4</bpmn:outgoing>
@@ -111,10 +116,11 @@
     <bpmn:sequenceFlow id="Flow_Top_Confirm_To_Hosp" sourceRef="SubProcess_Confirm" targetRef="Gateway_IdaHospitalization" />
     <bpmn:sequenceFlow id="Flow_Top_Hosp_Yes" name="да" sourceRef="Gateway_IdaHospitalization" targetRef="End_IdaHospital" />
     <bpmn:sequenceFlow id="Flow_Top_Hosp_No" name="нет" sourceRef="Gateway_IdaHospitalization" targetRef="SubProcess_IdaLabs" />
-    <bpmn:sequenceFlow id="Flow_Top_Labs_To_Therapy" sourceRef="SubProcess_IdaLabs" targetRef="SubProcess_IdaTherapy" />
+    <bpmn:sequenceFlow id="Flow_Top_Labs_To_Therapy" sourceRef="SubProcess_IdaLabs" targetRef="Gateway_TherapyEntry" />
+    <bpmn:sequenceFlow id="Flow_Top_To_Therapy" sourceRef="Gateway_TherapyEntry" targetRef="SubProcess_IdaTherapy" />
     <bpmn:sequenceFlow id="Flow_Top_Therapy_To_Control" sourceRef="SubProcess_IdaTherapy" targetRef="SubProcess_IdaControl" />
     <bpmn:sequenceFlow id="Flow_Top_Control_Ok" sourceRef="SubProcess_IdaControl" targetRef="End_IdaRecovered" />
-    <bpmn:sequenceFlow id="Flow_Top_Retry_Therapy" sourceRef="Boundary_NoIron" targetRef="SubProcess_IdaTherapy" />
+    <bpmn:sequenceFlow id="Flow_Top_Retry_Therapy" sourceRef="Boundary_NoIron" targetRef="Gateway_TherapyEntry" />
 
     <bpmn:textAnnotation id="Annotation_IdaHosp"><bpmn:text>КП №23: тяжёлая анемия или декомпенсация</bpmn:text></bpmn:textAnnotation>
     <bpmn:association id="Assoc_IdaHosp" sourceRef="Gateway_IdaHospitalization" targetRef="Annotation_IdaHosp" />
@@ -150,20 +156,23 @@
       <bpmndi:BPMNShape id="X_L" bpmnElement="SubProcess_IdaLabs">
         <dc:Bounds x="600" y="180" width="180" height="100" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="X_TE" bpmnElement="Gateway_TherapyEntry" isMarkerVisible="true">
+        <dc:Bounds x="795" y="205" width="50" height="50" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="X_T" bpmnElement="SubProcess_IdaTherapy">
-        <dc:Bounds x="830" y="180" width="180" height="100" />
+        <dc:Bounds x="880" y="180" width="180" height="100" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="X_K" bpmnElement="SubProcess_IdaControl">
-        <dc:Bounds x="1060" y="180" width="200" height="100" />
+        <dc:Bounds x="1110" y="180" width="200" height="100" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="X_B" bpmnElement="Boundary_NoIron">
-        <dc:Bounds x="1140" y="262" width="36" height="36" />
+        <dc:Bounds x="1080" y="262" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1100" y="305" width="80" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="X_E" bpmnElement="End_IdaRecovered">
-        <dc:Bounds x="1320" y="212" width="36" height="36" />
+        <dc:Bounds x="1370" y="212" width="36" height="36" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1280" y="255" width="120" height="40" />
         </bpmndi:BPMNLabel>
@@ -198,21 +207,25 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Xe5" bpmnElement="Flow_Top_Labs_To_Therapy">
         <di:waypoint x="780" y="230" />
-        <di:waypoint x="830" y="230" />
+        <di:waypoint x="795" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Xe5b" bpmnElement="Flow_Top_To_Therapy">
+        <di:waypoint x="845" y="230" />
+        <di:waypoint x="880" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Xe6" bpmnElement="Flow_Top_Therapy_To_Control">
-        <di:waypoint x="1010" y="230" />
         <di:waypoint x="1060" y="230" />
+        <di:waypoint x="1110" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Xe7" bpmnElement="Flow_Top_Control_Ok">
-        <di:waypoint x="1260" y="230" />
-        <di:waypoint x="1320" y="230" />
+        <di:waypoint x="1310" y="230" />
+        <di:waypoint x="1370" y="230" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Xe8" bpmnElement="Flow_Top_Retry_Therapy">
-        <di:waypoint x="1158" y="298" />
-        <di:waypoint x="1158" y="380" />
-        <di:waypoint x="920" y="380" />
-        <di:waypoint x="920" y="280" />
+        <di:waypoint x="1098" y="298" />
+        <di:waypoint x="1098" y="380" />
+        <di:waypoint x="820" y="380" />
+        <di:waypoint x="820" y="255" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="XeA" bpmnElement="Assoc_IdaHosp">
         <di:waypoint x="505" y="205" />
