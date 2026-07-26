@@ -1996,6 +1996,7 @@
         });
       }
       if(st && typeof st.y === 'number'){
+        if('scrollRestoration' in history) history.scrollRestoration = 'manual';
         var y = st.y;
         requestAnimationFrame(function(){ window.scrollTo(0, y); });
       }
