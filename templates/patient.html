@@ -962,8 +962,8 @@
   <div class="fform">
     <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез (свободной формой)</label>
-        <textarea name="text" rows="3" placeholder="Жалобы, анамнез заболевания и жизни — произвольным текстом"></textarea>
+      <div class="field field-full"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез (свободной формой)</label>
+        <textarea name="text" rows="4" placeholder="Жалобы, анамнез заболевания и жизни — произвольным текстом"></textarea>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить запись</button></div>
     </form>
