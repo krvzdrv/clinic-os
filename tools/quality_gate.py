@@ -186,8 +186,8 @@ def main():
     # should not display gap codes as visible labels in verdict section
     step("g.code" not in html.split("verdict-panel")[1][:2000] if "verdict-panel" in html else True,
          "в вердикте нет вывода g.code")
-    step("data.reload" in html and "бейдж «Обследование» залипает" in html,
-         "chip-x delete: reload после удаления (бейдж секций)")
+    step("soft_refresh" in html and "_softRefreshUi" in html,
+         "chip-x delete: soft_refresh бейджей без full reload")
 
     # 7. Бейдж «Обследование» после удаления заказов/результатов
     print("\n[7] Бейдж секции «Обследование»")
@@ -236,8 +236,8 @@ def main():
             headers={"X-Requested-With": "XMLHttpRequest", "Accept": "application/json"},
         )
         payload = r_del.get_json(silent=True) or {}
-        step(payload.get("ok") is True and payload.get("reload") is True,
-             f"delete service_request → ok+reload (got {payload})")
+        step(payload.get("ok") is True and payload.get("soft_refresh") is True,
+             f"delete service_request → ok+soft_refresh (got {payload})")
 
     # 8. Напоминание: полный путь врача — doctor_gate (с нуля)
     print("\n[8] Напоминание")

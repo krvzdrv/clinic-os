@@ -82,7 +82,11 @@ override так же бесполезен для контроля качеств
 1. Сбросить кэш пациента (`clear_pid_cache`).
 2. `protocol_dispatch.refresh_protocol_cache(pid)` —
    `patient_assessments` → `pick_primary_assessment` → `save_cap_cache(..., protocol_id)`.
-4. В UI: при AJAX-записи, меняющей картину протокола — `reload`, чтобы `#now-action` / status-strip не врали.
+4. В UI: при AJAX-записи, меняющей картину протокола — `soft_refresh`
+   (точечное обновление `#now-action` / чипов / бейджей гармошек **без**
+   `location.reload`), чтобы CDS не врал и секции приёма не закрывались.
+   Full `reload` — только для редких действий, меняющих всю карту
+   (госпитализация, смена/очистка приёма).
 
 Свободный текст анамнеза (`clinical_flag.category='anamnesis'`) протоколом **не** оценивается — пересчёт можно пропустить или выполнить no-op для единообразия.
 

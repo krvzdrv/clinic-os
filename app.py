@@ -114,16 +114,23 @@ def _refresh_protocol(pid):
         pass
 
 
-def _json_after_clinical(pid, *, chip_html=None, reload_ui=True, **extra):
-    """AJAX-ответ после записи, влияющей на протокол: refresh + reload UI."""
+def _json_after_clinical(pid, *, chip_html=None, reload_ui=False, soft_refresh=True, **extra):
+    """AJAX-ответ после клинической записи.
+
+    Пересчитывает протокол. По умолчанию без full page reload: клиент делает
+    soft_refresh (CDS/чипы/бейджи), гармошки и scroll не трогает.
+    reload_ui=True — только когда меняется вся карта (госпит., смена приёма).
+    """
     _refresh_protocol(pid)
     if reload_ui:
         payload = {"ok": True, "reload": True}
         payload.update(extra)
         return jsonify(payload)
-    if chip_html is not None:
-        return _ok(chip_html, **extra)
     payload = {"ok": True}
+    if soft_refresh:
+        payload["soft_refresh"] = True
+    if chip_html is not None:
+        payload["chip_html"] = chip_html
     payload.update(extra)
     return jsonify(payload)
 
@@ -588,7 +595,7 @@ def update_encounter_complaint_route(pid, eid):
         return "Приём не найден", 404
     fs.update_encounter_complaint(eid, request.form.get("complaint", "").strip() or None)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid, e=eid))
 
@@ -722,7 +729,7 @@ def add_observation_route(pid):
         fs.complete_service_request(sid)
     if _wants_json():
         # Continuous: vitals меняют тяжесть/показания — reload вердикта.
-        return _json_after_clinical(pid, reload_ui=True, id=oid)
+        return _json_after_clinical(pid, id=oid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -742,7 +749,7 @@ def add_service_request_route(pid):
     )
     if _wants_json():
         return _json_after_clinical(
-            pid, reload_ui=True, id=sid, code=code, display=display,
+            pid, id=sid, code=code, display=display,
             category=study_category(code) if code in STUDIES else "lab",
         )
     _refresh_protocol(pid)
@@ -768,7 +775,7 @@ def add_report_route(pid):
         fs.complete_service_request(sid)
     if _wants_json():
         return _json_after_clinical(
-            pid, reload_ui=True, id=rid, code=code, display=display,
+            pid, id=rid, code=code, display=display,
             category=study_category(code), service_request_id=sid,
         )
     _refresh_protocol(pid)
@@ -891,25 +898,20 @@ def add_medication_route(pid):
             pass
     # Continuous: любое назначение меняет картину протокола (CDS_SIGNALING).
     _refresh_protocol(pid)
-    # UI: после АБТ / override / явного reload — полная перерисовка вердикта.
-    must_reload = (
-        code.startswith("J01")
-        or replace_abt
-        or bool(confirmed and gating)
-        or request.form.get("reload", "") == "1"
-    )
     if _wants_json():
-        if must_reload:
-            return jsonify({"ok": True, "reload": True, "id": mid, "stopped": stopped})
+        # soft_refresh: обновить CDS/список без full reload (гармошки не закрываются).
         route_val = request.form.get("route", "").strip() or None
-        chip = ('<span class="chip">%s%s%s'
+        chip = ('<span class="tag-chip">%s%s%s'
                 '<form method="POST" action="%s" style="display:inline;">'
                 '<button class="chip-x" type="submit" title="Отменить" aria-label="Отменить">×</button>'
                 '</form></span>') % (
             display, (': %s' % dose) if dose else '',
             (' <span class="chip-sub">%s</span>' % route_val) if route_val else '',
             url_for("stop_medication_route", pid=pid, mid=mid))
-        resp = {"ok": True, "chip_html": chip, "id": mid, "stopped": stopped}
+        resp = {
+            "ok": True, "soft_refresh": True, "chip_html": chip,
+            "id": mid, "stopped": stopped,
+        }
         warns = _cds_summary(verdict)
         if warns:
             resp["cds"] = warns
@@ -966,7 +968,7 @@ def check_medication_route(pid):
 def stop_medication_route(pid, mid):
     fs.stop_medication(mid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -980,7 +982,7 @@ def delete_observation_route(pid, oid):
     if also and also != oid:
         fs.delete_observation(also)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -989,7 +991,7 @@ def delete_observation_route(pid, oid):
 def delete_condition_route(pid, cid):
     fs.delete_condition(cid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -998,7 +1000,7 @@ def delete_condition_route(pid, cid):
 def delete_service_request_route(pid, sid):
     fs.delete_service_request(sid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1007,7 +1009,7 @@ def delete_service_request_route(pid, sid):
 def delete_report_route(pid, rid):
     fs.delete_report(rid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1021,7 +1023,7 @@ def resolve_condition_route(pid, cid):
         return "Пациент не найден", 404
     fs.resolve_condition(pid, cid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1041,7 +1043,7 @@ def add_condition_route(pid):
         source_label=request.form.get("source_label") or None,
     )
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True, id=cid)
+        return _json_after_clinical(pid, id=cid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1057,6 +1059,8 @@ def add_allergy_route(pid):
     display = request.form.get("display", "").strip() or allergen_display(code)
     fs.add_allergy(pid, code, display,
                     reaction_type=request.form.get("reaction_type", "unknown"))
+    if _wants_json():
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     # Если уже есть активные назначения против новой аллергии — якорь на баннер.
     conflicts = drug_service.active_allergy_conflicts(pid)
@@ -1072,6 +1076,8 @@ def delete_allergy_route(pid, aid):
         return "Пациент не найден", 404
     if not fs.delete_allergy(pid, aid):
         return "Аллергия не найдена", 404
+    if _wants_json():
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1135,7 +1141,7 @@ def add_flag_route(pid):
                 return redirect(url_for("patient_detail", pid=pid))
         fid = fs.add_flag(pid, key, value="true", category=category, encounter_id=eid)
         if _wants_json():
-            return _json_after_clinical(pid, reload_ui=True, id=fid)
+            return _json_after_clinical(pid, id=fid)
         _refresh_protocol(pid)
         return redirect(url_for("patient_detail", pid=pid))
     return redirect(url_for("patient_detail", pid=pid))
@@ -1148,7 +1154,7 @@ def clear_flag_route(pid, fid):
     # поэтому пересчитываем протокол всегда, как и при добавлении флага.
     fs.delete_flag(fid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True)
+        return _json_after_clinical(pid)
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))
 
@@ -1173,7 +1179,7 @@ def add_anamnesis_route(pid):
     if not text:
         if replace:
             if _wants_json():
-                return _json_after_clinical(pid, reload_ui=True)
+                return _json_after_clinical(pid)
             return redirect(url_for("patient_detail", pid=pid, e=eid) if eid else url_for("patient_detail", pid=pid))
         if _wants_json():
             return _err("Пустой анамнез")
@@ -1181,7 +1187,7 @@ def add_anamnesis_route(pid):
     # Ключ — сам текст; протоколом не оценивается.
     fid = fs.add_flag(pid, text[:2000], value="true", category="anamnesis", encounter_id=eid)
     if _wants_json():
-        return _json_after_clinical(pid, reload_ui=True, id=fid)
+        return _json_after_clinical(pid, id=fid)
     return redirect(url_for("patient_detail", pid=pid, e=eid) if eid else url_for("patient_detail", pid=pid))
 
 
@@ -1207,7 +1213,7 @@ def set_general_condition_route(pid):
     needs_inp = general_condition_needs_inpatient(key)
     if _wants_json():
         return _json_after_clinical(
-            pid, reload_ui=True, id=fid, key=key, needs_inpatient=needs_inp,
+            pid, id=fid, key=key, needs_inpatient=needs_inp,
         )
     _refresh_protocol(pid)
     return redirect(url_for("patient_detail", pid=pid))

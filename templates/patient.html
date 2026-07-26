@@ -514,7 +514,10 @@
   .enc-toolbar-meta .enc-k{color:var(--text-muted);font-weight:500;margin-right:4px;}
   .enc-toolbar-meta .enc-k::after{content:":";}
   .anam-text-form{margin:0 0 12px;}
-  .anam-text-form .form-actions{justify-content:flex-start;}
+  .anam-text-form .form-actions{justify-content:flex-start;align-items:center;}
+  .save-status{font-size:12px;color:var(--text-muted);margin-left:8px;min-height:1em;}
+  .save-status.is-ok{color:var(--text-success);}
+  .save-status.is-err{color:var(--text-danger);}
   .enc-complaint-edit input[type=text]{min-width:18em;max-width:100%;}
   /* Все триггеры тулбара = размер .btn (SSOT 32px), без «плашки» Жалоба другого роста. */
   .enc-toolbar .add-panel,
@@ -589,12 +592,12 @@
         </div>
       </div>
       <div class="head-flags" aria-label="Аллергии">
+        <div id="head-allergy-chips" style="display:contents;">
         {% if allergies %}
           {% for a in allergies %}
           <span class="flag-chip allergy">
             <span class="chip-k">Аллергия</span> {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}
-            <form method="POST" action="{{ url_for('delete_allergy_route', pid=patient.id, aid=a.id) }}"
-                  onsubmit="return confirm('Убрать аллергию «{{ a.display }}»?');">
+            <form method="POST" action="{{ url_for('delete_allergy_route', pid=patient.id, aid=a.id) }}">
               <button class="chip-x" type="submit" title="Убрать" aria-label="Убрать аллергию">×</button>
             </form>
           </span>
@@ -602,10 +605,11 @@
         {% else %}
           <span class="flag-chip warn" title="Перед назначением АБТ уточните аллергоанамнез"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Аллергия отсутствует</span>
         {% endif %}
+        </div>
         <details class="status-add" style="margin:0;">
           <summary>+ Аллергия</summary>
           <div class="fform">
-            <form method="POST" action="{{ url_for('add_allergy_route', pid=patient.id) }}" id="allergy-form">
+            <form method="POST" action="{{ url_for('add_allergy_route', pid=patient.id) }}" id="allergy-form" data-ajax="1">
               <div class="field"><label><i class="ti ti-alert-triangle" aria-hidden="true"></i>Группа</label>
                 <select name="code" id="allergy-code" required>
                   <option value="">—</option>
@@ -977,11 +981,14 @@
   {# Жалоба и анамнез — всегда видимые textarea (без плашек/add-panel). #}
   {% macro complaint_form(pid, eid, current='') %}
   <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1">
+    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1" data-keep-fields="1">
       <div class="field field-full"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label>
         <textarea name="complaint" rows="3" maxlength="300" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
       </div>
-      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+      <div class="form-actions">
+        <button class="btn-small" type="submit">Сохранить</button>
+        <span class="save-status" aria-live="polite"></span>
+      </div>
     </form>
   </div>
   {% endmacro %}
@@ -989,13 +996,16 @@
   {# Свободный анамнез: один текст на приём — сохранить заменяет прежние записи. #}
   {% macro anam_form(pid, eid, current='') %}
   <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1">
+    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-keep-fields="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="replace" value="1">
       <div class="field field-full"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез</label>
         <textarea name="text" rows="4" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
       </div>
-      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+      <div class="form-actions">
+        <button class="btn-small" type="submit">Сохранить</button>
+        <span class="save-status" aria-live="polite"></span>
+      </div>
     </form>
   </div>
   {% endmacro %}
@@ -2124,15 +2134,63 @@
     }
     sel.addEventListener('change',upd);
   });
-  // ---------- AJAX-сохранение без перезагрузки ----------
-  // Все формы с data-ajax="1" отправляются в фоне (fetch). Ответ содержит
-  // готовый HTML чипа, который вставляется в контейнер data-chip-target.
-  // Никакой перезагрузки страницы → сохранение мгновенное, дублей нет.
+  // ---------- AJAX без full reload: гармошки не закрываются и не прыгают ----------
+  // Принцип: details.open принадлежит пользователю — скрипт его не трогает.
+  // После записи сервер отдаёт soft_refresh → точечно обновляем CDS/чипы/бейджи.
+  function _softRefreshUi(){
+    var y = window.scrollY || 0;
+    return fetch(location.href, {
+      credentials: 'same-origin',
+      headers: {'Accept': 'text/html'}
+    }).then(function(r){ return r.text(); }).then(function(html){
+      var doc = new DOMParser().parseFromString(html, 'text/html');
+      function swapId(id){
+        var cur = document.getElementById(id);
+        var neu = doc.getElementById(id);
+        if(cur && neu) cur.replaceWith(document.importNode(neu, true));
+        else if(cur && !neu) cur.remove();
+      }
+      ['now-action', 'triage-panel', 'allergy-conflict', 'conditions-list', 'head-allergy-chips'].forEach(swapId);
+      // Списки внутри приёма (чипы/виталы/заказы) — по актуальным id на странице.
+      var listIds = [];
+      document.querySelectorAll('[id^="chips-"],[id^="dlist-"]').forEach(function(el){
+        if(el.id && listIds.indexOf(el.id) === -1) listIds.push(el.id);
+      });
+      listIds.forEach(swapId);
+      // Бейджи и CSS-класс секции — без смены details.open.
+      doc.querySelectorAll('details.fstep[id]').forEach(function(neu){
+        var cur = document.getElementById(neu.id);
+        if(!cur) return;
+        var wasOpen = cur.open;
+        cur.className = neu.className;
+        cur.open = wasOpen;
+        var nb = neu.querySelector(':scope > summary .section-header__right');
+        var cb = cur.querySelector(':scope > summary .section-header__right');
+        if(nb && cb) cb.replaceWith(document.importNode(nb, true));
+      });
+      window.scrollTo(0, y);
+    }).catch(function(){ /* leave UI as-is */ });
+  }
+
+  function _setSaveStatus(form, text, ok){
+    var st = form.querySelector('.save-status');
+    if(!st) return;
+    st.textContent = text || '';
+    st.classList.toggle('is-ok', !!ok);
+    st.classList.toggle('is-err', ok === false);
+    if(text && ok){
+      setTimeout(function(){
+        if(st.textContent === text){ st.textContent=''; st.classList.remove('is-ok'); }
+      }, 2000);
+    }
+  }
+
   function _ajaxSubmit(form){
     var btn=form.querySelector('button[type="submit"]');
     var note=form.parentNode.querySelector('.note, .hint');
     var targetSel=form.getAttribute('data-chip-target');
     var target=targetSel?document.getElementById(targetSel):null;
+    var keepFields=form.getAttribute('data-keep-fields')==='1';
 
     // Валидация измерения по физиологическим пределам (только для /observation).
     if(form.getAttribute('action').indexOf('/observation')!==-1){
@@ -2152,6 +2210,7 @@
     }
 
     if(btn){ btn.disabled=true; btn.style.opacity='0.6'; }
+    _setSaveStatus(form, 'Сохраняю…', null);
     var fd=new FormData(form);
     fetch(form.getAttribute('action'),{
       method:'POST', body:fd,
@@ -2164,43 +2223,41 @@
         location.reload();
         return;
       }
-      if(data && data.ok && data.chip_html){
-        if(target){
-          // убрать заглушку «не назначены» / «нет»
+      if(data && data.ok){
+        if(data.chip_html && target){
           var ph=target.querySelector('.none'); if(ph) ph.remove();
           if(form.getAttribute('data-replace')){
-            // Заменить содержимое цели (общее состояние — одно значение на приём).
             target.innerHTML=data.chip_html;
           } else {
             target.insertAdjacentHTML('beforeend', data.chip_html);
           }
         }
-        // очистить поля ввода (кроме скрытых и select-ов оставляем выбор)
-        form.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(function(el){ el.value=''; });
+        if(!keepFields){
+          form.querySelectorAll('input[type="text"], input[type="date"], textarea').forEach(function(el){ el.value=''; });
+        }
         if(note){ note.innerHTML=''; }
         var addPanel=form.closest('.add-panel');
         if(addPanel) addPanel.open=false;
-        // если добавили заказ — обновим списки «К заказу» в формах результатов
         if(data.code && data.category){
           _refreshOrderSelects(form, data);
         }
-        // Форма в #now-action меняет вердикт — без reload экран врёт.
-        if(form.closest('#now-action')){
-          saveFstepUi();
-          location.reload();
-          return;
+        _setSaveStatus(form, 'Сохранено', true);
+        // CDS / бейджи / списки — без full reload; details.open не трогаем.
+        if(data.soft_refresh || form.closest('#now-action')){
+          _softRefreshUi();
         }
       } else if(data && data.need_confirm){
-        if(btn){ btn.disabled=false; btn.style.opacity=''; }
+        _setSaveStatus(form, '', null);
         _showCdsConfirm(form, data.cds, data.level || 'soft', data.error || '');
       } else if(data && data.error){
+        _setSaveStatus(form, 'Ошибка', false);
         if(note){ note.innerHTML='<span style="color:var(--text-danger)">'+data.error+'</span>'; }
       } else if(data && data.ok && data.cds && data.cds.length){
-        // Сохранено, но есть warning/info — покажем как подсказку.
         if(note){ note.innerHTML='<span style="color:var(--text-warning)">'+data.cds.map(function(c){return c.message;}).join(' · ')+'</span>'; }
       }
     }).catch(function(){
       if(btn){ btn.disabled=false; btn.style.opacity=''; }
+      _setSaveStatus(form, 'Ошибка сети', false);
       if(note){ note.innerHTML='<span style="color:var(--text-danger)">Ошибка сети. Повторите.</span>'; }
     });
   }
@@ -2321,13 +2378,13 @@
     });
   }
 
-  // Перехват сабмита всех AJAX-форм.
-  document.querySelectorAll('form[data-ajax="1"]').forEach(function(f){
-    f.addEventListener('submit', function(e){
-      e.preventDefault();
-      _ajaxSubmit(f);
-    });
-  });
+  // Делегированный перехват — работает и после soft_refresh (новые узлы в DOM).
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if(!form || form.tagName !== 'FORM' || form.getAttribute('data-ajax') !== '1') return;
+    e.preventDefault();
+    _ajaxSubmit(form);
+  }, true);
 
   // AJAX-удаление чипов (кнопка × внутри чипа): убираем чип из DOM без перезагрузки.
   // Безопасное удаление: подтверждение для необратимых действий (измерения,
@@ -2338,22 +2395,22 @@
       var act=form.getAttribute('action')||'';
       if(act.indexOf('/delete')===-1 && act.indexOf('/stop')===-1 && act.indexOf('/clear')===-1) return;
       e.preventDefault();
-      var chip=form.closest('.chip, .it, .anam-note');
+      var chip=form.closest('.chip, .tag-chip, .flag-chip, .it, .anam-note, .attr-row');
       var label=chip?chip.textContent.replace(/\s+/g,' ').trim().replace(/\s*×\s*$/,''):'запись';
       if(label.length>60) label=label.slice(0,60)+'…';
       if(!window.confirm('Удалить запись?\n«'+label+'»\nЭто действие необратимо.')) return;
-      fetch(act,{method:'POST',headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},redirect:'error'})
+      fetch(act,{method:'POST',body:new FormData(form),headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},redirect:'error'})
         .then(function(r){return r.json();})
         .then(function(data){
           if(data && data.ok){
-            // Удаление влияет на протокол и summary-badge секций — сервер отдаёт
-            // reload:true; без reload бейдж «Обследование» залипает («N в норме»).
             if(data.reload){
               saveFstepUi();
               location.reload();
               return;
             }
             if(chip) chip.remove();
+            // Бейджи/CDS/списки — soft refresh, гармошки не трогаем.
+            if(data.soft_refresh) _softRefreshUi();
           }
         }).catch(function(){});
     }
