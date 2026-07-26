@@ -685,7 +685,7 @@
         {% set _ = vfb.checks.append({'level': 'problem' if g.severity == 'warning' else 'info', 'title': g.message, 'action': g.recommendation}) %}
       {% endfor %}
     {% else %}
-      {% set vfb.next_step = 'Укажите диагноз внебольничной пневмонии из справочника МКБ.' %}
+      {% set vfb.next_step = 'Укажите диагноз из справочника МКБ.' %}
     {% endif %}
     {% set v = {
       'applicable': cap.applicable,
@@ -693,7 +693,7 @@
       'setting_label': ('Стационар' if cap.setting == 'inpatient' else 'Амбулаторно') if cap.applicable else '',
       'severity_label': ('Тяжёлая' if cap.severity == 'severe' else 'Нетяжёлая') if cap.applicable else '',
       'ok': cap.compliant if cap.applicable else true,
-      'headline': ('Соответствует протоколу' if cap.compliant else 'Есть отклонения от протокола') if cap.applicable else 'Протокол ВП не активен',
+      'headline': ('Соответствует протоколу' if cap.compliant else 'Есть отклонения от протокола') if cap.applicable else 'Нет активного протокола',
       'next_step': vfb.next_step,
       'expected_therapy': {'title': vfb.therapy_title, 'detail': vfb.therapy_detail} if vfb.therapy_title else none,
       'checks': vfb.checks
@@ -1018,9 +1018,9 @@
   {% set verdict_by_condition = verdict_by_condition if verdict_by_condition is defined else {} %}
   {% set active_therapy_by_protocol = active_therapy_by_protocol if active_therapy_by_protocol is defined else {} %}
   {% set diagnosis_groups = diagnosis_groups if diagnosis_groups is defined else [] %}
-  {# CDS вложена под диагноз(ы), если есть вердикты по протоколам или диагнозов ещё нет
-     (тогда подсказка «поставить диагноз» — в пустой карточке). Иначе — сверху. #}
-  {% set nest_cds = (verdict_by_condition|length > 0) or (not conditions) %}
+  {# CDS «По протоколу» — только когда есть применимый протокол (есть МКБ-якорь).
+     Без диагноза не шумим «протокол X не активен»: протоколов будет несколько. #}
+  {% set nest_cds = verdict_by_condition|length > 0 %}
   {# Модульные alias'ы к CAP-вердикту (v) — только для CAP-специфичных блоков ниже
      («Планирование и выписка»/R-графия), не для строки «Лечение» у диагноза. #}
   {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
@@ -1028,6 +1028,7 @@
   {% set reason = v.reason if v.reason is defined else none %}
 
   {% macro render_now_action(v, nested=false) %}
+  {% if v.applicable %}
   {% set tier = v.tier if v.tier is defined else ('ok' if v.ok else 'warn') %}
   {% set reason = v.reason if v.reason is defined else none %}
   {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
@@ -1155,6 +1156,7 @@
       {% endif %}
     {% endif %}
   </section>
+  {% endif %}
   {% endmacro %}
 
   {% set triage_conditions = triage_conditions if triage_conditions is defined else [] %}
@@ -1266,9 +1268,10 @@
         <div class="dx-body">
           <div class="dx-rail">
             {% if not current_ed %}
-            <p class="attr-value"><span class="none">Диагноз ставится в рамках приёма — откройте «Новый приём» и укажите диагноз на вкладке «Диагноз».</span></p>
+            <p class="attr-value"><span class="none">Диагноз ставится в рамках приёма — откройте приём и укажите код МКБ на вкладке «Диагноз».</span></p>
             {% else %}
-            {{ render_now_action(v, true) }}
+            <p class="attr-value"><span class="none">Укажите диагноз из справочника МКБ — нужный протокол подключится по коду.</span></p>
+            {{ cond_form(patient.id, current_ed.encounter.id, 'chips-cond-' ~ current_ed.encounter.id) }}
             {% endif %}
           </div>
         </div>
@@ -1317,7 +1320,7 @@
     {% endif %}
   </section>
 
-  {% if not nest_cds %}
+  {% if not nest_cds and v.applicable %}
     {{ render_now_action(v, false) }}
   {% endif %}
 

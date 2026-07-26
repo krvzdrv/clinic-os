@@ -510,15 +510,14 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
     Форма ответа одинакова для любого протокола — шаблон не различает, чей это
     вердикт; конкретный текст берётся из общих таблиц по gap.code (см. выше)."""
     if not assessment.get("applicable"):
-        proto = protocol_rules.get_protocol(protocol_id) or {}
-        title = proto.get("title")
-        headline = f"Протокол «{title}» не активен" if title else "Нет активного протокола"
+        # Без диагноза протокол не выбран — не называть конкретный КП (мультипротокол).
+        # UI блок «По протоколу» для applicable=False не показывается.
         return {
             "applicable": False,
             "protocol_title": None,
-            "headline": headline,
-            "reason": "Нужен диагноз из справочника МКБ, включённый в этот протокол",
-            "next_step": "Укажите диагноз из справочника МКБ, входящий в протокол",
+            "headline": "Нет активного протокола",
+            "reason": None,
+            "next_step": "Укажите диагноз из справочника МКБ",
             "checks": [],
             "checks_primary": [],
             "checks_more": [],
