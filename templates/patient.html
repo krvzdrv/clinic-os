@@ -299,8 +299,9 @@
     padding:5px 10px;border-radius:6px;background:transparent;}
   .chart-rail a:hover{background:var(--tint);color:var(--steel);}
   .diag-sub{border:1px solid var(--line);border-radius:10px;padding:0;background:#fff;overflow:hidden;}
-  .diag-sub h4{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft);font-weight:700;
-    margin:0;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);}
+  /* Как .section-label: sentence case, не ALL CAPS. */
+  .diag-sub h4{font-size:13px;letter-spacing:-0.01em;text-transform:none;color:var(--text-secondary);font-weight:600;
+    margin:0;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);line-height:1.3;}
   .diag-sub .dlist{font-size:13px;color:var(--ink);line-height:1.45;margin:0;}
   .diag-sub .dlist .it{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);}
   .diag-sub .dlist .it:last-child{border-bottom:none;}
@@ -839,10 +840,10 @@
 
   {# Список исследований: если категория заранее не сужена (cat='all') — группируем
      <optgroup> по study_category(), теми же словами, что уже подписаны разделы
-     обследования на странице («Лаборатория» / «Инструментальные»). #}
+     обследования на странице («Лабораторные» / «Инструментальные»). #}
   {% macro study_code_options(cat) %}
     {% if cat == 'all' %}
-      <optgroup label="Лаборатория">{% for c in study_options if study_category(c)=='lab' %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</optgroup>
+      <optgroup label="Лабораторные">{% for c in study_options if study_category(c)=='lab' %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</optgroup>
       <optgroup label="Инструментальные">{% for c in study_options if study_category(c)=='instr' %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}</optgroup>
     {% else %}
       {% for c in study_options if study_category(c)==cat %}<option value="{{ c }}">{{ study_display(c) }}</option>{% endfor %}
@@ -1884,7 +1885,7 @@
                open=true) %}
             <div class="diag-grid">
               <div class="diag-sub">
-                <h4>Лаборатория</h4>
+                <h4>Лабораторные</h4>
                 <div class="dlist record-list" id="dlist-lab-{{ e.id }}">
                   {% if not lab_sr and not lab_rep and not lab_obs %}<span class="none">Нет заказов и результатов</span>{% endif %}
                   {% for s in lab_sr %}<div class="it"><span class="st ord">Заказ</span><span>{{ study_display(s.code) }}</span>{% if s.occurrence_date %}<span class="chip-sub">{{ s.occurrence_date }}</span>{% endif %}
