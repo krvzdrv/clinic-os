@@ -548,6 +548,17 @@ def finish_encounter_route(pid, eid):
     return redirect(url_for("patient_detail", pid=pid))
 
 
+# ---------- Удалить приём (ошибка / случайное создание) ----------
+@app.route("/patient/<pid>/encounter/<eid>/delete", methods=["POST"])
+def delete_encounter_route(pid, eid):
+    if not fs.get_patient(pid):
+        return "Пациент не найден", 404
+    if not fs.delete_encounter(pid, eid):
+        return "Приём не найден", 404
+    _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid))
+
+
 # ---------- Запись измерения/анализа (observation) ----------
 @app.route("/patient/<pid>/observation", methods=["POST"])
 def add_observation_route(pid):

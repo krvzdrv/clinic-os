@@ -150,8 +150,9 @@
 
   .narr{font-size:13px;color:var(--ink);line-height:1.55;margin:8px 0;}
   .narr .v{font-weight:600;}
-  .narr .flag-up{color:var(--text-danger);font-weight:600;}
-  .narr .flag-ok{color:var(--green);}
+  /* Вне нормы: и в narrative, и в строках лаборатории (.res .flag-up) */
+  .flag-up{color:var(--text-danger);font-weight:600;}
+  .flag-ok{color:var(--green);}
   .next-hint{font-size:12px;color:var(--coral-deep);font-weight:600;margin:6px 0 2px;}
   .mini-btn{font-size:11px;font-weight:600;color:var(--coral-deep);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:5px;}
   .mini-btn:hover{background:var(--tint);}
@@ -433,6 +434,16 @@
     padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
   }
   .enc-toolbar .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;}
+  /* Вторичные опасные действия с приёмом — не рядом с «Закрыть», а в «Ещё». */
+  .enc-toolbar .enc-more{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-left:auto;}
+  .enc-toolbar .enc-more > summary{
+    height:32px;display:flex;align-items:center;cursor:pointer;list-style:none;
+    padding:0 12px;font-size:13px;font-weight:600;color:var(--faint);
+  }
+  .enc-toolbar .enc-more > summary::-webkit-details-marker{display:none;}
+  .enc-toolbar .enc-more[open] > summary{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--line);}
+  .enc-toolbar .enc-more .enc-more-body{padding:10px 12px;}
+  .enc-toolbar .enc-more .btn.danger{width:100%;}
   .visit-list{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
   .visit-row{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -1254,6 +1265,15 @@
           <summary>Новый приём</summary>
           <div class="add-panel-b">
             {{ encounter_form(patient.id, active_conditions, cancel=true) }}
+          </div>
+        </details>
+        <details class="enc-more">
+          <summary>Ещё</summary>
+          <div class="enc-more-body">
+            <form method="POST" action="{{ url_for('delete_encounter_route', pid=patient.id, eid=e.id) }}"
+                  onsubmit="return confirm('Удалить этот приём?\n\nБудут удалены осмотр, заказы, результаты и назначения этого приёма.\nДиагнозы пациента сохранятся.\n\nЭто действие необратимо.');">
+              <button class="btn danger btn-small" type="submit">Удалить приём</button>
+            </form>
           </div>
         </details>
       </div>

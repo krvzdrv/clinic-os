@@ -229,6 +229,42 @@ def finish_encounter(eid, end=None):
     db.execute("UPDATE encounter SET status='finished', ended_at=%s WHERE id=%s", (end, eid))
 
 
+def delete_encounter(pid, eid):
+    """Удалить приём (случайное создание / ошибочная запись).
+
+    Удаляет данные, привязанные к этому encounter_id (осмотр, заказы, результаты,
+    назначения, флаги, cds log). Диагнозы (condition_) не удаляет — только снимает
+    связь reasonReference и обнуляет legacy condition_.encounter_id.
+    """
+    enc = get_encounter(eid)
+    if not enc or enc.get("patient_id") != pid:
+        return False
+    db.execute("DELETE FROM encounter_reason WHERE encounter_id = %s", (eid,))
+    db.execute(
+        "UPDATE condition_ SET encounter_id = NULL "
+        "WHERE encounter_id = %s AND patient_id = %s",
+        (eid, pid),
+    )
+    for tbl in (
+        "cds_override_log",
+        "observation",
+        "diagnostic_report",
+        "service_request",
+        "medication_request",
+        "clinical_flag",
+    ):
+        try:
+            db.execute(
+                f"DELETE FROM {tbl} WHERE encounter_id = %s AND patient_id = %s",
+                (eid, pid),
+            )
+        except Exception:
+            pass
+    db.execute("DELETE FROM encounter WHERE id = %s AND patient_id = %s", (eid, pid))
+    clear_pid_cache(pid)
+    return True
+
+
 # ============ Condition (диагноз) ============
 
 def get_condition(pid):
