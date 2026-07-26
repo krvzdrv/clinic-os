@@ -123,8 +123,8 @@ def main() -> int:
     check("Соколов" in dash, "Соколов в списке пациентов")
     for name in by_name:
         check(name in dash, f"дашборд: {name}")
-    # Multi-protocol cache: ЖДА видна руководству, не только ВП.
-    check("ЖДА (КП №23)" in dash, "дашборд: ярлык протокола ЖДА")
+    # Multi-protocol: ЖДА на дашборде через next_step (номер КП в списке не показываем).
+    check("Феррова" in dash and "Железов" in dash, "дашборд: пациенты ЖДА в списке")
     check("желез" in dash.lower(), "дашборд: next_step по ЖДА (железо)")
     c_f = fs.get_cap_cache(by_name["Феррова"]) or {}
     check(c_f.get("protocol_id") == "ida_adult_23", f"Феррова: cache protocol_id=ida (got {c_f.get('protocol_id')})")
