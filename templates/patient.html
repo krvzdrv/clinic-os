@@ -482,6 +482,18 @@
     padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
   }
   .enc-toolbar .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;}
+  /* Пустой блок приёмов: форма «Новый приём» на всю ширину, без «Приёмов пока нет». */
+  .enc-empty-new{width:100%;margin:0 0 12px;}
+  .enc-empty-new .add-panel{
+    display:block;width:100%;flex:none;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+  }
+  .enc-empty-new .add-panel > summary{
+    height:32px;display:flex;align-items:center;
+    padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
+  }
+  .enc-empty-new .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--line);}
+  .enc-empty-new .add-panel-b{padding:12px 14px;}
   /* Вторичные опасные действия с приёмом — не рядом с «Закрыть», а в «Ещё». */
   .enc-toolbar .enc-more{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-left:auto;}
   .enc-toolbar .enc-more > summary{
@@ -1774,8 +1786,7 @@
       </div>
     </div>
   {% else %}
-  <div class="enc-toolbar">
-    <p class="enc-complaint">Приёмов пока нет</p>
+  <div class="enc-empty-new">
     <details class="add-panel" open>
       <summary>Новый приём</summary>
       <div class="add-panel-b">
