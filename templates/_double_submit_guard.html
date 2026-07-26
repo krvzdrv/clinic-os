@@ -1,0 +1,21 @@
+<script>
+  // Защита от повторной отправки обычных (не-AJAX, с переходом страницы) форм —
+  // двойной клик или Enter второй раз до ответа сервера (заметно на облачном
+  // демо с задержкой) не должен создавать запись дважды (напр. два приёма).
+  // AJAX-формы (data-ajax="1") и удаление чипов (.chip-x) защищены отдельно
+  // на своей странице — у них свой disabled/confirm.
+  //
+  // Общий партиал для всех страниц с формами: подключать include-тегом этого
+  // файла перед закрывающим body. Не дублировать эту логику в самом шаблоне —
+  // если для новой страницы понадобилась форма, подключить этот файл, а не
+  // копипастить код заново.
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if (form.getAttribute('data-ajax') === '1') return;
+    if (form.querySelector('.chip-x')) return;
+    if (form.hasAttribute('data-resubmit-guard')) { e.preventDefault(); return; }
+    form.setAttribute('data-resubmit-guard', '1');
+    var btn = form.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  }, true);
+</script>

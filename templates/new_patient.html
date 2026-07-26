@@ -59,15 +59,6 @@
   </form>
   <div class="hint">После создания откроется карта — там осмотр, диагнозы и назначения по протоколу ВП.</div>
 </main>
-<script>
-  // Защита от повторной отправки (двойной клик до перехода на карту —
-  // без неё создавались бы два пациента подряд).
-  document.querySelector('form').addEventListener('submit', function(e){
-    if (this.hasAttribute('data-resubmit-guard')) { e.preventDefault(); return; }
-    this.setAttribute('data-resubmit-guard', '1');
-    var btn = this.querySelector('button[type="submit"]');
-    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
-  });
-</script>
+{% include "_double_submit_guard.html" %}
 </body>
 </html>
