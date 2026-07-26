@@ -298,8 +298,10 @@ def scenario_anamnesis_exam_forms(page, audit: Audit):
         except Exception:
             pass
 
-    if _open_details(page, "Состояние") or _open_details(page, "Общее состояние"):
+    if _open_details(page, "Состояние") or _open_details(page, "Общее состояние") or _open_details(page, "Осмотр"):
         btn = page.locator("form.gc-choice .gc-seg-btn").first
+        if not btn.count():
+            btn = page.locator(".flag-toggle:not(.is-on)").first
         if not btn.count():
             _fill_select_first_real(page, "select[name='value'], select[name='key']")
             btn = page.locator("form[action*='flag'] button, form[action*='condition'] button, .fform button[type='submit']").first

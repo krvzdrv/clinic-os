@@ -43,7 +43,7 @@ from terminology import (
     EXAM_LOINC, LAB_LOINC, is_exam_loinc, is_lab_loinc,
     GENERAL_CONDITION, GENERAL_CONDITION_ORDER, general_condition_display, general_condition_needs_inpatient,
     vital_status_label, bp_status_label, EXAM_RED_FLAG_KEYS, IMAGING_RED_FLAG_KEYS,
-    CAP_PHYSICAL_FLAG_KEYS, CAP_IMAGING_FLAG_KEYS,
+    CAP_PHYSICAL_FLAG_KEYS, CAP_IMAGING_FLAG_KEYS, SOCIAL_RISK_FLAG_KEYS,
     SPO2_CODE, TEMP_CODE, RR_CODE, HR_CODE, SBP_CODE, DBP_CODE,
     parse_dose_per_day,
 )
@@ -509,6 +509,7 @@ def patient_detail(pid):
             IMAGING_RED_FLAG_KEYS=IMAGING_RED_FLAG_KEYS,
             CAP_PHYSICAL_FLAG_KEYS=CAP_PHYSICAL_FLAG_KEYS,
             CAP_IMAGING_FLAG_KEYS=CAP_IMAGING_FLAG_KEYS,
+            SOCIAL_RISK_FLAG_KEYS=SOCIAL_RISK_FLAG_KEYS,
             SPO2_CODE=SPO2_CODE,
             TEMP_CODE=TEMP_CODE,
             RR_CODE=RR_CODE,
@@ -721,6 +722,12 @@ def add_observation_route(pid):
         return redirect(url_for("patient_detail", pid=pid))
     low, high = loinc_reference(code)
     interp = interpret_value(code, value)
+    eid = request.form.get("encounter_id") or None
+    # Виталы в сетке: одно значение на код@приём — заменить прежнее, не плодить дубли.
+    if eid and code in EXAM_LOINC:
+        for o in fs.get_observations(pid):
+            if o.get("code") == code and (o.get("encounter_id") or None) == eid:
+                fs.delete_observation(o["id"])
     oid = fs.add_observation(
         pid, code, loinc_display(code),
         value_numeric=value,
@@ -729,7 +736,7 @@ def add_observation_route(pid):
         ref_high=high,
         interpretation=interp,
         obs_date=request.form.get("date") or None,
-        encounter_id=request.form.get("encounter_id") or None,
+        encounter_id=eid,
     )
     # Если результат привязан к заказу исследования — отметим заказ выполненным.
     sid = request.form.get("service_request_id")

@@ -480,6 +480,166 @@ form.enc-sub-add input[type="date"] {
 .gc-hint {
   margin: 8px 0 0;
 }
+
+/* Множество из словаря — toggle-чипы (клик = add/clear). */
+.flag-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 44rem;
+}
+.flag-toggle-form {
+  margin: 0;
+  display: inline;
+}
+.flag-toggle {
+  appearance: none;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.flag-toggle:hover:not(.is-on) {
+  background: var(--tint);
+  border-color: var(--accent-line);
+}
+.flag-toggle.is-on {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--text-accent);
+  font-weight: 600;
+}
+.flag-toggle.is-on.is-severe,
+.flag-toggle.is-severe.is-on {
+  background: var(--bg-danger);
+  border-color: transparent;
+  color: var(--text-danger);
+}
+.flag-toggle:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+/* Виталы — сетка полей (одно значение на показатель). */
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 10px 12px;
+  max-width: 36rem;
+  margin: 0 0 4px;
+}
+.vital-cell {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.vital-cell-form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.vital-cell label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.2;
+}
+.vital-cell .vital-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vital-cell input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 13px;
+  box-sizing: border-box;
+}
+.vital-cell .vital-unit {
+  flex: none;
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 2.2rem;
+}
+.vital-cell .vital-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+.vital-cell .vital-actions {
+  margin-left: auto;
+}
+.vital-cell--bp {
+  grid-column: span 2;
+}
+.vital-cell--bp .vital-input-row input {
+  width: 4.5rem;
+  flex: 0 0 auto;
+}
+.vital-cell--bp .vital-slash {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Обследование: сегменты Заказать / Результат */
+.study-kind-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+.study-kind-seg button {
+  appearance: none;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--steel);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.study-kind-seg button.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.order-result-link {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-accent);
+  text-decoration: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font);
+}
+.order-result-link:hover {
+  text-decoration: underline;
+}
 .enc-sub-empty {
   margin: 0;
   font-size: 12px;
