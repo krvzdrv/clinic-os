@@ -591,7 +591,7 @@
           <span class="flag-chip allergy"><span class="chip-k">Аллергия</span> {{ a.display }}{% if a.reaction_type and a.reaction_type != 'unknown' %} · {{ a.reaction_type }}{% endif %}</span>
           {% endfor %}
         {% else %}
-          <span class="flag-chip warn" title="Перед назначением АБТ уточните аллергоанамнез"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Аллергии не указаны</span>
+          <span class="flag-chip warn" title="Перед назначением АБТ уточните аллергоанамнез"><i class="ti ti-alert-triangle" aria-hidden="true"></i> Аллергия отсутствует</span>
         {% endif %}
         <details class="status-add" style="margin:0;">
           <summary>+ Аллергия</summary>

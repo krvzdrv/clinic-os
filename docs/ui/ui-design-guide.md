@@ -42,7 +42,7 @@ import { IconStethoscope } from '@tabler/icons-react';
 | `ti-pill` | labeled row «Лечение» | АБТ / препарат |
 | `ti-target-arrow` | labeled row «Цель терапии» | целевые показатели |
 | `ti-flask` | алерт несоответствия (опц.) | клиническое/лаб. замечание |
-| `ti-alert-triangle` | бейдж «Аллергии не указаны» | предупреждение |
+| `ti-alert-triangle` | бейдж «Аллергия отсутствует» | предупреждение |
 | `ti-circle-filled` | точки severity у «Ещё N» | индикатор важности (цвет через `color`) |
 | `ti-chevron-right` / `ti-chevron-down` | аккордеоны | раскрыть / свернуть |
 | `ti-calendar` | контроль / даты | срок, визит |
