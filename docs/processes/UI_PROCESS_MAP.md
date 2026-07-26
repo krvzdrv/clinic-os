@@ -24,7 +24,8 @@
 
 **Триаж:** `#triage-panel` над `#conditions-list` — агрегатор CDS issues по диагнозам (клик → `#condition-{id}` или список).  
 **Приёмы:** `GET /patient/{id}/encounters?limit=&offset=` + «Показать ещё»; открытый приём на первой странице.  
-**Связь:** `encounter_reason` (M2M reasonReference); `condition_.encounter_id` — legacy fallback.
+**Связь:** `encounter_reason` (M2M reasonReference); `condition_.encounter_id` — legacy fallback.  
+**Повод при открытии:** форма `encounter_form` — чекбоксы активных диагнозов («продолжение») пишут `encounter_reason` сразу при создании приёма; ничего не отмечено → «новая жалоба», связь появится при `add_condition(encounter_id=…)`. Карточка приёма показывает повод строкой `.enc-reason` («Повод: …» / «Новая жалоба — диагноз ещё не поставлен»). См. `docs/explain/07-encounter-types.md`, `docs/bpmn/encounter-reason-mature.bpmn`.
 
 ## `focus_stage` → действие в CDS
 

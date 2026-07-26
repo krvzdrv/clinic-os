@@ -177,6 +177,15 @@
   .fform .note .ref{color:var(--faint);}
   .fform .hint{font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;white-space:pre-line;width:100%;}
   .fform .hint b{color:var(--ink);}
+  /* Повод приёма: продолжение по диагнозу(ам) — явный выбор при открытии,
+     не додумывается системой (docs/explain/07-encounter-types.md). */
+  .fform .reason-conditions{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--tint);width:100%;}
+  .fform .reason-conditions label{flex-direction:row;align-items:baseline;gap:6px;font-size:12px;color:var(--ink);cursor:pointer;font-weight:400;}
+  .fform .reason-conditions input[type=checkbox]{width:auto;height:auto;margin:0;flex:none;}
+  .fform .reason-conditions .rc-code{color:var(--faint);font-weight:400;}
+  .enc-reason{font-size:12px;color:var(--steel);margin:2px 0 6px;display:flex;flex-wrap:wrap;gap:4px;align-items:baseline;}
+  .enc-reason .rc-chip{background:var(--tint);border:1px solid var(--line);border-radius:5px;padding:1px 7px;color:var(--ink);}
+  .enc-reason.new{color:var(--faint);}
   .cds-ov{border-radius:12px;padding:1rem 1.25rem;max-width:480px;margin:8px 0;}
   .cds-ov-soft{border:1px solid var(--border-warning);}
   .cds-ov-hard{border:1px solid var(--border-danger);}
@@ -712,6 +721,35 @@
   </div>
   {% endmacro %}
 
+  {# Повод приёма — врач выбирает явно при открытии, система не додумывает:
+     отмечены диагнозы → «продолжение по диагнозу(ам)» (encounter_reason сразу,
+     FHIR reasonReference); ничего не отмечено → «новая жалоба». Одна форма для
+     обоих мест открытия приёма (docs/explain/07-encounter-types.md). #}
+  {% macro encounter_form(pid, active_conditions, cancel=false) %}
+  <div class="fform">
+    <form method="POST" action="{{ url_for('add_encounter_route', pid=pid) }}">
+      {% if active_conditions %}
+      <div class="field grow">
+        <label><i class="ti ti-stethoscope" aria-hidden="true"></i>Повод — продолжение по диагнозу</label>
+        <div class="reason-conditions">
+          {% for c in active_conditions %}
+          <label><input type="checkbox" name="reason_condition_ids" value="{{ c.id }}"> {{ c.display }} <span class="rc-code">{{ c.code }}</span></label>
+          {% endfor %}
+        </div>
+        <p class="hint">Ничего не отмечено — считаем новой жалобой/проблемой, диагноз свяжется, когда его поставят.</p>
+      </div>
+      {% endif %}
+      <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
+      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
+      <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба сегодня</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»"></div>
+      <div class="form-actions">
+        {% if cancel %}<button type="button" class="btn ghost btn-small" onclick="var d=this.closest('details.add-panel'); if(d) d.open=false;">Отмена</button>{% endif %}
+        <button class="btn-small" type="submit">Открыть приём</button>
+      </div>
+    </form>
+  </div>
+  {% endmacro %}
+
   {% macro med_form(pid, eid, chip_target='', uid=None, suggest_atc=None, replace_abt=False) %}
   {% set uid = uid or eid %}
   <div class="fform">
@@ -1204,21 +1242,18 @@
           </form>
           {% endif %}
         </span>
+        {% set reason_conds = [] %}
+        {% for c in conditions %}{% if c.id in ed.reason_condition_ids %}{% set _ = reason_conds.append(c) %}{% endif %}{% endfor %}
+        {% if reason_conds %}
+        <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
+        {% else %}
+        <p class="enc-reason new">Новая жалоба — диагноз ещё не поставлен</p>
+        {% endif %}
         {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
         <details class="add-panel">
           <summary>Новый приём</summary>
           <div class="add-panel-b">
-            <div class="fform">
-              <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
-                <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
-                <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
-                <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
-                <div class="form-actions">
-                  <button type="button" class="btn ghost btn-small" onclick="var d=this.closest('details.add-panel'); if(d) d.open=false;">Отмена</button>
-                  <button class="btn-small" type="submit">Открыть приём</button>
-                </div>
-              </form>
-            </div>
+            {{ encounter_form(patient.id, active_conditions, cancel=true) }}
           </div>
         </details>
       </div>
@@ -1619,14 +1654,7 @@
     <details class="add-panel" open>
       <summary>Новый приём</summary>
       <div class="add-panel-b">
-        <div class="fform">
-          <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
-            <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
-            <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
-            <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
-            <div class="form-actions"><button class="btn-small" type="submit">Открыть приём</button></div>
-          </form>
-        </div>
+        {{ encounter_form(patient.id, active_conditions) }}
       </div>
     </details>
   </div>

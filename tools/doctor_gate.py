@@ -438,9 +438,26 @@ def main() -> int:
         "Морозов: появился стационарный encounter",
     )
 
-    print("\n[7] Разрешить диагноз — отдельно от закрытия приёма (STATUS_SEMANTICS §0)")
+    print("\n[6.1] Новый приём: явный повод — продолжение по диагнозу, без повторной постановки (STATUS_SEMANTICS §0)")
     cond_v = fs.get_condition(pid_v)
-    check(bool(cond_v), "Морозов: есть активный диагноз перед разрешением")
+    check(bool(cond_v), "Морозов: есть активный диагноз для привязки повода")
+    enc_ids_before = {e["id"] for e in fs.get_encounters(pid_v)}
+    r = client.post(
+        f"/patient/{pid_v}/encounter",
+        data={"class": "followup", "start": "2026-07-27", "complaint": "Контроль", "reason_condition_ids": cond_v["id"]},
+        follow_redirects=True,
+    )
+    check(r.status_code == 200, f"Морозов: открыть контрольный приём по диагнозу → {r.status_code}")
+    new_enc = next((e for e in fs.get_encounters(pid_v) if e["id"] not in enc_ids_before), None)
+    check(bool(new_enc), "Морозов: новый приём создан")
+    if new_enc:
+        reasons = fs.get_encounter_reasons(new_enc["id"])
+        check(cond_v["id"] in reasons,
+              "Морозов: encounter_reason связан сразу при открытии — диагноз не переставлен повторно")
+        html_new = client.get(f"/patient/{pid_v}?e={new_enc['id']}").data.decode("utf-8", "replace")
+        check("Повод:" in html_new, "Морозов: «Повод приёма» виден в карточке контрольного визита")
+
+    print("\n[7] Разрешить диагноз — отдельно от закрытия приёма (STATUS_SEMANTICS §0)")
     r = client.post(f"/patient/{pid_v}/condition/{cond_v['id']}/resolve", follow_redirects=True)
     check(r.status_code == 200, f"Морозов: resolve → {r.status_code}")
     conds_after = fs.get_conditions(pid_v)

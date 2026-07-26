@@ -514,9 +514,17 @@ def list_encounters_route(pid):
 # ---------- Приём (encounter) ----------
 @app.route("/patient/<pid>/encounter", methods=["POST"])
 def add_encounter_route(pid):
+    """Повод приёма — явный выбор врача в момент открытия (не додумывается
+    системой): «продолжение по диагнозу(ам)» (encounter_reason сразу, FHIR
+    reasonReference на Condition) или «новая жалоба» (ничего не выбрано —
+    диагноз появится позже и свяжется через add_condition). См.
+    STATUS_SEMANTICS.md §0 и docs/explain/07-encounter-types.md."""
     if not fs.get_patient(pid):
         return "Пациент не найден", 404
-    fs.add_encounter(
+    reason_condition_ids = [
+        cid for cid in request.form.getlist("reason_condition_ids") if cid
+    ]
+    eid = fs.add_encounter(
         pid,
         practitioner_id=request.form.get("practitioner_id") or None,
         cls=request.form.get("class", "ambulatory"),
@@ -524,8 +532,10 @@ def add_encounter_route(pid):
         complaint=request.form.get("complaint", "").strip() or None,
         reason_code=request.form.get("reason_code", "").strip() or None,
     )
+    for cid in reason_condition_ids:
+        fs.link_encounter_condition(eid, cid)
     _refresh_protocol(pid)
-    return redirect(url_for("patient_detail", pid=pid))
+    return redirect(url_for("patient_detail", pid=pid, e=eid))
 
 
 # ---------- Закрыть приём ----------

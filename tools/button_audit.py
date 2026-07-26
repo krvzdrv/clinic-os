@@ -172,10 +172,15 @@ def scenario_new_patient(page, audit: Audit):
     # gender/birth if present
     if page.locator('select[name="gender"]').count():
         page.select_option('select[name="gender"]', "male")
-    if page.locator('input[name="birth_date"]').count():
+    if page.locator('input[name="birth_date"]').first.is_visible() if page.locator('input[name="birth_date"]').count() else False:
         page.fill('input[name="birth_date"]', "1990-01-15")
     elif page.locator('input[name="birthdate"]').count():
         page.fill('input[name="birthdate"]', "1990-01-15")
+    elif page.locator('#dob_day').count():
+        # день/месяц/год напрямую цифрами — без прокликивания родного календаря (см. new_patient.html)
+        page.fill('#dob_day', "15")
+        page.select_option('#dob_month', "01")
+        page.fill('#dob_year', "1990")
 
     with page.expect_navigation(timeout=10000):
         page.click('button[type="submit"], .btn:has-text("Сохранить"), .btn-small:has-text("Сохранить")')
