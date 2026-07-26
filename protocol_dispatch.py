@@ -36,6 +36,12 @@ SHORT_PROTOCOL_LABELS = {
     "ida_adult_23": "ЖДА (КП №23)",
 }
 
+# Семья болезни без номера КП — для списка пациентов (demo: 1 активный диагноз).
+DISEASE_SHORT = {
+    "cap_adult_768": "ВП",
+    "ida_adult_23": "ЖДА",
+}
+
 # Класс терапии протокола (ATC-префикс) — для строки «Лечение» в карточке диагноза.
 THERAPY_ATC_PREFIX = {
     "cap_adult_768": "J01",
@@ -51,6 +57,16 @@ def short_protocol_label(protocol_id):
         return SHORT_PROTOCOL_LABELS[protocol_id]
     proto = protocol_rules.get_protocol(protocol_id) or {}
     return proto.get("title") or protocol_id
+
+
+def short_diagnosis_meta(code, protocol_id=None):
+    """«J18.9 ВП» / «D50.9 ЖДА» — якорь болезни в списке, без номера КП и этапа пути."""
+    if not code:
+        return ""
+    fam = DISEASE_SHORT.get(protocol_id) if protocol_id else None
+    if not fam:
+        fam = DISEASE_SHORT.get(protocol_rules.protocol_id_for_icd(code) or "")
+    return f"{code} {fam}" if fam else str(code)
 
 
 def evaluate_drug_choice(pid, atc_code):

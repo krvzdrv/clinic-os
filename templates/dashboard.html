@@ -189,10 +189,7 @@
             <div class="pat-text">
               <p class="pat-name">{{ p.full or p.name }}</p>
               <p class="pat-meta">
-                {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}
-                {# Номер КП — не в списке: не говорит ни от чего, ни чем лечат.
-                   Протокол остаётся в CDS/soft-stop; здесь — только этап пути. #}
-                <span class="stage-tag {{ p.state }}">{{ p.state_label }}</span>
+                {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}{% if p.dx_meta %} · {{ p.dx_meta }}{% endif %}
               </p>
             </div>
           </div>

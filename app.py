@@ -134,11 +134,14 @@ def dashboard():
     measure = re.quality_measure_cap()
     caches = {c["patient_id"]: c for c in fs.get_all_cap_caches()}
     pathways = fs.get_all_pathways()
+    primary_dx = fs.get_active_conditions_by_patient()
     rows = []
     for p in fs.get_all_patients():
         pid = p["id"]
         c = caches.get(pid)
         applicable = bool(c and c["applicable"])
+        dx = primary_dx.get(pid) or {}
+        proto_id = (c or {}).get("protocol_id") if applicable else None
         rows.append({
             "id": pid,
             "name": _short_name(p),
@@ -146,11 +149,12 @@ def dashboard():
             "age": fs.get_age(pid),
             "gender": p["gender"],
             "has_pneumonia": applicable and (c or {}).get("protocol_id") == "cap_adult_768",
-            "protocol_id": (c or {}).get("protocol_id") if applicable else None,
+            "protocol_id": proto_id,
             "protocol_label": (
-                pdisp.short_protocol_label((c or {}).get("protocol_id"))
-                if applicable else None
+                pdisp.short_protocol_label(proto_id) if proto_id else None
             ),
+            # Якорь болезни в списке: «J18.9 ВП» вместо абстрактного этапа «Терапия».
+            "dx_meta": pdisp.short_diagnosis_meta(dx.get("code"), proto_id) or None,
             "severity": c["severity"] if c and c["applicable"] else None,
             "setting": c["setting"] if c and c["applicable"] else None,
             "compliant": bool(c["compliant"]) if c and c["applicable"] else None,

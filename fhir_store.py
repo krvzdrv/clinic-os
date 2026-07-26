@@ -289,6 +289,21 @@ def get_conditions(pid):
     return db.fetchall(
         "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC", (pid,))
 
+
+def get_active_conditions_by_patient():
+    """patient_id → первый активный Condition (дашборд; demo — один диагноз)."""
+    rows = db.fetchall(
+        "SELECT patient_id, code, display, onset_date FROM condition_ "
+        "WHERE clinical_status = 'active' ORDER BY onset_date DESC"
+    ) or []
+    out = {}
+    for r in rows:
+        pid = r.get("patient_id")
+        if pid and pid not in out:
+            out[pid] = r
+    return out
+
+
 def add_condition(pid, code, display, onset_date=None, encounter_id=None,
                   code_system="ICD-10", clinical_status="active",
                   verification_status="confirmed",
