@@ -2028,6 +2028,20 @@
     });
   });
 
+  // Защита от повторной отправки обычных (не-AJAX, с переходом страницы) форм —
+  // двойной клик или Enter второй раз до ответа сервера (заметно на облачном
+  // демо с задержкой) не должен создавать запись дважды (напр. два приёма).
+  // AJAX-формы и удаление чипов защищены отдельно (свой disabled/confirm).
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    if (form.getAttribute('data-ajax') === '1') return;
+    if (form.querySelector('.chip-x')) return;
+    if (form.hasAttribute('data-resubmit-guard')) { e.preventDefault(); return; }
+    form.setAttribute('data-resubmit-guard', '1');
+    var btn = form.querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+  }, true);
+
   // AJAX-удаление чипов (кнопка × внутри чипа): убираем чип из DOM без перезагрузки.
   // Безопасное удаление: подтверждение для необратимых действий (измерения,
   // диагнозы, заказы/результаты, флаги). Отмена лечения — тоже с подтверждением.
