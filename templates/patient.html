@@ -1440,8 +1440,6 @@
           {% for c in conditions %}{% if c.id in ed.reason_condition_ids %}{% set _ = reason_conds.append(c) %}{% endif %}{% endfor %}
           {% if reason_conds %}
           <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
-          {% else %}
-          <p class="enc-reason new">Новая жалоба — диагноз ещё не поставлен</p>
           {% endif %}
           {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>
           {% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
