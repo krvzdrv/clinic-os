@@ -66,7 +66,8 @@
   .now-link .ti{font-size:14px;color:var(--text-muted);flex:none;margin-left:auto;}
   .now-link .badge{flex:none;}
 
-  .action-btn{display:inline-block;padding:8px 16px;font-size:13px;border-radius:8px;}
+  /* Размер .action-btn — только здесь высота/паддинг переопределены НЕ нужно;
+     .action-btn делит размер с .btn/.btn-small из static/clinic.css (SSOT). */
   .action-link{font-size:13px;font-weight:600;text-decoration:none;padding:8px 12px;border-radius:8px;}
   .action-link:hover{text-decoration:underline;}
   .empty-state{padding:24px;background:var(--surface-2);border-radius:10px;color:var(--text-secondary);font-size:14px;line-height:1.6;border:1px solid var(--border);}

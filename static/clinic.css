@@ -145,17 +145,27 @@ h1, h2, h3,
 }
 .back:hover { color: var(--steel); }
 
+/* Единый размер кнопки во всём приложении — приоритет действия показывает
+   цвет (fill-danger/accent/ghost), а не размер. Не переопределять
+   height/padding/font-size локально в шаблонах — только здесь (SSOT). */
 .btn,
 .btn-small,
 .action-btn,
 button.btn,
 button.btn-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 14px;
   font-family: var(--font);
+  font-size: 13px;
   background: var(--accent) !important;
   border-color: var(--accent) !important;
   color: #fff !important;
   border-radius: var(--radius);
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   text-decoration: none;
 }
@@ -366,14 +376,11 @@ button.btn-small {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* Primary CTA протокола (не вложенные add-panel формы). Компактная кнопка —
-   выделяется цветом (fill-danger/accent), а не размером; это не баннер. */
+/* Primary CTA протокола (не вложенные add-panel формы) — тот же размер
+   кнопки, что везде (.btn выше); выделяется цветом (fill-danger/accent),
+   а не размером; это не баннер. */
 .cds-action > form > .btn,
 .cds-action > .fform > form > .btn {
-  height: 38px;
-  padding: 0 18px;
-  font-size: 14px;
-  font-weight: 600;
   box-shadow: none;
 }
 /* Несоответствие / критично → fill-danger; ok / плановый контроль → fill-accent */

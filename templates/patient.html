@@ -17,11 +17,8 @@
   .allergy-tag{display:inline-block;background:var(--bg-danger);color:var(--text-danger);font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px;margin:4px 4px 0 0;}
   .rule{height:1px;background:var(--line);margin:16px 0;}
   .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-  .btn{display:inline-block;padding:7px 14px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border-radius:8px;text-decoration:none;border:none;cursor:pointer;}
-  .btn:hover{background:var(--coral-deep);color:#fff;}
-  .btn.ghost{background:#fff;color:var(--coral-deep);border:1px solid var(--coral);}
-  .btn.danger{background:#fff;color:var(--text-danger);border:1px solid var(--text-danger);}
-  .btn.danger:hover{background:var(--fill-danger);color:var(--on-danger);}
+  /* Размер/цвет .btn/.btn-small/.btn.ghost/.btn.danger — только в static/clinic.css (SSOT),
+     не переопределять здесь, иначе кнопки на странице расходятся по размеру. */
   h2{font-family:var(--font);font-size:15px;font-weight:650;margin:18px 0 10px;letter-spacing:-.01em;}
   h2::before{display:none;}
   .info-row{display:flex;gap:24px;margin-bottom:4px;}
@@ -60,8 +57,6 @@
   .mini-form select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
   .mini-form textarea{min-width:280px;resize:vertical;padding-top:7px;line-height:1.3;}
-  .btn-small{height:36px;padding:0 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:7px;cursor:pointer;}
-  .btn-small:hover{background:var(--coral-deep);}
   .mini-form .form-actions{width:100%;display:flex;justify-content:flex-end;margin-top:2px;}
   .gap{padding:8px 12px;border-radius:8px;margin:6px 0;font-size:13px;line-height:1.5;}
   .gap.warning{background:var(--red-bg);border:1px solid var(--red-line);}
@@ -163,15 +158,17 @@
   .fform{margin-top:8px;}
   .fform form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
   .fform .field{display:flex;flex-direction:column;gap:4px;}
+  /* Свободный текст (жалоба и т.п.) — растягивать на оставшееся место строки,
+     а не оставлять узкое окошко рядом с пустым фоном (Тип/Дата — компактные). */
+  .fform .field.grow{flex:1 1 220px;}
+  .fform .field.grow input{width:100%;}
   .fform label{font-size:12px;letter-spacing:normal;text-transform:none;color:var(--text-secondary);font-weight:400;height:auto;line-height:1.3;display:inline-flex;align-items:center;gap:6px;}
   .fform label .ti{font-size:13px;color:var(--text-secondary);}
   .fform input,.fform select,.fform textarea{height:36px;padding:0 10px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
   .fform select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
   .fform textarea{min-width:240px;height:36px;resize:vertical;padding-top:7px;line-height:1.3;}
-  .fform .btn-small{height:36px;padding:0 16px;background:var(--coral);color:#fff;font-size:13px;font-weight:600;border:none;border-radius:6px;cursor:pointer;}
-  .fform .btn-small:hover{background:var(--coral-deep);}
-  .fform .form-actions{width:100%;display:flex;justify-content:flex-end;margin-top:2px;}
+  .fform .form-actions{width:100%;display:flex;gap:8px;justify-content:flex-end;margin-top:2px;}
   .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
   .fform .note b{color:var(--ink);}
   .fform .note .ref{color:var(--faint);}
@@ -232,7 +229,10 @@
   .add-panel:not([open]) > :not(summary){display:none !important;}
   .add-panel[open]{flex:1 1 100%;}
   .add-panel[open] > summary{border-bottom:1px solid var(--line);background:#fff;}
-  .add-panel[open] > summary::before{content:"× ";}
+  /* Открыто = «свернуть», не «удалить» — шеврон, а не ×, чтобы не путать
+     с крестиком удаления у чипов (.tag-chip .chip-x). Закрывать явной
+     кнопкой «Отмена» в форме, а не только повторным кликом по заголовку. */
+  .add-panel[open] > summary::before{content:"▾ ";}
   /* Плавное раскрытие формы — без прыжка контента ниже (см. smoothToggleDetails). */
   .add-panel-b{overflow:hidden;transition:height .18s ease;}
   .add-panel .fform{margin:0;padding:10px;}
@@ -403,7 +403,7 @@
   .enc-summary .enc-chev{font-size:18px;color:var(--text-muted);flex:none;}
   .history-fold:not([open]) > summary.enc-summary .enc-chev-down{display:none;}
   .history-fold[open] > summary.enc-summary .enc-chev-right{display:none;}
-  .enc-summary .btn-small{height:32px;pointer-events:auto;}
+  .enc-summary .btn-small{pointer-events:auto;}
   .history-fold .enc-panel{padding:0 14px 14px;}
   .history-fold .enc-card{
     border:none;border-radius:0;background:transparent;box-shadow:none;margin:0;overflow:visible;
@@ -413,15 +413,14 @@
     margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid var(--border);
   }
   .enc-toolbar .enc-complaint{flex:1;min-width:12em;font-size:13px;color:var(--text-secondary);margin:0;}
-  .enc-toolbar .btn-small{height:32px;}
-  /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost),
-     не отдельный визуальный стиль чипа add-panel, иначе рядом смотрится «слепленным». */
-  .enc-toolbar .add-panel{flex:0 0 auto;min-width:auto;border:1px solid var(--coral);border-radius:7px;background:#fff;}
+  /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost) и тот же
+     размер, что .btn/.btn-small (static/clinic.css), иначе рядом смотрится «слепленным». */
+  .enc-toolbar .add-panel{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
   .enc-toolbar .add-panel > summary{
     height:32px;display:flex;align-items:center;
-    padding:0 16px;font-size:13px;font-weight:600;color:var(--coral-deep);
+    padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
   }
-  .enc-toolbar .add-panel[open] > summary{border-radius:7px 7px 0 0;}
+  .enc-toolbar .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;}
   .visit-list{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
   .visit-row{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -832,21 +831,27 @@
   {# —— Эпизод: диагноз-контейнер → лечение / цель / CDS (CLINICAL_HIERARCHY) —— #}
   {% set ed0 = current_ed if current_ed is defined and current_ed else (encounters_data[0] if encounters_data else none) %}
   {% set e0 = ed0.encounter if ed0 else none %}
-  {% set focus_now = (v.focus_stage if v is defined and v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
-  {% set tier = v.tier if v.tier is defined else ('ok' if v.ok else 'warn') %}
-  {% set reason = v.reason if v.reason is defined else none %}
   {% set PN_CODES = ['J12.9','J13','J14','J15.2','J15.3','J15.4','J15.7','J15.9','J16.0','J18.0','J18.1','J18.2','J18.9','A48.1'] %}
   {% set ROUTE_RU = {'oral':'внутрь','iv':'в/в','im':'в/м','inh':'ингаляционно'} %}
-  {% set nest = namespace(primary_id=none) %}
-  {% for c in conditions %}
-    {% if nest.primary_id is none and c.code in PN_CODES %}
-      {% set nest.primary_id = c.id %}
-    {% endif %}
-  {% endfor %}
-  {# CDS внутри Condition-контейнера: при ВП или при пустом placeholder «диагноз не установлен» #}
-  {% set nest_cds = nest.primary_id is not none or (not conditions) %}
+  {# У пациента может быть несколько протоколов (ВП + ЖДА и т.д.) — каждый со своей
+     вложенной CDS-карточкой под «своим» диагнозом (verdict_by_condition из protocol_dispatch),
+     а не только у ВП (единственное число nest.primary_id — легаси, больше не используется). #}
+  {% set verdict_by_condition = verdict_by_condition if verdict_by_condition is defined else {} %}
+  {% set nest_cds = (verdict_by_condition|length > 0) or (not conditions) %}
+  {# Модульные alias'ы к CAP-вердикту (v) — только для CAP-специфичных блоков ниже
+     («Лечение»/АБТ, «Планирование и выписка»/R-графия и выписка), которые не участвуют
+     в обобщении на несколько протоколов. Внутри render_now_action(v, ...) те же имена
+     пересчитываются локально от переданного verdict — макро-scope их не путает. #}
+  {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
+  {% set tier = v.tier if v.tier is defined else ('ok' if v.ok else 'warn') %}
+  {% set reason = v.reason if v.reason is defined else none %}
 
-  {% macro render_now_action(nested=false) %}
+  {% macro render_now_action(v, nested=false) %}
+  {% set tier = v.tier if v.tier is defined else ('ok' if v.ok else 'warn') %}
+  {% set reason = v.reason if v.reason is defined else none %}
+  {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
+  {% set primary = v.checks_primary if v.checks_primary is defined else v.checks %}
+  {% set more = v.checks_more if v.checks_more is defined else [] %}
   <section id="now-action"
            class="cds verdict-panel {{ 'dx-issue' if nested else '' }} {{ 'cds-ok verdict-ok' if v.ok else ('cds-critical verdict-warn' if tier == 'critical' else ('cds-warn verdict-warn' if v.applicable else 'cds')) }}"
            aria-label="Подсказка по протоколу">
@@ -915,7 +920,10 @@
             <input type="hidden" name="route" value="{{ route_now }}">
             <input type="hidden" name="med_date" value="{{ today }}">
             <input type="hidden" name="period_end" value="{{ course_end }}">
-            <button class="btn" type="submit">{% if ns.name %}Заменить на {{ ns.name }}{% else %}Заменить препарат{% endif %}</button>
+            <button class="btn" type="submit">
+              {% if v.no_active_therapy %}{% if ns.name %}Назначить {{ ns.name }}{% else %}Назначить препарат{% endif %}
+              {% else %}{% if ns.name %}Заменить на {{ ns.name }}{% else %}Заменить препарат{% endif %}{% endif %}
+            </button>
           </form>
           <div class="cds-confirm" id="med-confirm-box-now" style="display:none;"></div>
           <details class="cds-alt">
@@ -981,6 +989,7 @@
     {% if conditions %}
       {% for c in conditions %}
       {% set is_cap = c.code in PN_CODES %}
+      {% set cond_verdict = verdict_by_condition.get(c.id) %}
       <article class="dx-card" id="condition-{{ c.id }}">
         <div class="dx-head">
           <div class="icon-avatar" aria-hidden="true"><i class="ti ti-stethoscope"></i></div>
@@ -990,8 +999,9 @@
         {% if c.source_label %}
         <p class="dx-provenance"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: {{ c.source_label }}</p>
         {% endif %}
-        {% if is_cap %}
+        {% if is_cap or cond_verdict %}
         <div class="dx-rail">
+          {% if is_cap %}
           <div class="attr-row">
             <p class="attr-label"><i class="ti ti-pill" aria-hidden="true"></i>Лечение</p>
             <div class="attr-value-row">
@@ -1022,8 +1032,13 @@
             </div>
             {% endfor %}
           {% endif %}
-          {% if nest_cds and c.id == nest.primary_id %}
-            {{ render_now_action(true) }}
+          {% endif %}
+          {% if cond_verdict %}
+            {{ render_now_action(cond_verdict, true) }}
+          {% elif is_cap and nest_cds %}
+            {# Защитный откат: диспетчер не нашёл этот Condition, но ВП применима у пациента —
+               не оставлять карточку ВП без подсказки. #}
+            {{ render_now_action(v, true) }}
           {% endif %}
         </div>
         {% endif %}
@@ -1036,7 +1051,7 @@
           <h2 class="dx-title">Диагноз не установлен</h2>
         </div>
         <div class="dx-rail">
-          {{ render_now_action(true) }}
+          {{ render_now_action(v, true) }}
         </div>
       </article>
     {% endif %}
@@ -1049,6 +1064,10 @@
               <option value="">—</option>
               <optgroup label="ВП">
                 {% for code, d in icd10.items() if code in PN_CODES %}
+                <option value="{{ code }}" data-display="{{ d }}">{{ code }} — {{ d }}</option>{% endfor %}
+              </optgroup>
+              <optgroup label="ЖДА">
+                {% for code, d in icd10.items() if code in ['D50','D50.0','D50.8','D50.9'] %}
                 <option value="{{ code }}" data-display="{{ d }}">{{ code }} — {{ d }}</option>{% endfor %}
               </optgroup>
               <optgroup label="Фон">
@@ -1074,7 +1093,7 @@
   </section>
 
   {% if not nest_cds %}
-    {{ render_now_action(false) }}
+    {{ render_now_action(v, false) }}
   {% endif %}
 
   {% set enc_open = current_ed and current_ed.encounter.status != 'finished' %}
@@ -1151,8 +1170,11 @@
               <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
                 <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
                 <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
-                <div class="field"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
-                <div class="form-actions"><button class="btn-small" type="submit">Открыть приём</button></div>
+                <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
+                <div class="form-actions">
+                  <button type="button" class="btn ghost btn-small" onclick="var d=this.closest('details.add-panel'); if(d) d.open=false;">Отмена</button>
+                  <button class="btn-small" type="submit">Открыть приём</button>
+                </div>
               </form>
             </div>
           </div>
@@ -1559,7 +1581,7 @@
           <form method="POST" action="{{ url_for('add_encounter_route', pid=patient.id) }}">
             <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
             <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
-            <div class="field"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
+            <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня"></div>
             <div class="form-actions"><button class="btn-small" type="submit">Открыть приём</button></div>
           </form>
         </div>
