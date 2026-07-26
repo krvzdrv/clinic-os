@@ -182,8 +182,6 @@
       {% set ini = ((parts[0][:1] if parts else '?') ~ (parts[1][:1] if parts|length > 1 else ''))|upper %}
       {% set ns = (p.next_step or '')|lower %}
       {% set urgent = ('орит' in ns) or ('госпитализ' in ns) %}
-      {% set ironish = ('желез' in ns) or (p.protocol_id == 'ida_adult_23') %}
-      {% set abtish = (not ironish) and (('амокси' in ns) or ('азитр' in ns) or ('антибиот' in ns) or ('абт' in ns) or ('замен' in ns) or ('назнач' in ns and 'исслед' not in ns)) %}
       <tr class="pat-row" onclick="location.href='{{ url_for('patient_detail', pid=p.id) }}'">
         <td>
           <div class="pat-cell">
@@ -217,11 +215,8 @@
         <td>
           {% if p.next_step %}
           <a class="now-link" href="{{ url_for('patient_detail', pid=p.id) }}" onclick="event.stopPropagation()">
-            {% if urgent %}<span class="badge red">срочно</span>
-            {% elif not p.compliant and ironish %}<span class="badge warning">ЖДА</span>
-            {% elif not p.compliant and abtish %}<span class="badge warning">АБТ</span>
-            {% elif not p.compliant %}<span class="badge warning">сейчас</span>
-            {% endif %}
+            {# Только госпитализация/ОРИТ — чип срочности; АБТ/ЖДА/«сейчас» дублировали текст. #}
+            {% if urgent %}<span class="badge red">срочно</span>{% endif %}
             <span class="now-text">{{ p.next_step }}</span>
             <i class="ti ti-chevron-right" aria-hidden="true"></i>
           </a>
