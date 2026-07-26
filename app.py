@@ -663,7 +663,18 @@ def _protocol_gap_issues(pid, *, codes):
     return issues
 
 
-# ---------- Удалить приём (ошибка / случайное создание) ----------
+# ---------- Очистить / удалить приём ----------
+@app.route("/patient/<pid>/encounter/<eid>/clear", methods=["POST"])
+def clear_encounter_route(pid, eid):
+    """Сброс данных приёма без удаления самого приёма (демо / ошибка ввода)."""
+    if not fs.get_patient(pid):
+        return "Пациент не найден", 404
+    if not fs.clear_encounter(pid, eid):
+        return "Приём не найден", 404
+    _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid, e=eid))
+
+
 @app.route("/patient/<pid>/encounter/<eid>/delete", methods=["POST"])
 def delete_encounter_route(pid, eid):
     if not fs.get_patient(pid):

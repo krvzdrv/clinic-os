@@ -235,16 +235,8 @@ def update_encounter_complaint(eid, complaint):
     db.execute("UPDATE encounter SET complaint=%s WHERE id=%s", (complaint, eid))
 
 
-def delete_encounter(pid, eid):
-    """Удалить приём (случайное создание / ошибочная запись).
-
-    Удаляет данные, привязанные к этому encounter_id (осмотр, заказы, результаты,
-    назначения, флаги, cds log). Диагнозы (condition_) не удаляет — только снимает
-    связь reasonReference и обнуляет legacy condition_.encounter_id.
-    """
-    enc = get_encounter(eid)
-    if not enc or enc.get("patient_id") != pid:
-        return False
+def _purge_encounter_clinical_data(pid, eid):
+    """Удалить клинические данные, привязанные к приёму (сам encounter не трогает)."""
     db.execute("DELETE FROM encounter_reason WHERE encounter_id = %s", (eid,))
     db.execute(
         "UPDATE condition_ SET encounter_id = NULL "
@@ -266,6 +258,32 @@ def delete_encounter(pid, eid):
             )
         except Exception:
             pass
+
+
+def clear_encounter(pid, eid):
+    """Очистить данные приёма, сам приём оставить (удобный сброс для демо/ошибки ввода).
+
+    Жалоба, осмотр, заказы, результаты, назначения, флаги, повод — снимаются.
+    Диагнозы пациента сохраняются (только отвязка encounter_reason / legacy).
+    """
+    enc = get_encounter(eid)
+    if not enc or enc.get("patient_id") != pid:
+        return False
+    _purge_encounter_clinical_data(pid, eid)
+    db.execute("UPDATE encounter SET complaint=NULL WHERE id=%s AND patient_id=%s", (eid, pid))
+    clear_pid_cache(pid)
+    return True
+
+
+def delete_encounter(pid, eid):
+    """Удалить приём (случайное создание / ошибочная запись).
+
+    Удаляет данные приёма и сам encounter. Диагнозы (condition_) не удаляет.
+    """
+    enc = get_encounter(eid)
+    if not enc or enc.get("patient_id") != pid:
+        return False
+    _purge_encounter_clinical_data(pid, eid)
     db.execute("DELETE FROM encounter WHERE id = %s AND patient_id = %s", (eid, pid))
     clear_pid_cache(pid)
     return True

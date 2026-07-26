@@ -239,35 +239,15 @@ def scenario_close_open_encounter(page, audit: Audit):
         return
     _goto(page, href)
 
-    # Закрыть приём
-    close = page.locator("button:has-text('Закрыть'), form[action*='close'] button, form[action*='finish'] button").first
-    if close.count():
-        close.click()
+    # Очистить приём (сброс данных без удаления приёма)
+    clear_btn = page.locator("button:has-text('Очистить приём'), form[action*='/clear'] button").first
+    if clear_btn.count():
+        page.once("dialog", lambda d: d.accept())
+        clear_btn.click()
         page.wait_for_timeout(700)
-        audit.add(sc, "Закрыть приём", True, page.url)
+        audit.add(sc, "Очистить приём", True, page.url)
     else:
-        # details dropdown
-        ok, err = _click_visible(page, "summary:has-text('Закрыть'), button:has-text('Закрыть приём')")
-        if ok:
-            page.wait_for_timeout(400)
-            ok2, _ = _click_visible(page, "button:has-text('Закрыть приём'), form[action*='close'] button")
-            audit.add(sc, "Закрыть приём (через menu)", ok2, "")
-        else:
-            audit.add(sc, "Закрыть приём", False, "кнопка не найдена: " + err)
-
-    # Новый приём
-    ok, err = _click_visible(page, "summary:has-text('Новый приём'), summary:has-text('+ Новый')")
-    if ok:
-        # submit create
-        form_ok = page.locator("form[action*='encounter'] button[type='submit'], details.add-panel button[type='submit']").first
-        if form_ok.count():
-            form_ok.click()
-            page.wait_for_timeout(800)
-            audit.add(sc, "Новый приём — создать", True, page.url)
-        else:
-            audit.add(sc, "Новый приём — форма", False, "нет submit")
-    else:
-        audit.add(sc, "Открыть «Новый приём»", False, err)
+        audit.add(sc, "Очистить приём", False, "кнопка не найдена")
 
 
 def scenario_anamnesis_exam_forms(page, audit: Audit):
