@@ -37,7 +37,7 @@ def create_cap_plan(pid, condition_id=None):
         description="Клиническое выздоровление: t° <38 °C · SpO2 ≥95% · нет тахипноэ",
         target_metric="cap_recovery", target_value=1, target_unit="flag",
     )
-    fs.set_pathway(pid, "treatment", "Терапия ВП")
+    fs.set_pathway(pid, "treatment")
     return cp_id
 
 
@@ -71,11 +71,11 @@ def evaluate_cap_goal(pid):
 
     if achieved:
         fs.set_goal_status(goal["id"], "achieved")
-        fs.set_pathway(pid, "controlled", "Выздоровление / контроль")
+        fs.set_pathway(pid, "controlled")
         return {"status": "achieved", "temp": temp, "spo2": spo2, "rr": rr,
                 "goal_id": goal["id"]}
     fs.set_goal_status(goal["id"], "not-achieved")
-    fs.set_pathway(pid, "adjustment", "Коррекция терапии ВП")
+    fs.set_pathway(pid, "adjustment")
     return {"status": "not-achieved", "temp": temp, "spo2": spo2, "rr": rr,
             "goal_id": goal["id"],
             "reason": _cap_not_achieved_reason(afebrile, oxygenated, not_tachypneic)}
@@ -106,7 +106,7 @@ def admit_inpatient(pid, practitioner_id=None):
     eid = fs.add_encounter(pid, practitioner_id=practitioner_id,
                            status="in-progress", cls="inpatient",
                            start=None, complaint="Госпитализация по ВП (КП N204, п.26)")
-    fs.set_pathway(pid, "inpatient", "Стационарное лечение ВП")
+    fs.set_pathway(pid, "inpatient")
     return eid
 
 
@@ -134,7 +134,7 @@ def discharge_inpatient(pid, practitioner_id=None):
     # Повторная R-графия через 4-6 нед (п.12.3, п.49)
     schedule_repeat_cxr(pid, practitioner_id=practitioner_id)
 
-    fs.set_pathway(pid, "controlled", "Выписка / амбулаторный контроль")
+    fs.set_pathway(pid, "controlled")
     return {"discharged": True, "reason": "Выписан. Запланирована контрольная R-графия через 4-6 нед."}
 
 

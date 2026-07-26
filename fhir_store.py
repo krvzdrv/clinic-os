@@ -701,20 +701,48 @@ def set_goal_status(gid, status, achievement_date=None):
 
 
 # ============ Pathway ============
+# Этап пути — только lifecycle. Тяжесть / условия / вердикт / «сделать сейчас»
+# живут в отдельных колонках дашборда и в CDS (STATUS_SEMANTICS §1).
+# label всегда из state; свободный текст в set_pathway игнорируется.
+PATHWAY_LABELS = {
+    "screening": "Скрининг",
+    "treatment": "Терапия",
+    "adjustment": "Коррекция",
+    "inpatient": "Стационар",
+    "icu": "ОРИТ",
+    "controlled": "Выздоровление",  # в доке также recovered — в коде state=controlled
+}
+
+
+def pathway_label(state, fallback=None):
+    return PATHWAY_LABELS.get(state) or fallback or "—"
+
+
+def _normalize_pathway(row):
+    if not row:
+        return {"state": "unknown", "label": "—"}
+    out = dict(row)
+    out["label"] = pathway_label(out.get("state"), out.get("label"))
+    return out
+
 
 def get_pathway(pid):
     c = _cached(pid, "pathway")
     if c is not None:
-        return c or {"state": "unknown", "label": "—"}
-    return db.fetchone("SELECT * FROM pathway WHERE patient_id = %s", (pid,)) \
-        or {"state": "unknown", "label": "—"}
+        return _normalize_pathway(c)
+    return _normalize_pathway(
+        db.fetchone("SELECT * FROM pathway WHERE patient_id = %s", (pid,)))
 
-def set_pathway(pid, state, label):
+
+def set_pathway(pid, state, label=None):
+    """label опционален и перетирается каноном по state (не дублировать тяжесть/CTA)."""
+    label = pathway_label(state, label)
     existing = get_pathway(pid)
     if existing and existing.get("state") != "unknown":
         db.execute("UPDATE pathway SET state=%s, label=%s WHERE patient_id=%s", (state, label, pid))
     else:
         db.execute("INSERT INTO pathway (patient_id, state, label) VALUES (%s,%s,%s)", (pid, state, label))
+    clear_pid_cache(pid)
 
 
 # ============ Clinical flags (анамнез/осмотр/контекст) ============
@@ -809,7 +837,8 @@ def get_all_cap_caches():
 
 def get_all_pathways():
     """Все pathway сразу (для дашборда) — одним запросом."""
-    return {r["patient_id"]: r for r in db.fetchall("SELECT * FROM pathway")}
+    return {r["patient_id"]: _normalize_pathway(r)
+            for r in db.fetchall("SELECT * FROM pathway")}
 
 
 # ============ Опциональные демо-данные ============

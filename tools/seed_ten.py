@@ -160,7 +160,7 @@ def seed_ten(dr_id: str):
     fs.add_service_request(pid, "CXR_REPEAT", "Контрольная R-графия ОГК",
                            encounter_id=e1, occurrence_date=_ago(0), status="active")
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "controlled", "Выздоровление, контроль")
+    fs.set_pathway(pid, "controlled")
     stories.append((pid, "Орлов", "эталон амбулаторно · J15.9 · 1 приём"))
 
     # ── 2. Соколов — гость, неверная АБТ ──────────────────────────────────
@@ -178,7 +178,6 @@ def seed_ten(dr_id: str):
     _med(pid, e1, "J01FA10", "Азитромицин", route="oral", days_ago=2,
          duration_days=5, dose="500 мг", frequency="1 раз в день")
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "treatment", "Терапия ВП (отклонение АБТ)")
     stories.append((pid, "Соколов", "гость: неверная АБТ · J18.9 · 1 приём"))
 
     # ── 3. Морозов — тяжёлая амбулаторно ──────────────────────────────────
@@ -195,7 +194,6 @@ def seed_ten(dr_id: str):
     _vitals(pid, e1, 1, t=39.5, spo2=86, rr=32, hr=118, sbp=85, dbp=55, wbc=22.0, crp=180)
     _cxr(pid, e1, "Двусторонняя инфильтрация — тяжёлая ВП", 1)
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "treatment", "Тяжёлая ВП — нужна госпитализация")
     stories.append((pid, "Морозов", "тяжёлая амбулаторно → стационар · J18.0 · 1 приём"))
 
     # ── 4. Стационаров — корректный стационар ─────────────────────────────
@@ -220,7 +218,7 @@ def seed_ten(dr_id: str):
          duration_days=5, dose="500 мг", frequency="1 раз в день")
     _vitals(pid, e1, 2, t=36.8, spo2=96, rr=16, hr=78, sbp=122, dbp=78, crp=28)
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "treatment", "Стационар — улучшение")
+    fs.set_pathway(pid, "inpatient")
     stories.append((pid, "Стационаров", "стационар OK · J13 · 1 приём"))
 
     # ── 5. Клавуланова — риск АБТ 3 мес ───────────────────────────────────
@@ -285,6 +283,7 @@ def seed_ten(dr_id: str):
          duration_days=10, dose="600 мг", frequency="2 раза в день")
     _vitals(pid, e1, 3, t=37.2, spo2=94, rr=20, hr=92, sbp=112, dbp=70, crp=55)
     cps.create_cap_plan(pid)
+    fs.set_pathway(pid, "inpatient")
     stories.append((pid, "Аспиратов", "аспирация+MRSA · J18.9 · 1 приём"))
 
     # ── 8. Бронхов — бронхолитик без обструкции ───────────────────────────
@@ -323,6 +322,7 @@ def seed_ten(dr_id: str):
     _med(pid, e1, "J01CA04", "Амоксициллин", route="oral", days_ago=5,
          duration_days=7, dose="500 мг", frequency="3 раза в день", dose_per_day=1500)
     cps.create_cap_plan(pid)
+    fs.set_pathway(pid, "adjustment")
     stories.append((pid, "Контролёв", "АБТ без эффекта · J15.4 · 1 приём"))
 
     # ── 10. Пустова — почти пустая карта ──────────────────────────────────
@@ -348,7 +348,7 @@ def seed_ten(dr_id: str):
                            occurrence_date=_ago(2), status="completed")
     fs.add_service_request(pid, "FERRITIN", "Ферритин", encounter_id=e1,
                            occurrence_date=_ago(2), status="completed")
-    fs.set_pathway(pid, "treatment", "ЖДА — терапия железом не назначена")
+    fs.set_pathway(pid, "treatment")
     stories.append((pid, "Феррова", "ЖДА без железа · D50.9 · 1 приём"))
 
     # ── 12. Железов — ЖДА с терапией по протоколу ─────────────────────────
@@ -370,7 +370,7 @@ def seed_ten(dr_id: str):
                            occurrence_date=_ago(7), status="completed")
     _med(pid, e1, "B03AA07", "Сульфат железа", route="oral", days_ago=7,
          duration_days=90, dose="100 мг элементарного Fe", frequency="1–2 раза в день")
-    fs.set_pathway(pid, "treatment", "ЖДА — терапия железом внутрь")
+    fs.set_pathway(pid, "treatment")
     stories.append((pid, "Железов", "ЖДА с железом · D50.0 · 1 приём"))
 
     return stories

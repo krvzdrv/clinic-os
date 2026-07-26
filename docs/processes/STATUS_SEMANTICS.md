@@ -53,11 +53,11 @@ flowchart TB
 
 Закрытие приёма **не** закрывает диагноз. Под активным диагнозом может быть 1…N закрытых приёмов + один открытый (`in-progress`).
 
-Третий слой (не путать с двумя выше): **эпизод пути** `pathway.state → recovered` — машинный итог курса ВП (цель/выписка); см. §1.
+Третий слой (не путать с двумя выше): **эпизод пути** `pathway.state → controlled` — машинный итог курса (цель/выписка); см. §1.
 
 ### Сценарии
 
-1. **Одно обращение, несколько визитов (ВП):** один `Condition` (active) → приём 1 → `finished` → приём 2 / контрольный → … → при выздоровлении: `resolved` + pathway `recovered`. Процессы `cap_outpatient` / `cap_inpatient` в `process_registry.yaml` — про **эпизод болезни**, не про один клик «Закрыть приём».
+1. **Одно обращение, несколько визитов (ВП):** один `Condition` (active) → приём 1 → `finished` → приём 2 / контрольный → … → при выздоровлении: `resolved` + pathway `controlled`. Процессы `cap_outpatient` / `cap_inpatient` в `process_registry.yaml` — про **эпизод болезни**, не про один клик «Закрыть приём».
 2. **Другая причина, другой врач:** тот же `Patient`; новый `Condition`; новый `Encounter` с другим `practitioner_id` и `encounter_reason` → новый диагноз. Старый диагноз (active) остаётся на первом плане; `resolved` — в истории. При 2+ активных диагнозах — `#triage-panel` (`UI_PROCESS_MAP.md`), чтобы CDS по одному не потерялся среди другого.
 3. **Один приём — две жалобы:** один `Encounter`, две строки в `encounter_reason`. Приём виден в фильтре **обоих** диагнозов; дублировать запись не нужно.
 
@@ -77,14 +77,16 @@ flowchart TB
 
 | state | label | Смысл | Кто выставляет |
 |-------|-------|--------|---------------|
-| `screening` | Скрининг | Пациент заведён, диагноза ВП ещё нет | `fhir_store.add_patient` |
-| `treatment` | Терапия | Амбулаторное лечение ВП (план создан) | `care_plan_service.create_cap_plan` |
+| `screening` | Скрининг | Пациент заведён, диагноза ещё нет | `fhir_store.add_patient` |
+| `treatment` | Терапия | План лечения создан / идёт терапия | `care_plan_service.create_cap_plan` |
 | `inpatient` | Стационар | Госпитализация (encounter class='inpatient') | `care_plan_service.admit_inpatient` |
 | `icu` | ОРИТ | Перевод в ОРИТ (п.27) | шаг `transfer_icu` |
-| `recovered` | Выздоровление | Эпизод закрыт (цель достигнута) | `care_plan_service.discharge_inpatient` / `evaluate_cap_goal` |
-| `adjustment` | Коррекция | Цель не достигнута — цикл коррекции (смена АБТ/госпитализация) | `care_plan_service.evaluate_cap_goal` (not-achieved) |
+| `controlled` | Выздоровление | Цель достигнута / выписка; контроль по плану | `discharge_inpatient` / `evaluate_cap_goal` |
+| `adjustment` | Коррекция | Цель не достигнута — смена АБТ / пересмотр | `care_plan_service.evaluate_cap_goal` (not-achieved) |
 
-**Правило:** `recovered` — терминальный статус эпизода. `adjustment` — возврат в цикл лечения (не закрытие).
+**Правило:** `controlled` — терминальный/контрольный этап эпизода (в тексте иногда `recovered`). `adjustment` — возврат в цикл лечения.
+
+**Не класть в `label`:** тяжесть, «нужна госпитализация», «отклонение АБТ», «железо не назначено». Это колонки дашборда / `next_step` / вердикт CDS (`fhir_store.PATHWAY_LABELS`).
 
 ---
 

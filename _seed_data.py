@@ -57,7 +57,7 @@ def seed_all():
                       frequency="3 раза в день", med_date=_d(-3), period_end=_d(7),
                       encounter_id=eid, dose_per_day=1500)
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "controlled", "Выздоровление, контроль")
+    fs.set_pathway(pid, "controlled")
     g = fs.get_goals(pid)[0]
     fs.set_goal_status(g["id"], "achieved")
 
@@ -82,7 +82,6 @@ def seed_all():
                       frequency="1 раз в день", med_date=_d(-1), period_end=_d(9),
                       encounter_id=eid)
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "treatment", "Терапия ВП (отклонение АБТ)")
 
     # C — тяжёлая амбулаторно, АБТ не назначена → госпитализация
     pid = fs.add_patient("Морозов", "Виктор", "Сергеевич", "male", "1975-04-18")
@@ -100,4 +99,3 @@ def seed_all():
     fs.add_observation(pid, "8480-6", "АД систолическое", value_numeric=85, value_unit="mmHg",
                        obs_date=_d(-1), encounter_id=eid)
     cps.create_cap_plan(pid)
-    fs.set_pathway(pid, "treatment", "Тяжёлая ВП — нужна госпитализация")

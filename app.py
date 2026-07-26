@@ -155,7 +155,10 @@ def dashboard():
             "setting": c["setting"] if c and c["applicable"] else None,
             "compliant": bool(c["compliant"]) if c and c["applicable"] else None,
             "state": (pathways.get(pid) or {}).get("state") or "unknown",
-            "state_label": (pathways.get(pid) or {}).get("label") or "—",
+            "state_label": fs.pathway_label(
+                (pathways.get(pid) or {}).get("state"),
+                (pathways.get(pid) or {}).get("label"),
+            ),
             # Аудит: что сделать сейчас (primary-протокол из cap_cache, без N+1).
             "next_step": (c.get("next_step") if c else None) or None,
             "headline": (c.get("headline") if c else None) or None,
