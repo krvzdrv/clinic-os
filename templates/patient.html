@@ -1622,7 +1622,7 @@
               {% if not anam_notes %}<span class="none" style="padding:0;font-style:normal;">Записей пока нет</span>{% endif %}
             </div>
             <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('Запись', st_anam in ('active','attention') and not anam_notes and e.complaint) %}
+              {% call add_panel('Запись', st_anam in ('active','attention') and not anam_notes) %}
                 {{ anam_form(patient.id, e.id, 'chips-anam-' ~ e.id) }}
               {% endcall %}
             </div>
