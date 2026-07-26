@@ -1074,7 +1074,9 @@
   {% set focus_now = (v.focus_stage if v.focus_stage and (not v.ok or v.focus_stage == 'repeat_cxr') else none) %}
   {% set primary = v.checks_primary if v.checks_primary is defined else v.checks %}
   {% set more = v.checks_more if v.checks_more is defined else [] %}
-  <section id="now-action"
+  {# id="now-action" только у самостоятельной карточки. Вложенный CDS в dx-card
+     без id — иначе soft_refresh путает два узла и может снести предупреждения. #}
+  <section {% if not nested %}id="now-action"{% endif %}
            class="cds verdict-panel {{ 'dx-issue' if nested else '' }} {{ 'cds-ok verdict-ok' if v.ok else ('cds-critical verdict-warn' if tier == 'critical' else ('cds-warn verdict-warn' if v.applicable else 'cds')) }}"
            aria-label="Подсказка по протоколу">
     {% if v.ok %}
@@ -2146,19 +2148,35 @@
       headers: {'Accept': 'text/html'}
     }).then(function(r){ return r.text(); }).then(function(html){
       var doc = new DOMParser().parseFromString(html, 'text/html');
-      function swapId(id){
+      function swapId(id, allowRemove){
         var cur = document.getElementById(id);
         var neu = doc.getElementById(id);
         if(cur && neu) cur.replaceWith(document.importNode(neu, true));
-        else if(cur && !neu) cur.remove();
+        else if(cur && !neu && allowRemove) cur.remove();
+        // !cur && neu — не вставляем вслепую (нужен якорь); conditions-list /
+        // now-action обрабатываем отдельно ниже.
       }
-      ['now-action', 'triage-panel', 'allergy-conflict', 'conditions-list', 'head-allergy-chips'].forEach(swapId);
+      // Карточка диагноза + вложенные предупреждения — целиком. Не трогать
+      // вложенный CDS отдельно (раньше id="now-action" снимал блок с карточки).
+      swapId('conditions-list', false);
+      swapId('triage-panel', true);
+      swapId('allergy-conflict', true);
+      swapId('head-allergy-chips', true);
+      // Самостоятельный #now-action (когда CDS не вложен в dx-card).
+      (function(){
+        var cur = document.getElementById('now-action');
+        var neu = doc.getElementById('now-action');
+        var list = document.getElementById('conditions-list');
+        if(cur && neu) cur.replaceWith(document.importNode(neu, true));
+        else if(cur && !neu) cur.remove();
+        else if(!cur && neu && list) list.after(document.importNode(neu, true));
+      })();
       // Списки внутри приёма (чипы/виталы/заказы) — по актуальным id на странице.
       var listIds = [];
       document.querySelectorAll('[id^="chips-"],[id^="dlist-"]').forEach(function(el){
         if(el.id && listIds.indexOf(el.id) === -1) listIds.push(el.id);
       });
-      listIds.forEach(swapId);
+      listIds.forEach(function(id){ swapId(id, true); });
       // Бейджи и CSS-класс секции — без смены details.open.
       doc.querySelectorAll('details.fstep[id]').forEach(function(neu){
         var cur = document.getElementById(neu.id);
