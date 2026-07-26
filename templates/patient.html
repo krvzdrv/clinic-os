@@ -727,8 +727,8 @@
   <div class="fform">
     <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-activity" aria-hidden="true"></i>Показатель</label>
-        <select name="code" id="obs-code-{{ uid }}">{% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
+      <div class="field"><label class="sr-only">Показатель</label>
+        <select name="code" id="obs-code-{{ uid }}" aria-label="Показатель">{% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
       <div class="field"><label><i class="ti ti-number-123" aria-hidden="true"></i>Значение</label>
         <div class="input-group">
@@ -776,8 +776,9 @@
   <div class="fform">
     <form method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-replace="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>Общее состояние</label>
-        <select name="key">
+      {# Label скрыт: заголовок уже в add_panel / attr-row — без дубля на экране. #}
+      <div class="field"><label class="sr-only">Общее состояние</label>
+        <select name="key" aria-label="Общее состояние">
           {% for k in general_condition_order %}
           {# Чистое название без пояснения смысла — показание к госпитализации
              считает и показывает CDS-карточка (protocol_cap.hospitalization_reasons),
@@ -846,8 +847,8 @@
       <input type="hidden" name="source_label" value="{{ source_label }}">
       <p class="src-hint"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
-      <div class="field"><label><i class="ti ti-stethoscope" aria-hidden="true"></i>Диагноз (МКБ-10)</label>
-        <select name="code" required>
+      <div class="field"><label class="sr-only">Диагноз (МКБ-10)</label>
+        <select name="code" required aria-label="Диагноз (МКБ-10)">
           <option value="">— выберите диагноз —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
              Новый протокол в YAML появляется здесь сам; процесс постановки один. #}
@@ -955,23 +956,23 @@
   <div class="fform">
     <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-flag" aria-hidden="true"></i>Признак</label>
-        <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'social_risk' %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+      {# Label скрыт: заголовок секции «Факторы риска» уже на экране. #}
+      <div class="field"><label class="sr-only">Фактор риска</label>
+        <select name="key" aria-label="Фактор риска">{% for key, (label, cat) in flag_options.items() if cat == 'social_risk' %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
   </div>
   {% endmacro %}
 
-  {# Признаки осмотра (хрипы/цианоз/локальные знаки…) — без формы врач мог только
-     удалить существующий флаг, но не добавить: часть критериев тяжести/госпитализации
-     в принципе нельзя было ввести через интерфейс. #}
+  {# Данные объективного осмотра (хрипы/цианоз/локальные знаки…). #}
   {% macro exam_flag_form(pid, eid, chip_target='') %}
   <div class="fform">
     <form method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label><i class="ti ti-eye" aria-hidden="true"></i>Данные объективного осмотра</label>
-        <select name="key">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
+      {# Label скрыт: section-label «Данные объективного осмотра» уже выше. #}
+      <div class="field"><label class="sr-only">Признак осмотра</label>
+        <select name="key" aria-label="Признак осмотра">{% for key, (label, cat) in flag_options.items() if cat == 'exam' %}<option value="{{ key }}">{{ label }}{{ ' — тревожный признак' if key in EXAM_RED_FLAG_KEYS else '' }}</option>{% endfor %}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
     </form>
@@ -982,8 +983,9 @@
   {% macro complaint_form(pid, eid, current='') %}
   <div class="fform anam-text-form">
     <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1" data-keep-fields="1">
-      <div class="field field-full"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба</label>
-        <textarea name="complaint" rows="3" maxlength="300" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
+      {# Заголовок секции fstep уже «Жалоба» — label не дублируем. #}
+      <div class="field field-full"><label class="sr-only">Жалоба</label>
+        <textarea name="complaint" rows="3" maxlength="300" aria-label="Жалоба" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
       </div>
       <div class="form-actions">
         <button class="btn-small" type="submit">Сохранить</button>
@@ -999,8 +1001,9 @@
     <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-keep-fields="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="replace" value="1">
-      <div class="field field-full"><label><i class="ti ti-notes" aria-hidden="true"></i>Анамнез</label>
-        <textarea name="text" rows="4" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
+      {# Текст анамнеза под заголовком fstep; «Факторы риска» — отдельный подблок ниже. #}
+      <div class="field field-full"><label class="sr-only">Анамнез</label>
+        <textarea name="text" rows="4" aria-label="Анамнез" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
       </div>
       <div class="form-actions">
         <button class="btn-small" type="submit">Сохранить</button>
@@ -1593,17 +1596,16 @@
         {% elif med_done %}{% set bm.kind = 'neutral' %}{% set bm.text = (ed.med|length ~ ' назначение') if ed.med|length == 1 else (ed.med|length ~ ' назначений') %}
         {% endif %}
 
-        {# Только гармошки (fstep). Вкладки-rail убраны — дублировали шаги и путали.
-           Открыты: текущий/attention + уже заполненные (done), чтобы после сохранения
-           секция не схлопывалась. Пользовательские open + scroll — в sessionStorage. #}
+        {# Все гармошки открыты по умолчанию — проще ориентироваться по приёму.
+           Пользователь может свернуть; open+scroll помнит sessionStorage. #}
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
-               open=st_complaint in ('active','attention','done')) %}
+               open=true) %}
             {{ complaint_form(patient.id, e.id, e.complaint or '') }}
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=st_anam in ('active','attention','done')) %}
+               open=true) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {{ anam_form(patient.id, e.id, anam_text) }}
             <p class="section-label">Факторы риска</p>
@@ -1617,14 +1619,14 @@
               {% endfor %}
             </div>
             <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('Фактор риска') %}
-                {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) }}
+              {% call add_panel('+ Добавить', true) %}
+                {{ flag_form(patient.id, e.id, 'chips-risk-' ~ e.id) %}
               {% endcall %}
             </div>
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
-               open=st_exam in ('active','attention','done')) %}
+               open=true) %}
             <div id="chips-gc-{{ e.id }}">
               {% if gc_flag %}
               <div class="attr-row">
@@ -1643,7 +1645,7 @@
             </div>
             {% if not gc_flag %}
             <div class="add-bar" style="border:none;background:transparent;padding:0 0 8px;">
-              {% call add_panel('Общее состояние', st_exam in ('active','attention')) %}
+              {% call add_panel('+ Оценить общее состояние', true) %}
                 {{ gc_form(patient.id, e.id, 'chips-gc-' ~ e.id, gc_flag) }}
               {% endcall %}
             </div>
@@ -1729,16 +1731,16 @@
               {% endfor %}
             </div>
             <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('Показатель') %}
+              {% call add_panel('+ Показатель', true) %}
                 {{ obs_form(patient.id, e.id, 'chips-obs-' ~ e.id) }}
               {% endcall %}
-              {% call add_panel('Данные объективного осмотра') %}
+              {% call add_panel('+ Добавить', true) %}
                 {{ exam_flag_form(patient.id, e.id, 'chips-exam-flags-' ~ e.id) }}
               {% endcall %}
             </div>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
-               open=st_cond in ('active','attention','done')) %}
+               open=true) %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
             <div class="diag-support {{ 'ok' if (diag_anam or diag_exam) else 'warn' }}">
@@ -1756,14 +1758,14 @@
               {% endfor %}
             </div>
             <div class="add-bar" style="border:none;background:transparent;padding:4px 0 0;">
-              {% call add_panel('Диагноз', st_cond in ('active','attention') and not ed.cond) %}
+              {% call add_panel('+ Поставить диагноз', true) %}
                 {{ cond_form(patient.id, e.id, 'chips-cond-' ~ e.id) }}
               {% endcall %}
             </div>
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
-               open=st_diag in ('active','attention','done')) %}
+               open=true) %}
             <div class="diag-grid">
               <div class="diag-sub">
                 <h4>Лаборатория</h4>
@@ -1827,7 +1829,7 @@
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
-               open=st_med in ('active','attention','done')) %}
+               open=true) %}
             <div class="chips" id="chips-med-{{ e.id }}">
               {% for m in ed.med %}
               <span class="tag-chip">{{ m.display }}{% if m.dose %}: {{ m.dose }}{% endif %}{% if m.frequency %} · {{ m.frequency }}{% endif %}{% if m.route %} · {{ {'oral':'внутрь','iv':'в/в','im':'в/м','inh':'ингаляционно'}.get(m.route, m.route) }}{% endif %}{% if m.period_end %} · до {{ m.period_end }}{% endif %}
@@ -1985,7 +1987,7 @@
 
   // Сохранить/восстановить открытые гармошки и scroll — иначе после AJAX-reload
   // секция схлопывается и страница прыгает вверх.
-  var _fstepUiKey = 'clinic-os:fstep-ui:' + location.pathname + location.search;
+  var _fstepUiKey = 'clinic-os:fstep-ui:v2:' + location.pathname + location.search;
   function saveFstepUi(){
     var open = [];
     document.querySelectorAll('details.fstep[id]').forEach(function(d){
