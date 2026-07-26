@@ -1895,7 +1895,7 @@
     </div>
     {% endif %}
     {% if unassigned.flag %}
-    <div class="enc-sub"><h3>Признаки</h3>
+    <div class="enc-sub"><h3>Данные объективного осмотра</h3>
       <table><thead><tr><th>Признак</th><th>Категория</th><th>Дата</th><th></th></tr></thead><tbody>
       {% for f in unassigned.flag %}{% set fl = flag_options[f.key][0] if f.key in flag_options else f.key %}<tr><td>{{ fl }}</td><td>{{ flag_category_display(f.category) }}</td><td>{{ f.recorded_date }}</td><td><form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}"><button class="btn-small" type="submit">убрать</button></form></td></tr>{% endfor %}
       </tbody></table>
