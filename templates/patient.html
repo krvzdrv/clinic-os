@@ -577,7 +577,8 @@
         <h1>{{ full_name }}</h1>
         <div class="meta">
           {{ age }} лет · {{ "муж." if patient.gender == "male" else "жен." }} · {{ patient.birth_date }}
-          {% if pathway %}<span class="stage-tag {{ pathway.state }}" style="margin-left:6px;vertical-align:1px;" title="Этап ведения пациента">{{ pathway.label }}</span>{% endif %}
+          {# Этап pathway (screening/«Скрининг» и т.п.) — внутренняя SM, не лексика КП.
+             Врачу не показываем: якорь — диагноз/CDS, не «Скрининг». #}
         </div>
       </div>
       <div class="head-flags" aria-label="Аллергии">

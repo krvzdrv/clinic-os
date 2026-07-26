@@ -176,8 +176,9 @@ def add_patient(family, given, patronymic, gender, birth_date):
         "INSERT INTO patient (id, family, given, patronymic, gender, birth_date) "
         "VALUES (%s,%s,%s,%s,%s,%s)",
         (pid, family, given, patronymic, gender, birth_date))
-    db.execute("INSERT INTO pathway (patient_id, state, label) VALUES (%s,'screening','Скрининг')",
-                (pid,))
+    db.execute(
+        "INSERT INTO pathway (patient_id, state, label) VALUES (%s,'screening','Без диагноза')",
+        (pid,))
     return pid
 
 
@@ -719,10 +720,12 @@ def set_goal_status(gid, status, achievement_date=None):
 # Этап пути — только lifecycle. Тяжесть / условия / вердикт / «сделать сейчас»
 # живут в отдельных колонках дашборда и в CDS (STATUS_SEMANTICS §1).
 # label всегда из state; свободный текст в set_pathway игнорируется.
+# Подписи — только если label когда-либо уйдёт в UI. Не использовать «Скрининг»
+# и прочий жаргон вне КП: state machine внутренняя, лексика — клиническая.
 PATHWAY_LABELS = {
-    "screening": "Скрининг",
-    "treatment": "Терапия",
-    "adjustment": "Коррекция",
+    "screening": "Без диагноза",
+    "treatment": "Лечение",
+    "adjustment": "Смена терапии",
     "inpatient": "Стационар",
     "icu": "ОРИТ",
     "controlled": "Выздоровление",  # в доке также recovered — в коде state=controlled

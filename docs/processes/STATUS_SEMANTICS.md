@@ -75,18 +75,18 @@ flowchart TB
 
 ## 1. pathway.state — путь пациента (state machine)
 
-| state | label | Смысл | Кто выставляет |
+| state | label (если понадобится в UI) | Смысл | Кто выставляет |
 |-------|-------|--------|---------------|
-| `screening` | Скрининг | Пациент заведён, диагноза ещё нет | `fhir_store.add_patient` |
-| `treatment` | Терапия | План лечения создан / идёт терапия | `care_plan_service.create_cap_plan` |
+| `screening` | Без диагноза | Пациент заведён, диагноза ещё нет | `fhir_store.add_patient` |
+| `treatment` | Лечение | План лечения создан / идёт терапия | `care_plan_service.create_cap_plan` |
 | `inpatient` | Стационар | Госпитализация (encounter class='inpatient') | `care_plan_service.admit_inpatient` |
 | `icu` | ОРИТ | Перевод в ОРИТ (п.27) | шаг `transfer_icu` |
 | `controlled` | Выздоровление | Цель достигнута / выписка; контроль по плану | `discharge_inpatient` / `evaluate_cap_goal` |
-| `adjustment` | Коррекция | Цель не достигнута — смена АБТ / пересмотр | `care_plan_service.evaluate_cap_goal` (not-achieved) |
+| `adjustment` | Смена терапии | Цель не достигнута — смена АБТ / пересмотр | `care_plan_service.evaluate_cap_goal` (not-achieved) |
 
 **Правило:** `controlled` — терминальный/контрольный этап эпизода (в тексте иногда `recovered`). `adjustment` — возврат в цикл лечения.
 
-**Не класть в `label`:** тяжесть, «нужна госпитализация», «отклонение АБТ», «железо не назначено». Это колонки дашборда / `next_step` / вердикт CDS (`fhir_store.PATHWAY_LABELS`).
+**UI:** бейдж этапа пути на карте/дашборде **не показываем** — state machine внутренняя. Не использовать «Скрининг» и прочий жаргон вне КП №768/№23. Тяжесть / госпитализация / gaps — колонки дашборда и CDS, не `pathway.label`.
 
 ---
 
