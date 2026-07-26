@@ -475,30 +475,62 @@
   .history-fold .enc-card{
     border:none;border-radius:0;background:transparent;box-shadow:none;margin:0;overflow:visible;
   }
+  /* Тулбар приёма: строка статуса + строка действий (одинаковая высота 32px),
+     мета (повод/жалоба) отдельно — чтобы кнопки не «плясали» в одном wrap с текстом. */
   .enc-toolbar{
-    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    display:flex;flex-direction:column;gap:8px;
     margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid var(--border);
   }
-  /* Дата/тип/статус ЭТОГО приёма — здесь, а не в общем summary списка приёмов,
-     чтобы не выглядело так, будто один приём вложен внутрь другого. */
-  .enc-id{display:flex;align-items:center;gap:8px;flex:0 0 auto;font-size:13px;color:var(--text-primary);}
-  .enc-toolbar .enc-complaint{font-size:13px;color:var(--text-secondary);margin:0;}
-  /* Жалобу могли не знать в момент открытия приёма — редактируемая и после
-     создания (не только при первом вводе), тот же inline add-panel, что и
-     «Диагноз по результату» (dlist .add-panel--inline). */
-  .enc-complaint-wrap{display:flex;align-items:baseline;gap:6px;flex:1;min-width:12em;}
-  .enc-complaint-wrap .enc-complaint{flex:0 1 auto;}
-  .enc-toolbar .enc-complaint-wrap .add-panel--inline{margin-left:0;flex:0 0 auto;}
-  .enc-complaint-edit input[type=text]{min-width:22em;}
-  /* «Новый приём» рядом с «Закрыть» из enc-summary — тот же язык кнопки (ghost) и тот же
-     размер, что .btn/.btn-small (static/clinic.css), иначе рядом смотрится «слепленным». */
-  .enc-toolbar .add-panel{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);}
-  .enc-toolbar .add-panel > summary{
-    height:32px;display:flex;align-items:center;
-    padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
+  .enc-toolbar-top{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;
   }
-  .enc-toolbar .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;}
-  /* Пустой блок приёмов: форма «Новый приём» на всю ширину, без «Приёмов пока нет». */
+  .enc-id{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    flex:1 1 auto;min-width:0;font-size:13px;color:var(--text-primary);
+  }
+  .enc-toolbar-actions{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;
+    flex:0 0 auto;margin-left:auto;
+  }
+  /* Раскрытая форма — на всю ширину тулбара, не узкой колонкой справа. */
+  .enc-toolbar-actions:has(.add-panel[open]),
+  .enc-toolbar-actions:has(.enc-more[open]){
+    flex:1 1 100%;margin-left:0;
+  }
+  .enc-toolbar-actions .enc-finish-wrap{display:inline-flex;align-items:center;}
+  .enc-toolbar-meta{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px;width:100%;
+    font-size:13px;color:var(--text-secondary);
+  }
+  .enc-toolbar-meta .enc-reason{margin:0;flex:0 1 auto;}
+  .enc-toolbar-meta .enc-complaint{margin:0;flex:1 1 12em;min-width:8em;color:var(--text-primary);}
+  .enc-toolbar-meta .enc-complaint.none{color:var(--text-muted);}
+  .enc-complaint-edit input[type=text]{min-width:18em;max-width:100%;}
+  /* Все триггеры тулбара = размер .btn (SSOT 32px), без «плашки» Жалоба другого роста. */
+  .enc-toolbar .add-panel,
+  .enc-toolbar .enc-more{
+    flex:0 0 auto;min-width:auto;
+    border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);
+  }
+  .enc-toolbar .add-panel > summary,
+  .enc-toolbar .enc-more > summary{
+    height:32px;display:flex;align-items:center;cursor:pointer;list-style:none;
+    padding:0 14px;font-size:13px;font-weight:600;color:var(--steel);
+    background:transparent;border-radius:var(--radius);
+  }
+  .enc-toolbar .enc-more > summary{color:var(--faint);padding:0 12px;}
+  .enc-toolbar .add-panel > summary::-webkit-details-marker,
+  .enc-toolbar .enc-more > summary::-webkit-details-marker{display:none;}
+  .enc-toolbar .add-panel--inline > summary::before{content:"+ ";}
+  .enc-toolbar .add-panel[open],
+  .enc-toolbar .enc-more[open]{flex:1 1 100%;}
+  .enc-toolbar .add-panel[open] > summary,
+  .enc-toolbar .enc-more[open] > summary{
+    border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--line);
+  }
+  .enc-toolbar .enc-more .enc-more-body{padding:10px 12px;}
+  .enc-toolbar .enc-more .btn.danger{width:100%;}
+  /* Пустой блок приёмов: форма «Новый приём» на всю ширину. */
   .enc-empty-new{width:100%;margin:0 0 12px;}
   .enc-empty-new .add-panel{
     display:block;width:100%;flex:none;
@@ -510,16 +542,6 @@
   }
   .enc-empty-new .add-panel[open] > summary{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--line);}
   .enc-empty-new .add-panel-b{padding:12px 14px;}
-  /* Вторичные опасные действия с приёмом — не рядом с «Закрыть», а в «Ещё». */
-  .enc-toolbar .enc-more{flex:0 0 auto;min-width:auto;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-left:auto;}
-  .enc-toolbar .enc-more > summary{
-    height:32px;display:flex;align-items:center;cursor:pointer;list-style:none;
-    padding:0 12px;font-size:13px;font-weight:600;color:var(--faint);
-  }
-  .enc-toolbar .enc-more > summary::-webkit-details-marker{display:none;}
-  .enc-toolbar .enc-more[open] > summary{border-radius:var(--radius) var(--radius) 0 0;border-bottom:1px solid var(--line);}
-  .enc-toolbar .enc-more .enc-more-body{padding:10px 12px;}
-  .enc-toolbar .enc-more .btn.danger{width:100%;}
   .visit-list{display:flex;flex-direction:column;gap:8px;margin:0 0 12px;}
   .visit-row{
     display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -1357,65 +1379,70 @@
     {% set e = ed.encounter %}
     <div class="enc-card">
       <div class="enc-toolbar">
-        <span class="enc-id">
-          <b>{{ enc_title }} {{ e.start }}</b>
-          {% if enc_cls == 'inpatient' %}<span class="category-tag">стационарный</span>
-          {% elif enc_cls == 'followup' %}<span class="category-tag">контроль</span>
-          {% else %}<span class="category-tag">амбулаторный</span>{% endif %}
-          {% if enc_open %}<span class="badge accent">открыт</span>
-          {% else %}<span class="badge grey">закрыт</span>{% endif %}
-          {% if enc_open %}
-          <span class="enc-finish-wrap" style="display:inline-block;vertical-align:middle;">
-            <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}"
-                  data-ajax="1"
-                  data-cds-confirm-label="Закрыть приём всё равно"
-                  data-cds-cancel-label="Отмена"
-                  data-cds-soft-default="Закрытие приёма при показаниях к госпитализации"
-                  data-cds-ack-label="Понимаю, что есть показания к госпитализации, и закрываю приём на своё усмотрение"
-                  data-cds-reason-label="Причина закрытия без госпитализации">
-              <input type="hidden" name="confirm" value="">
-              <input type="hidden" name="ack" value="">
-              <input type="hidden" name="override_reason" value="">
-              <button class="btn ghost btn-small" type="submit">Закрыть приём</button>
-            </form>
-            <div class="cds-confirm" style="display:none;"></div>
+        <div class="enc-toolbar-top">
+          <span class="enc-id">
+            <b>{{ enc_title }} {{ e.start }}</b>
+            {% if enc_cls == 'inpatient' %}<span class="category-tag">стационарный</span>
+            {% elif enc_cls == 'followup' %}<span class="category-tag">контроль</span>
+            {% else %}<span class="category-tag">амбулаторный</span>{% endif %}
+            {% if enc_open %}<span class="badge accent">открыт</span>
+            {% else %}<span class="badge grey">закрыт</span>{% endif %}
           </span>
-          {% endif %}
-        </span>
-        {% set reason_conds = [] %}
-        {% for c in conditions %}{% if c.id in ed.reason_condition_ids %}{% set _ = reason_conds.append(c) %}{% endif %}{% endfor %}
-        {% if reason_conds %}
-        <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
-        {% else %}
-        <p class="enc-reason new">Новая жалоба — диагноз ещё не поставлен</p>
-        {% endif %}
-        <div class="enc-complaint-wrap">
-          {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>{% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
-          <details class="add-panel add-panel--inline enc-complaint-edit">
-            <summary title="{{ 'Изменить жалобу' if e.complaint else 'Добавить жалобу' }}">Жалоба</summary>
-            <div class="add-panel-b">
-              <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=patient.id, eid=e.id) }}" class="fform">
-                <div class="field grow"><input type="text" name="complaint" value="{{ e.complaint or '' }}" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»" maxlength="300"></div>
-                <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+          <div class="enc-toolbar-actions">
+            {% if enc_open %}
+            <span class="enc-finish-wrap">
+              <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}"
+                    data-ajax="1"
+                    data-cds-confirm-label="Закрыть приём всё равно"
+                    data-cds-cancel-label="Отмена"
+                    data-cds-soft-default="Закрытие приёма при показаниях к госпитализации"
+                    data-cds-ack-label="Понимаю, что есть показания к госпитализации, и закрываю приём на своё усмотрение"
+                    data-cds-reason-label="Причина закрытия без госпитализации">
+                <input type="hidden" name="confirm" value="">
+                <input type="hidden" name="ack" value="">
+                <input type="hidden" name="override_reason" value="">
+                <button class="btn ghost btn-small" type="submit">Закрыть приём</button>
               </form>
-            </div>
-          </details>
+              <div class="cds-confirm" style="display:none;"></div>
+            </span>
+            {% endif %}
+            <details class="add-panel add-panel--inline enc-complaint-edit">
+              <summary title="{{ 'Изменить жалобу' if e.complaint else 'Добавить жалобу' }}">Жалоба</summary>
+              <div class="add-panel-b">
+                <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=patient.id, eid=e.id) }}" class="fform">
+                  <div class="field grow"><input type="text" name="complaint" value="{{ e.complaint or '' }}" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»" maxlength="300"></div>
+                  <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+                </form>
+              </div>
+            </details>
+            <details class="add-panel">
+              <summary>Новый приём</summary>
+              <div class="add-panel-b">
+                {{ encounter_form(patient.id, active_conditions, cancel=true) }}
+              </div>
+            </details>
+            <details class="enc-more">
+              <summary>Ещё</summary>
+              <div class="enc-more-body">
+                <form method="POST" action="{{ url_for('delete_encounter_route', pid=patient.id, eid=e.id) }}"
+                      onsubmit="return confirm('Удалить этот приём?\n\nБудут удалены осмотр, заказы, результаты и назначения этого приёма.\nДиагнозы пациента сохранятся.\n\nЭто действие необратимо.');">
+                  <button class="btn danger btn-small" type="submit">Удалить приём</button>
+                </form>
+              </div>
+            </details>
+          </div>
         </div>
-        <details class="add-panel">
-          <summary>Новый приём</summary>
-          <div class="add-panel-b">
-            {{ encounter_form(patient.id, active_conditions, cancel=true) }}
-          </div>
-        </details>
-        <details class="enc-more">
-          <summary>Ещё</summary>
-          <div class="enc-more-body">
-            <form method="POST" action="{{ url_for('delete_encounter_route', pid=patient.id, eid=e.id) }}"
-                  onsubmit="return confirm('Удалить этот приём?\n\nБудут удалены осмотр, заказы, результаты и назначения этого приёма.\nДиагнозы пациента сохранятся.\n\nЭто действие необратимо.');">
-              <button class="btn danger btn-small" type="submit">Удалить приём</button>
-            </form>
-          </div>
-        </details>
+        <div class="enc-toolbar-meta">
+          {% set reason_conds = [] %}
+          {% for c in conditions %}{% if c.id in ed.reason_condition_ids %}{% set _ = reason_conds.append(c) %}{% endif %}{% endfor %}
+          {% if reason_conds %}
+          <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
+          {% else %}
+          <p class="enc-reason new">Новая жалоба — диагноз ещё не поставлен</p>
+          {% endif %}
+          {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>
+          {% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
+        </div>
       </div>
       <div class="enc-body dx-rail">
         {% set anam_notes = [] %}
