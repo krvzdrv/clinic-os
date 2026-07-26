@@ -72,8 +72,6 @@ db.DB_PATH = os.path.abspath(_TMP.name)
 os.environ["CLINIC_DB"] = db.DB_PATH
 
 import fhir_store as fs  # noqa: E402
-import protocol_cap as pcap  # noqa: E402
-
 fs.init_db()
 
 PASS = FAIL = WARN = 0
@@ -113,8 +111,9 @@ def _seed() -> dict[str, str]:
     # _ensure_drugs печатает каталог — глушим шум гейта
     with contextlib.redirect_stdout(io.StringIO()):
         mod._ensure_drugs()
+    import protocol_dispatch as pdisp
     for pid, _name, _story in stories:
-        fs.save_cap_cache(pid, pcap.evaluate_cap(pid))
+        pdisp.refresh_protocol_cache(pid)
     return {name: pid for pid, name, _ in stories}
 
 

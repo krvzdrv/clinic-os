@@ -131,10 +131,9 @@ def scenario_dashboard(page, audit: Audit):
     _goto(page, "/")
     audit.add(sc, "GET /", page.url.rstrip("/").endswith("5611") or "/" in page.url, page.url)
 
-    # guest CTA
-    before = page.url
-    ok, err = _click_visible(page, ".guest-banner a.btn, .guest-banner a")
-    audit.add(sc, "Баннер «Открыть карту»", ok and "/patient/" in page.url, err or page.url)
+    # Список пациентов — вход в карту через строку (баннер про одного убран).
+    ok, err = _click_visible(page, "tr.pat-row:has-text('Соколов'), a:has-text('Соколов')")
+    audit.add(sc, "Строка Соколова → карта", ok and "/patient/" in page.url, err or page.url)
     _goto(page, "/")
 
     ok, err = _click_visible(page, "a.action-btn:has-text('Добавить пациента'), a[href*='new']")

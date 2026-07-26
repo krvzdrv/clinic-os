@@ -74,8 +74,7 @@ def main():
     print(f"LIVE UI AUDIT → {BASE}")
     st, dash = get("/")
     check(st == 200, "dashboard")
-    check("С чего начать" in dash, "guest banner")
-    check('href="/demo"' in dash, "/demo CTA")
+    check("Пациенты" in dash, "заголовок списка")
     check("Сделать сейчас" in dash, "dashboard колонка аудита")
     for name in ("Орлов", "Соколов", "Морозов"):
         check(name in dash, f"dashboard has {name}")

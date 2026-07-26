@@ -481,4 +481,3 @@ button.btn-small {
 .history-fold:not([open]) > :not(summary) { display: none !important; }
 details.dx-card:not([open]) > :not(summary) { display: none !important; }
 
-/* guest-banner class retained for doctor_gate; styles from .page-banner */

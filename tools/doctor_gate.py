@@ -34,6 +34,7 @@ os.environ["CLINIC_DB"] = db.DB_PATH
 
 import fhir_store as fs  # noqa: E402
 import protocol_cap as pcap  # noqa: E402
+import protocol_dispatch as pdisp  # noqa: E402
 from protocol_verdict import verdict_for_ui  # noqa: E402
 
 fs.init_db()
@@ -84,7 +85,7 @@ def seed() -> dict[str, str]:
     stories = mod.seed_ten(dr)
     mod._ensure_drugs()
     for pid, _name, _story in stories:
-        fs.save_cap_cache(pid, pcap.evaluate_cap(pid))
+        pdisp.refresh_protocol_cache(pid)
     return {name: pid for pid, name, _ in stories}
 
 
@@ -96,7 +97,7 @@ def main() -> int:
 
     print("\n[1] Сид пациентов (ВП + ЖДА)")
     by_name = seed()
-    check(len(by_name) == 11, f"seeded {len(by_name)} patients")
+    check(len(by_name) == 12, f"seeded {len(by_name)} patients")
     check(len(fs.get_drug_catalog()) >= 20, f"drugs={len(fs.get_drug_catalog())}")
 
     # app после привязки DB_PATH (dotenv уже заглушен)
@@ -119,9 +120,20 @@ def main() -> int:
     dash = r.data.decode("utf-8", "replace")
     check(r.status_code == 200, "GET / → 200")
     check("Сделать сейчас" in dash, "дашборд: колонка «Сделать сейчас»")
-    check("guest-banner" in dash and "Открыть карту" in dash, "гостевой баннер")
+    check("Соколов" in dash, "Соколов в списке пациентов")
     for name in by_name:
         check(name in dash, f"дашборд: {name}")
+    # Multi-protocol cache: ЖДА видна руководству, не только ВП.
+    check("ЖДА (КП №23)" in dash, "дашборд: ярлык протокола ЖДА")
+    check("желез" in dash.lower(), "дашборд: next_step по ЖДА (железо)")
+    c_f = fs.get_cap_cache(by_name["Феррова"]) or {}
+    check(c_f.get("protocol_id") == "ida_adult_23", f"Феррова: cache protocol_id=ida (got {c_f.get('protocol_id')})")
+    check(bool(c_f.get("applicable")), "Феррова: cache applicable")
+    check(not c_f.get("compliant"), "Феррова: cache non-compliant (нет железа)")
+    check("желез" in (c_f.get("next_step") or "").lower(), f"Феррова: next_step про железо (got {c_f.get('next_step')!r})")
+    c_j = fs.get_cap_cache(by_name["Железов"]) or {}
+    check(c_j.get("protocol_id") == "ida_adult_23", "Железов: cache protocol_id=ida")
+    check(bool(c_j.get("compliant")), "Железов: cache compliant")
 
     r = client.get("/demo", follow_redirects=False)
     check(r.status_code in (301, 302, 303, 307, 308), f"/demo → {r.status_code}")
@@ -145,7 +157,12 @@ def main() -> int:
         pos_hist = body.find("history-fold")
         check(0 <= pos_now < pos_hist, f"{name}: now-action выше истории")
         hist_m = re.search(r'<details class="history-fold"([^>]*)>', html)
-        ui = verdict_for_ui(pcap.evaluate_cap(pid))
+        # Primary среди всех applicable протоколов (ВП / ЖДА), не только evaluate_cap.
+        primary = pdisp.pick_primary_assessment(pdisp.patient_assessments(pid))
+        if primary:
+            ui = verdict_for_ui(primary["assessment"], primary["protocol_id"])
+        else:
+            ui = verdict_for_ui(pcap.evaluate_cap(pid))
         # Приём — третьестепенный аккордеон (по умолчанию свёрнут).
         check(bool(hist_m), f"{name}: есть блок приёма")
         check("Приём" in body or "Контрольный визит" in body, f"{name}: словарь приём/контрольный визит")
@@ -162,8 +179,8 @@ def main() -> int:
             check("Здесь · без вкладок" not in body, f"{name}: нет дев-блока")
             focus = ui.get("focus_stage")
             if focus == "med":
-                check('id="med-code-now"' in now, f"{name}: форма АБТ в now-action")
-                # «Назначить» — если АБТ не назначена вовсе; «Заменить» — если назначена неверная.
+                check('id="med-code-now"' in now, f"{name}: форма терапии в now-action")
+                # «Назначить» — если терапия не назначена вовсе; «Заменить» — если неверная.
                 med_verb = "Назначить" if ui.get("no_active_therapy") else "Заменить"
                 check(med_verb in now, f"{name}: кнопка {med_verb.lower()}")
                 sug = ui.get("suggest_atc")
@@ -436,11 +453,56 @@ def main() -> int:
         "Аллергова: hard-stop + reason в cds_override_log",
     )
 
-    print("\n[6] Морозов: госпитализация из now-action")
+    print("\n[6] Морозов: закрытие приёма при показании к госпитализации — soft-stop")
     pid_v = by_name["Морозов"]
     r = client.get(f"/patient/{pid_v}")
     now = _now(r.data.decode("utf-8", "replace"))
     check("Госпитализировать" in now, "Морозов: кнопка в now-action")
+    open_amb = next(
+        (
+            e for e in fs.get_encounters(pid_v)
+            if e.get("status") != "finished"
+            and (e.get("class") or "ambulatory") in ("ambulatory", "followup")
+        ),
+        None,
+    )
+    check(bool(open_amb), "Морозов: есть открытый амбулаторный приём")
+    eid_v = open_amb["id"]
+    before_status = open_amb.get("status")
+    r = client.post(
+        f"/patient/{pid_v}/encounter/{eid_v}/finish",
+        data={"confirm": ""},
+        headers=hdr,
+    )
+    data = r.get_json(silent=True) or {}
+    check(r.status_code == 200, f"Морозов: finish без confirm → {r.status_code}")
+    check(data.get("need_confirm") is True, f"Морозов: need_confirm={data.get('need_confirm')}")
+    check(data.get("level") == "soft", f"Морозов: level=soft (got {data.get('level')})")
+    check(
+        any(
+            (c.get("category") == "hospitalization_indicated")
+            for c in (data.get("cds") or [])
+        ),
+        "Морозов: cds category hospitalization_indicated",
+    )
+    enc_still = fs.get_encounter(eid_v)
+    check(
+        enc_still and enc_still.get("status") == before_status,
+        "Морозов: без confirm приём не закрыт",
+    )
+    r = client.post(
+        f"/patient/{pid_v}/encounter/{eid_v}/finish",
+        data={"confirm": "1", "ack": "1"},
+        headers=hdr,
+    )
+    data = r.get_json(silent=True) or {}
+    check(r.status_code == 400, f"Морозов: soft без причины → 400 (got {r.status_code})")
+    check(
+        data.get("need_confirm") is True and data.get("level") == "soft",
+        f"Морозов: soft без причины остаётся need_confirm (got {data})",
+    )
+    # Не закрываем через override — дальше проверяем штатный путь «Госпитализировать».
+    print("\n[6.0] Морозов: госпитализация из now-action")
     r = client.post(f"/patient/{pid_v}/cap/admit", follow_redirects=True)
     check(r.status_code == 200, f"Морозов: admit → {r.status_code}")
     encs = fs.get_encounters(pid_v)

@@ -6,7 +6,7 @@ updated_at: "2026-07-26"
 cds_policy:
   doc: docs/processes/CDS_SIGNALING.md
   principles_ru:
-    - "Сигналим continuously: после клинической записи — protocol_cap.evaluate_cap + cap_cache."
+    - "Сигналим continuously: после клинической записи — protocol_dispatch.refresh_protocol_cache (все протоколы → primary в cap_cache)."
     - "Soft-stop (протокол): confirm=1 + ack=1; причина опциональна."
     - "Hard-stop (аллергия/взаимодействие): confirm=1 + обязательный override_reason."
     - "Override видим: medication_request.cds_override=1 + cds_override_log; эпизод не compliant."
@@ -27,10 +27,23 @@ cds_policy:
       - cds_override_log
     ui_soft_label_ru: "Назначить всё равно"
     ui_hard_label_ru: "Назначить несмотря на риск"
+  finish_encounter:
+    entrypoints:
+      - app.finish_encounter_route
+      - app._protocol_gap_issues
+    trigger_gap_codes: [hospitalization_indicated]
+    encounter_class: [ambulatory, followup]
+    soft_requires: [confirm, ack, override_reason]
+    persist_on_confirm:
+      - cds_override_log
+    ui_soft_label_ru: "Закрыть приём всё равно"
   continuous_eval:
-    entrypoint: protocol_cap.evaluate_cap
+    entrypoint: protocol_dispatch.refresh_protocol_cache
+    assess: protocol_dispatch.patient_assessments
+    primary: protocol_dispatch.pick_primary_assessment
     ui_wrapper: protocol_verdict.verdict_for_ui
     persist: cap_cache
+
     after_resource_writes:
       - observation
       - clinical_flag

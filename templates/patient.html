@@ -1318,9 +1318,21 @@
           {% if enc_open %}<span class="badge accent">открыт</span>
           {% else %}<span class="badge grey">закрыт</span>{% endif %}
           {% if enc_open %}
-          <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}" style="display:inline;">
-            <button class="btn ghost btn-small" type="submit">Закрыть приём</button>
-          </form>
+          <span class="enc-finish-wrap" style="display:inline-block;vertical-align:middle;">
+            <form method="POST" action="{{ url_for('finish_encounter_route', pid=patient.id, eid=current_ed.encounter.id) }}"
+                  data-ajax="1"
+                  data-cds-confirm-label="Закрыть приём всё равно"
+                  data-cds-cancel-label="Отмена"
+                  data-cds-soft-default="Закрытие приёма при показаниях к госпитализации"
+                  data-cds-ack-label="Понимаю, что есть показания к госпитализации, и закрываю приём на своё усмотрение"
+                  data-cds-reason-label="Причина закрытия без госпитализации">
+              <input type="hidden" name="confirm" value="">
+              <input type="hidden" name="ack" value="">
+              <input type="hidden" name="override_reason" value="">
+              <button class="btn ghost btn-small" type="submit">Закрыть приём</button>
+            </form>
+            <div class="cds-confirm" style="display:none;"></div>
+          </span>
           {% endif %}
         </span>
         {% set reason_conds = [] %}
@@ -2115,31 +2127,41 @@
     // у пациента может быть ВП и ЖДА одновременно.
     var protoLabel=(cds.find(function(c){return c.protocol_label;})||{}).protocol_label||'';
     var softTier=protoLabel?('Отклонение от протокола · '+protoLabel):'Отклонение от протокола';
+    // Подписи кнопок: у АБТ дефолт «Назначить…»; у закрытия приёма — data-атрибуты формы.
+    var confirmLabel=form.getAttribute('data-cds-confirm-label')
+      || (hard?'Назначить несмотря на риск':'Назначить всё равно');
+    var cancelLabel=form.getAttribute('data-cds-cancel-label') || 'Отмена, выбрать другой';
+    var softDefault=form.getAttribute('data-cds-soft-default')
+      || ('Выбранный препарат не соответствует протоколу'+(protoLabel?(' '+protoLabel):''));
+    var ackLabel=form.getAttribute('data-cds-ack-label')
+      || ('Понимаю, что это отклонение от протокола'+(protoLabel?(' '+protoLabel):'')+', и назначаю на своё усмотрение');
+    var reasonLabel=form.getAttribute('data-cds-reason-label')
+      || ('Причина отклонения'+(protoLabel?(' от '+protoLabel):' от протокола'));
     var html='';
     if(hard){
       html+='<div class="cds-ov cds-ov-hard">';
       html+='<p class="cds-ov-tier"><i class="ti ti-alert-octagon" aria-hidden="true"></i> Конфликт / риск</p>';
-      html+='<p class="cds-ov-msg">'+(msgs[0]||'Назначение требует подтверждения')+'</p>';
+      html+='<p class="cds-ov-msg">'+(msgs[0]||'Действие требует подтверждения')+'</p>';
       if(msgs.length>1){ html+='<ul class="cds-ov-list">'+msgs.slice(1).map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'; }
-      html+='<label class="cds-ov-label">Причина назначения <span class="req">*</span></label>';
+      html+='<label class="cds-ov-label">Причина <span class="req">*</span></label>';
       html+='<textarea class="cds-ov-reason" id="cds-reason-live" required placeholder="Обязательно к заполнению"></textarea>';
       if(errMsg){ html+='<p class="cds-ov-err">'+errMsg+'</p>'; }
       html+='<div class="cds-ov-actions">';
-      html+='<button class="btn cds-ov-danger" type="button" data-cds-confirm="1" disabled>Назначить несмотря на риск</button>';
-      html+='<button class="btn ghost" type="button" data-cds-cancel="1">Отмена, выбрать другой</button>';
+      html+='<button class="btn cds-ov-danger" type="button" data-cds-confirm="1" disabled>'+confirmLabel+'</button>';
+      html+='<button class="btn ghost" type="button" data-cds-cancel="1">'+cancelLabel+'</button>';
       html+='</div></div>';
     } else {
       html+='<div class="cds-ov cds-ov-soft">';
       html+='<p class="cds-ov-tier"><i class="ti ti-alert-triangle" aria-hidden="true"></i> '+softTier+'</p>';
-      html+='<p class="cds-ov-msg">'+(msgs[0]||('Выбранный препарат не соответствует протоколу'+(protoLabel?(' '+protoLabel):'')))+'</p>';
+      html+='<p class="cds-ov-msg">'+(msgs[0]||softDefault)+'</p>';
       if(msgs.length>1){ html+='<ul class="cds-ov-list">'+msgs.slice(1).map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'; }
-      html+='<label class="cds-ov-check"><input type="checkbox" id="cds-ack-live"> Понимаю, что это отклонение от протокола'+(protoLabel?(' '+protoLabel):'')+', и назначаю на своё усмотрение</label>';
-      html+='<label class="cds-ov-label">Причина отклонения'+(protoLabel?(' от '+protoLabel):' от протокола')+' <span class="req">*</span></label>';
+      html+='<label class="cds-ov-check"><input type="checkbox" id="cds-ack-live"> '+ackLabel+'</label>';
+      html+='<label class="cds-ov-label">'+reasonLabel+' <span class="req">*</span></label>';
       html+='<textarea class="cds-ov-reason" id="cds-reason-live" required placeholder="Обязательно к заполнению"></textarea>';
       if(errMsg){ html+='<p class="cds-ov-err">'+errMsg+'</p>'; }
       html+='<div class="cds-ov-actions">';
-      html+='<button class="btn cds-ov-danger" type="button" data-cds-confirm="1" disabled>Назначить всё равно</button>';
-      html+='<button class="btn ghost" type="button" data-cds-cancel="1">Отмена, выбрать другой</button>';
+      html+='<button class="btn cds-ov-danger" type="button" data-cds-confirm="1" disabled>'+confirmLabel+'</button>';
+      html+='<button class="btn ghost" type="button" data-cds-cancel="1">'+cancelLabel+'</button>';
       html+='</div></div>';
     }
     box.innerHTML=html;

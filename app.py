@@ -103,13 +103,13 @@ def _short_name(p):
 
 
 def _refresh_protocol(pid):
-    """Continuous CDS: пересчитать evaluate_cap после клинической записи.
+    """Continuous CDS: все applicable протоколы → primary в cap_cache.
 
     Политика: docs/processes/CDS_SIGNALING.md (cds_policy в process_registry.yaml).
     """
     try:
         fs.clear_pid_cache(pid)
-        fs.save_cap_cache(pid, pcap.evaluate_cap(pid))
+        pdisp.refresh_protocol_cache(pid)
     except Exception:
         pass
 
@@ -145,13 +145,18 @@ def dashboard():
             "full": f"{p.get('family','')} {p.get('given','')} {p.get('patronymic','')}".strip(),
             "age": fs.get_age(pid),
             "gender": p["gender"],
-            "has_pneumonia": applicable,
+            "has_pneumonia": applicable and (c or {}).get("protocol_id") == "cap_adult_768",
+            "protocol_id": (c or {}).get("protocol_id") if applicable else None,
+            "protocol_label": (
+                pdisp.short_protocol_label((c or {}).get("protocol_id"))
+                if applicable else None
+            ),
             "severity": c["severity"] if c and c["applicable"] else None,
             "setting": c["setting"] if c and c["applicable"] else None,
             "compliant": bool(c["compliant"]) if c and c["applicable"] else None,
             "state": (pathways.get(pid) or {}).get("state") or "unknown",
             "state_label": (pathways.get(pid) or {}).get("label") or "—",
-            # Аудит в интерфейсе: что сделать сейчас (из cap_cache, без N+1).
+            # Аудит: что сделать сейчас (primary-протокол из cap_cache, без N+1).
             "next_step": (c.get("next_step") if c else None) or None,
             "headline": (c.get("headline") if c else None) or None,
         })
@@ -169,12 +174,6 @@ def dashboard():
             s -= 0.5
         return (s, r["name"].lower())
     rows.sort(key=_priority)
-
-    # Гостевой вход: Соколов (неверная АБТ). Без fallback на Морозова/ОРИТ.
-    guest = next(
-        (r for r in rows if (r.get("full") or "").startswith("Соколов")),
-        None,
-    )
 
     # Фильтры и поиск
     q = (request.args.get("q", "") or "").strip().lower()
@@ -198,7 +197,6 @@ def dashboard():
     return render_template("dashboard.html", measure=measure, patients=rows,
                            q=q, f_sev=f_sev, f_set=f_set, f_com=f_com,
                            total=len(caches),
-                           guest=guest,
                            demo_mode=os.environ.get("DEMO_MODE", "1") == "1")
 
 
@@ -274,9 +272,8 @@ def patient_detail(pid):
         return "Пациент не найден", 404
     fs.load_pid_cache(pid)
     try:
-        cap = pcap.evaluate_cap(pid)
-        fs.save_cap_cache(pid, cap)
-        verdict = protocol_verdict.verdict_for_ui(cap)
+        # Continuous cache: все протоколы; в cap_cache — primary для дашборда.
+        pdisp.refresh_protocol_cache(pid)
         # Все применимые пациенту протоколы (ВП + ЖДА и т.д.) — каждый со своим
         # вердиктом; шаблон вкладывает CDS-карточку под тот диагноз, к которому
         # относится condition_id (см. verdict_by_condition), не только под ВП.
@@ -284,6 +281,15 @@ def patient_detail(pid):
         verdict_by_condition = {
             v["condition_id"]: v["verdict"] for v in verdicts if v.get("condition_id")
         }
+        # Legacy cap/verdict для шаблона (fallback CAP); nested CDS — из verdicts.
+        cap = next(
+            (v["assessment"] for v in verdicts if v.get("protocol_id") == "cap_adult_768"),
+            pcap.evaluate_cap(pid),
+        )
+        verdict = next(
+            (v["verdict"] for v in verdicts if v.get("protocol_id") == "cap_adult_768"),
+            protocol_verdict.verdict_for_ui(cap),
+        )
         goals = fs.get_goals(pid)
         care_plans = fs.get_care_plans(pid)
 
@@ -580,11 +586,73 @@ def update_encounter_complaint_route(pid, eid):
 # ---------- Закрыть приём ----------
 @app.route("/patient/<pid>/encounter/<eid>/finish", methods=["POST"])
 def finish_encounter_route(pid, eid):
+    """Закрытие приёма — prospective soft-stop, если по протоколу ещё показана
+    госпитализация, а текущий приём амбулаторный (тот же need_confirm UX, что у АБТ)."""
     if not fs.get_patient(pid):
         return "Пациент не найден", 404
+    enc = fs.get_encounter(eid)
+    if not enc or enc.get("patient_id") != pid:
+        return "Приём не найден", 404
+
+    # Уже стационар / закрыт — гейт не нужен (hospitalization_indicated только outpatient).
+    cls = (enc.get("class") or "ambulatory").lower()
+    if cls in ("ambulatory", "followup") and enc.get("status") != "finished":
+        issues = _protocol_gap_issues(pid, codes=("hospitalization_indicated",))
+        if issues:
+            confirmed = request.form.get("confirm", "") == "1"
+            ack = request.form.get("ack", "") == "1"
+            override_reason = (request.form.get("override_reason") or "").strip()
+            verdict = {"issues": issues, "safe": False, "level": "soft"}
+            if not (confirmed and ack):
+                if _wants_json():
+                    return jsonify({
+                        "ok": False, "need_confirm": True, "level": "soft",
+                        "cds": _cds_summary(verdict),
+                    })
+                return redirect(url_for("patient_detail", pid=pid, e=eid))
+            if not override_reason:
+                if _wants_json():
+                    return jsonify({
+                        "ok": False, "need_confirm": True, "level": "soft",
+                        "error": "Укажите причину отклонения от протокола",
+                        "cds": _cds_summary(verdict),
+                    }), 400
+                return redirect(url_for("patient_detail", pid=pid, e=eid))
+            fs.add_cds_override_log(
+                pid,
+                severity="soft-stop",
+                category="hospitalization_indicated",
+                issue_message="; ".join(
+                    i.get("message") or "" for i in issues if i.get("message")
+                ),
+                reason=override_reason,
+                encounter_id=eid,
+            )
+
     fs.finish_encounter(eid)
     _refresh_protocol(pid)
+    if _wants_json():
+        return jsonify({"ok": True, "reload": True})
     return redirect(url_for("patient_detail", pid=pid))
+
+
+def _protocol_gap_issues(pid, *, codes):
+    """Warning-gaps из всех applicable протоколов → форма issues для need_confirm UI."""
+    want = set(codes)
+    issues = []
+    for item in pdisp.patient_assessments(pid):
+        assessment = item.get("assessment") or {}
+        protocol_id = item.get("protocol_id") or ""
+        for g in assessment.get("gaps") or []:
+            if g.get("code") not in want or g.get("severity") != "warning":
+                continue
+            issues.append({
+                "severity": "warning",
+                "category": g.get("code") or "",
+                "message": g.get("message") or "",
+                "protocol_id": protocol_id,
+            })
+    return issues
 
 
 # ---------- Удалить приём (ошибка / случайное создание) ----------

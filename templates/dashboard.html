@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Внебольничная пневмония — Дашборд</title>
+<title>Пациенты</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
@@ -11,8 +11,6 @@
 <style>
   .wrap{max-width:960px;}
   h1{font-weight:650;font-size:1.75rem;letter-spacing:-.02em;margin:0;}
-  .kicker{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-accent);font-weight:700;margin-bottom:6px;}
-
   /* Метрики: 1px gap на фоне border — тонкие разделители без card-теней */
   .metric-bar{
     display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
@@ -85,33 +83,24 @@
 </head>
 <body>
 <main class="wrap container-fluid">
-  <div class="kicker">Демо · Внебольничная пневмония (взрослые) · КП МЗ РБ №768</div>
-  <h1>Дашборд качества</h1>
-
-  {% if guest %}
-  <div class="page-banner warning guest-banner" role="status">
-    <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-    <span class="pb-text"><b>{{ guest.full }}</b> — назначена не та АБТ</span>
-    <a href="{{ url_for('patient_detail', pid=guest.id) }}" class="btn btn-small">Открыть карту</a>
-  </div>
-  {% endif %}
+  <h1>Пациенты</h1>
 
   {% set rate_ok = measure.rate >= 70 %}
   <div class="metric-bar">
     <div class="metric-cell">
       <p class="k">Всего пациентов</p>
       <p class="v">{{ measure.total }}</p>
-      <p class="sub">с активной ВП</p>
+      <p class="sub">с активным протоколом</p>
     </div>
     <div class="metric-cell">
       <p class="k">Соответствует</p>
       <p class="v green">{{ measure.compliant }}</p>
-      <p class="sub">нет warning-отклонений</p>
+      <p class="sub">ведение по протоколу</p>
     </div>
     <div class="metric-cell">
       <p class="k">Есть отклонения</p>
       <p class="v red">{{ measure.with_warnings }}</p>
-      <p class="sub">warning-уровень</p>
+      <p class="sub">нужно внимание врача</p>
     </div>
     <div class="metric-cell">
       <p class="k">Доля соответствия</p>
@@ -163,7 +152,6 @@
   </form>
   {% endif %}
 
-  <h2>Пациенты <span style="font-size:12px;color:var(--text-muted);font-weight:400;">— по клиническому приоритету</span></h2>
   {% if patients|length == 0 %}
     <div class="empty-state">
       Список пациентов пуст. Добавьте первого пациента кнопкой выше
@@ -194,7 +182,8 @@
       {% set ini = ((parts[0][:1] if parts else '?') ~ (parts[1][:1] if parts|length > 1 else ''))|upper %}
       {% set ns = (p.next_step or '')|lower %}
       {% set urgent = ('орит' in ns) or ('госпитализ' in ns) %}
-      {% set abtish = ('амокси' in ns) or ('азитр' in ns) or ('антибиот' in ns) or ('абт' in ns) or ('замен' in ns) or ('назнач' in ns and 'исслед' not in ns) %}
+      {% set ironish = ('желез' in ns) or (p.protocol_id == 'ida_adult_23') %}
+      {% set abtish = (not ironish) and (('амокси' in ns) or ('азитр' in ns) or ('антибиот' in ns) or ('абт' in ns) or ('замен' in ns) or ('назнач' in ns and 'исслед' not in ns)) %}
       <tr class="pat-row" onclick="location.href='{{ url_for('patient_detail', pid=p.id) }}'">
         <td>
           <div class="pat-cell">
@@ -203,6 +192,7 @@
               <p class="pat-name">{{ p.full or p.name }}</p>
               <p class="pat-meta">
                 {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}
+                {% if p.protocol_label %}<span class="category-tag">{{ p.protocol_label }}</span>{% endif %}
                 <span class="stage-tag {{ p.state }}">{{ p.state_label }}</span>
               </p>
             </div>
@@ -227,6 +217,7 @@
           {% if p.next_step %}
           <a class="now-link" href="{{ url_for('patient_detail', pid=p.id) }}" onclick="event.stopPropagation()">
             {% if urgent %}<span class="badge red">срочно</span>
+            {% elif not p.compliant and ironish %}<span class="badge warning">ЖДА</span>
             {% elif not p.compliant and abtish %}<span class="badge warning">АБТ</span>
             {% elif not p.compliant %}<span class="badge warning">сейчас</span>
             {% endif %}

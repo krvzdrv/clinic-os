@@ -35,8 +35,6 @@ def _force_sqlite():
 
 
 if __name__ == "__main__":
-    import protocol_cap as pcap
-
     # Пустой каталог = «кнопки назначений не работают» — дозаполняем в эту же БД.
     if len(fs.get_drug_catalog()) < 10:
         os.environ["CLINIC_DB"] = db.DB_PATH
@@ -59,8 +57,9 @@ if __name__ == "__main__":
 
         runpy.run_path(os.path.join(REPO, "tools", "seed_ten.py"), run_name="__main__")
 
+    import protocol_dispatch as pdisp
     for p in fs.get_all_patients():
-        fs.save_cap_cache(p["id"], pcap.evaluate_cap(p["id"]))
+        pdisp.refresh_protocol_cache(p["id"])
 
     port = int(os.environ.get("PORT", "5578"))
     print(

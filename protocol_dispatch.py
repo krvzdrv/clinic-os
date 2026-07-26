@@ -101,3 +101,48 @@ def patient_verdicts(pid):
         verdict = protocol_verdict.verdict_for_ui(item["assessment"], item["protocol_id"])
         result.append({**item, "verdict": verdict})
     return result
+
+
+def pick_primary_assessment(items):
+    """Какой протокол показывать на дашборде (одна строка на пациента).
+
+    Приоритет: несоответствие → critical tier → тяжёлая → ВП при равенстве.
+    """
+    if not items:
+        return None
+
+    def score(item):
+        assessment = item.get("assessment") or {}
+        protocol_id = item.get("protocol_id") or ""
+        ui = protocol_verdict.verdict_for_ui(assessment, protocol_id)
+        s = 0
+        if not assessment.get("compliant"):
+            s -= 100
+        if ui.get("tier") == "critical":
+            s -= 50
+        if assessment.get("severity") == "severe":
+            s -= 20
+        if protocol_id == "cap_adult_768":
+            s -= 1
+        return s
+
+    return min(items, key=score)
+
+
+def refresh_protocol_cache(pid):
+    """Continuous: пересчитать все applicable протоколы и записать primary в cap_cache.
+
+    Карточка пациента берёт полный список из patient_verdicts; дашборд/метрика —
+    одну сводку на пациента (приоритетный протокол с gaps).
+    """
+    items = patient_assessments(pid)
+    primary = pick_primary_assessment(items)
+    if not primary:
+        fs.save_cap_cache(
+            pid,
+            {"applicable": False, "compliant": True, "gaps": [], "severity": None, "setting": None},
+            protocol_id=None,
+        )
+        return items
+    fs.save_cap_cache(pid, primary["assessment"], protocol_id=primary["protocol_id"])
+    return items

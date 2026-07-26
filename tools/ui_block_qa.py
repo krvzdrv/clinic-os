@@ -55,17 +55,7 @@ def main() -> int:
                         issues.append(("FAIL", "dashboard/next", f"дубль: {s[:80]}"))
                         break
 
-        guest = page.locator(".guest-banner")
-        if guest.count():
-            gt = guest.inner_text()
-            if PAT_INITIAL.search(gt) and "Иванович" not in gt:
-                issues.append(("FAIL", "guest", "обрезанное ФИО"))
-            if "Открыть карту" not in gt and "Открыть" not in gt:
-                issues.append(("WARN", "guest", "нет одной CTA"))
-        else:
-            issues.append(("FAIL", "guest", "нет баннера"))
-
-        # Соколов
+        # Соколов — в общем списке, без отдельного баннера
         href = page.evaluate(
             """() => {
               const a = [...document.querySelectorAll('a')].find(x => /Соколов/.test(x.textContent||''));

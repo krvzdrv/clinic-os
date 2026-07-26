@@ -767,28 +767,36 @@ def delete_flag(fid):
     db.execute("DELETE FROM clinical_flag WHERE id = %s", (fid,))
 
 
-# ============ Кэш оценки по протоколу ВП ============
+# ============ Кэш оценки протокола (дашборд, одна строка на пациента) ============
 
-def save_cap_cache(pid, verdict):
-    """Сохраняет сводку CAP-оценки + UI-шаг, чтобы дашборд не делал N+1."""
+def save_cap_cache(pid, verdict, protocol_id=None):
+    """Сводка primary-протокола + UI-шаг для дашборда (без N+1 на GET /).
+
+    protocol_id — какой протокол записан (cap_adult_768 / ida_adult_23 / …).
+    Выбор primary — protocol_dispatch.refresh_protocol_cache / pick_primary_assessment.
+    """
     from protocol_verdict import verdict_for_ui
 
     applicable = 1 if verdict.get("applicable") else 0
     compliant = 1 if verdict.get("compliant") else 0
     severity = verdict.get("severity")
     setting = verdict.get("setting") if verdict.get("applicable") else None
-    ui = verdict_for_ui(verdict)
+    ui = verdict_for_ui(verdict, protocol_id=protocol_id) if protocol_id else verdict_for_ui(verdict)
     next_step = (ui.get("next_step") or "")[:240] or None
     headline = (ui.get("headline") or "")[:160] or None
     db.execute(
         "INSERT INTO cap_cache (patient_id, applicable, severity, setting, compliant, "
-        "computed_at, next_step, headline) "
-        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s) "
+        "computed_at, next_step, headline, protocol_id) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s) "
         "ON CONFLICT(patient_id) DO UPDATE SET applicable=EXCLUDED.applicable, "
         "severity=EXCLUDED.severity, setting=EXCLUDED.setting, compliant=EXCLUDED.compliant, "
         "computed_at=EXCLUDED.computed_at, next_step=EXCLUDED.next_step, "
-        "headline=EXCLUDED.headline",
-        (pid, applicable, severity, setting, compliant, _today(), next_step, headline))
+        "headline=EXCLUDED.headline, protocol_id=EXCLUDED.protocol_id",
+        (
+            pid, applicable, severity, setting, compliant, _today(),
+            next_step, headline, protocol_id,
+        ),
+    )
 
 
 def get_cap_cache(pid):

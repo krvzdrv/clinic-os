@@ -257,13 +257,14 @@ CREATE TABLE IF NOT EXISTS pathway (
 
 CREATE TABLE IF NOT EXISTS cap_cache (
     patient_id  TEXT PRIMARY KEY,
-    applicable  INTEGER,   -- 0/1
-    severity    TEXT,      -- moderate / severe / NULL
+    applicable  INTEGER,   -- 0/1 (есть хотя бы один активный протокол — primary)
+    severity    TEXT,      -- mild / severe / NULL
     setting     TEXT,      -- outpatient / inpatient / NULL
-    compliant   INTEGER,   -- 0/1
+    compliant   INTEGER,   -- 0/1 по primary-протоколу
     computed_at TEXT,
     next_step   TEXT,      -- главный шаг для UI/дашборда
-    headline    TEXT       -- клинический заголовок вердикта
+    headline    TEXT,      -- клинический заголовок вердикта
+    protocol_id TEXT       -- cap_adult_768 / ida_adult_23 / … (primary)
 );
 
 -- ===== Индексы =====

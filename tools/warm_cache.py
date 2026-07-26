@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Прогревает cap_cache: считает CAP-оценку для каждого пациента один раз,
-чтобы дашборд не делал N+1 запросов к БД.
+Прогревает cap_cache: все applicable протоколы → primary на пациента,
+чтобы дашборд не делал N+1 evaluate_*.
 
 Запуск:
   DATABASE_URL=... PYTHONPATH=. python3 tools/warm_cache.py
 """
 import fhir_store as fs
-import protocol_cap as pcap
+import protocol_dispatch as pdisp
 
 
 def main():
@@ -16,13 +16,18 @@ def main():
     pats = fs.get_all_patients()
     n = 0
     for p in pats:
-        verdict = pcap.evaluate_cap(p["id"])
-        fs.save_cap_cache(p["id"], verdict)
+        items = pdisp.refresh_protocol_cache(p["id"])
+        cache = fs.get_cap_cache(p["id"]) or {}
+        ids = [i.get("protocol_id") for i in items]
+        print(
+            f"  {p['family']} {p['given']}: "
+            f"protocols={ids or ['—']} "
+            f"primary={cache.get('protocol_id') or '—'} "
+            f"applicable={cache.get('applicable')} "
+            f"compliant={cache.get('compliant')} "
+            f"next={(cache.get('next_step') or '')[:50]!r}"
+        )
         n += 1
-        print(f"  {p['family']} {p['given']}: "
-              f"applicable={verdict.get('applicable')} "
-              f"severity={verdict.get('severity')} "
-              f"compliant={verdict.get('compliant')}")
     print(f"Прогрето кэшей: {n}")
 
 

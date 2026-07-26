@@ -443,9 +443,7 @@ def main() -> int:
 
     print("warming protocol cache…")
     for pid, name, _ in stories:
-        for item in pdisp.patient_assessments(pid):
-            if item["protocol_id"] == "cap_adult_768":
-                fs.save_cap_cache(pid, item["assessment"])
+        pdisp.refresh_protocol_cache(pid)
 
     _print_verdicts(stories)
 

@@ -9,7 +9,10 @@ UI path при сохранении АБТ: `app._medication_order_verdict` (т�
 
 ## 0) Три правила (не нарушать)
 
-1. **Сигналим всегда.** После любой клинической записи, влияющей на картину ВП, система заново считает `protocol_cap.evaluate_cap(pid)` и обновляет вердикт / `cap_cache`. Не ждём «кнопки оценить».
+1. **Сигналим всегда.** После любой клинической записи система пересчитывает
+   все applicable протоколы (`protocol_dispatch.refresh_protocol_cache`) и
+   пишет **primary** в `cap_cache` (для дашборда). Карточка пациента показывает
+   полный список через `patient_verdicts`. Не ждём «кнопки оценить».
 2. **Врач может принять своё решение.** Soft-stop и hard-stop на `order-sign` **не запрещают** назначение навсегда: требуется явный акт согласия и **письменное обоснование** (для soft — чекбокс + причина; для hard — причина без чекбокса).
 3. **Override видим.** Осознанное назначение вопреки CDS **не делает** эпизод «зелёным». В данных остаётся `medication_request.cds_override=1`, строка в `cds_override_log`, в UI — маркер «осознанно», в вердикте — отклонение с пометкой о подтверждении. Метрика качества считает это несоответствием.
 
@@ -19,7 +22,8 @@ UI path при сохранении АБТ: `app._medication_order_verdict` (т�
 
 | Горизонт | Когда | Что | Результат |
 |----------|--------|-----|-----------|
-| **Prospective (order-sign)** | Врач выбирает/подписывает препарат *до* сохранения | `drug_service` + `evaluate_abt_choice` | info / **soft-stop (warning)** / **hard-stop** |
+| **Prospective (order-sign)** | Врач выбирает/подписывает препарат *до* сохранения | `drug_service` + `evaluate_abt_choice` / `evaluate_iron_choice` | info / **soft-stop (warning)** / **hard-stop** |
+| **Prospective (finish encounter)** | Врач закрывает амбулаторный/контрольный приём *до* `finished` | gap `hospitalization_indicated` из `patient_assessments` | **soft-stop** (confirm+ack+причина → `cds_override_log`) |
 | **Continuous (patient-view)** | После любой клинической записи + при открытии карты | полный `evaluate_cap` → `verdict_for_ui` | headline / reason / CTA / checks |
 
 Prospective **не заменяет** continuous: даже после подтверждённого override continuous снова покажет отклонение — уже с флагом осознанности.
@@ -76,8 +80,8 @@ override так же бесполезен для контроля качеств
 Алгоритм:
 
 1. Сбросить кэш пациента (`clear_pid_cache`).
-2. `verdict = evaluate_cap(pid)`.
-3. `save_cap_cache(pid, verdict)`.
+2. `protocol_dispatch.refresh_protocol_cache(pid)` —
+   `patient_assessments` → `pick_primary_assessment` → `save_cap_cache(..., protocol_id)`.
 4. В UI: при AJAX-записи, меняющей картину протокола — `reload`, чтобы `#now-action` / status-strip не врали.
 
 Свободный текст анамнеза (`clinical_flag.category='anamnesis'`) протоколом **не** оценивается — пересчёт можно пропустить или выполнить no-op для единообразия.

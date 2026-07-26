@@ -199,9 +199,10 @@ def init_schema():
         ("category", "TEXT"), ("verify_flag", "INTEGER DEFAULT 0"),
     ):
         _ensure_column("drug_catalog", col, coltype)
-    # Дашборд: аудит «что сделать сейчас» без N+1 evaluate_cap.
+    # Дашборд: аудит «что сделать сейчас» без N+1 evaluate_*.
     _ensure_column("cap_cache", "next_step", "TEXT")
     _ensure_column("cap_cache", "headline", "TEXT")
+    _ensure_column("cap_cache", "protocol_id", "TEXT")
 
 
 def _ensure_column(table, column, coltype):
