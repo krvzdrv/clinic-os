@@ -508,6 +508,8 @@
   .enc-toolbar-meta .enc-reason{margin:0;flex:0 1 auto;}
   .enc-toolbar-meta .enc-complaint{margin:0;flex:1 1 12em;min-width:8em;color:var(--text-primary);}
   .enc-toolbar-meta .enc-complaint.none{color:var(--text-muted);}
+  .enc-toolbar-meta .enc-k{color:var(--text-muted);font-weight:500;margin-right:4px;}
+  .enc-toolbar-meta .enc-k::after{content:":";}
   .enc-complaint-edit input[type=text]{min-width:18em;max-width:100%;}
   /* Все триггеры тулбара = размер .btn (SSOT 32px), без «плашки» Жалоба другого роста. */
   .enc-toolbar .add-panel,
@@ -1445,8 +1447,8 @@
           {% if reason_conds %}
           <p class="enc-reason">Повод: {% for c in reason_conds %}<span class="rc-chip">{{ c.display }}</span>{% endfor %}</p>
           {% endif %}
-          {% if e.complaint %}<p class="enc-complaint">{{ e.complaint }}</p>
-          {% else %}<p class="enc-complaint none">Жалоба не указана</p>{% endif %}
+          {% if e.complaint %}<p class="enc-complaint"><span class="enc-k">Жалоба</span> {{ e.complaint }}</p>
+          {% else %}<p class="enc-complaint none"><span class="enc-k">Жалоба</span> не указана</p>{% endif %}
         </div>
       </div>
       <div class="enc-body dx-rail">
