@@ -172,6 +172,9 @@
      а не оставлять узкое окошко рядом с пустым фоном (Тип/Дата — компактные). */
   .fform .field.grow{flex:1 1 220px;}
   .fform .field.grow input{width:100%;}
+  /* Анамнез и др. длинный текст — на всю ширину блока формы. */
+  .fform .field.field-full{flex:1 1 100%;width:100%;min-width:0;}
+  .fform .field.field-full textarea{width:100%;box-sizing:border-box;min-height:5.6em;}
   .fform label{font-size:12px;letter-spacing:normal;text-transform:none;color:var(--text-secondary);font-weight:400;height:auto;line-height:1.3;display:inline-flex;align-items:center;gap:6px;}
   .fform label .ti{font-size:13px;color:var(--text-secondary);}
   .fform input,.fform select,.fform textarea{height:36px;padding:0 10px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
