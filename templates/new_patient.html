@@ -20,19 +20,15 @@
   .row{display:flex;gap:12px;}
   .row .field{flex:1;}
   .btn{display:block;width:100% !important;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;}
-  /* Дата рождения — три отдельных поля, не type="date": для года вроде 1967
-     родной календарь пришлось бы прокликивать месяц за месяцем назад.
-     Год печатается цифрами сразу, без навигации. */
+  /* Дата рождения — три сегмента на всю ширину формы (как date-input:
+     день / месяц / год с близким визуальным весом, месяц чуть шире). */
   .dob-row{
-    display:flex;gap:8px;align-items:stretch;
-    width:100%;max-width:100%;box-sizing:border-box;
+    display:grid;
+    grid-template-columns:minmax(4.5rem,1.1fr) minmax(7.5rem,1.7fr) minmax(5.5rem,1.3fr);
+    gap:8px;align-items:stretch;width:100%;
   }
-  .dob-row input,.dob-row select{box-sizing:border-box;min-width:0;}
+  .dob-row input,.dob-row select{width:100%;min-width:0;box-sizing:border-box;}
   .dob-row input{text-align:center;}
-  /* День — 2 цифры, год — 4; месяц забирает оставшуюся ширину формы. */
-  .dob-row input#dob_day{flex:0 0 3.25em;width:3.25em;padding-left:8px;padding-right:8px;}
-  .dob-row input#dob_year{flex:0 0 4.75em;width:4.75em;padding-left:8px;padding-right:8px;}
-  .dob-row select#dob_month{flex:1 1 0;width:auto;}
 </style>
 </head>
 <body>
