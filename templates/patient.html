@@ -800,12 +800,16 @@
       <div class="field"><label><i class="ti ti-flask" aria-hidden="true"></i>Анализ</label>
         <select name="code" id="labobs-code-{{ eid }}">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
+      {% set ns = namespace(has_ord=false) %}
+      {% for s in orders or [] if study_category(s.code)=='lab' %}{% set ns.has_ord = true %}{% endfor %}
+      {% if ns.has_ord %}
       <div class="field"><label><i class="ti ti-clipboard-list" aria-hidden="true"></i>К заказу</label>
         <select name="service_request_id">
           <option value="">— без заказа —</option>
           {% for s in orders or [] if study_category(s.code)=='lab' %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
         </select>
       </div>
+      {% endif %}
       <div class="field"><label><i class="ti ti-number-123" aria-hidden="true"></i>Значение</label>
         <div class="input-group">
           <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required>
@@ -870,12 +874,14 @@
       <div class="field"><label><i class="ti ti-scan" aria-hidden="true"></i>Тип</label>
         <select name="code">{{ study_code_options(cat) }}</select>
       </div>
+      {% if orders %}
       <div class="field"><label><i class="ti ti-clipboard-list" aria-hidden="true"></i>К заказу</label>
         <select name="service_request_id">
           <option value="">— без заказа —</option>
-          {% for s in orders or [] %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
+          {% for s in orders %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
         </select>
       </div>
+      {% endif %}
       <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="date" value="{{ today }}"></div>
       <div class="field"><label><i class="ti ti-file-text" aria-hidden="true"></i>Заключение</label><textarea name="conclusion" placeholder="Очаговая инфильтрация S9 справа…"></textarea></div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
@@ -1123,27 +1129,27 @@
   </details>
   {% endmacro %}
 
-  {# Обследование: одна кнопка «Добавить», внутри — выбор типа записи
-     (заказ / число / заключение), а не три кнопки подряд. #}
+  {# Обследование: только результат (анализ/заключение). Заказы в UI не создаём —
+     «К заказу» в форме опционально, если заказ уже есть (сид/CDS). #}
   {% macro study_add(pid, eid, cat, dlist_id, orders=None) %}
-  {% call add_panel('Добавить') %}
+  {% call add_panel('Добавить результат') %}
+    {% if cat == 'lab' %}
     <div class="study-add" data-study-add>
       <div class="fform study-add-kind">
         <div class="field">
-          <label class="sr-only">Что добавить</label>
-          <select data-study-kind aria-label="Что добавить">
-            <option value="order">Заказ исследования</option>
-            {% if cat == 'lab' %}<option value="numeric">Числовой результат</option>{% endif %}
+          <label class="sr-only">Тип результата</label>
+          <select data-study-kind aria-label="Тип результата">
+            <option value="numeric">Числовой результат</option>
             <option value="report">Текстовое заключение</option>
           </select>
         </div>
       </div>
-      <div data-study-pane="order">{{ sr_form(pid, eid, cat, dlist_id) }}</div>
-      {% if cat == 'lab' %}
-      <div data-study-pane="numeric" hidden>{{ lab_obs_form(pid, eid, dlist_id, orders) }}</div>
-      {% endif %}
+      <div data-study-pane="numeric">{{ lab_obs_form(pid, eid, dlist_id, orders) }}</div>
       <div data-study-pane="report" hidden>{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
     </div>
+    {% else %}
+    {{ rep_form(pid, eid, cat, dlist_id, orders) }}
+    {% endif %}
   {% endcall %}
   {% endmacro %}
 
@@ -1576,7 +1582,8 @@
         {% set complaint_done = e.complaint %}
         {% set anam_done = anam_notes|length > 0 or anam_risk|length > 0 %}
         {% set exam_done = exam_obs|length > 0 or exam_flags|length > 0 or gc_flag %}
-        {% set diag_done = ed.sr|length > 0 or ed.rep|length > 0 or lab_obs|length > 0 or imaging_flags|length > 0 %}
+        {# Заказы в UI не ведём — «заполнено» только по результатам / R-признакам. #}
+        {% set diag_done = ed.rep|length > 0 or lab_obs|length > 0 or imaging_flags|length > 0 %}
         {% set cond_done = ed.cond|length > 0 %}
         {% set med_done = ed.med|length > 0 %}
         {# Активный шаг = фокус протокола (что исправить) или первый незаполненный. #}
@@ -1702,9 +1709,10 @@
           {% else %}{% set bc.text = _cn ~ ' диагнозов' %}{% endif %}
         {% endif %}
 
-        {% set bd = namespace(kind='placeholder', text='Не назначено') %}
+        {% set bd = namespace(kind='placeholder', text='Нет результатов') %}
         {# Приоритет бейджа «Обследование» — docs/ui/encounter-sections-collapsed.html §3.
-           CDS (missing_cbc и т.п.) — только в карточке диагноза сверху, не в бейдже секции. #}
+           CDS (missing_cbc и т.п.) — только в карточке диагноза сверху, не в бейдже секции.
+           Заказы в UI не показываем — бейдж только по результатам. #}
         {% if imaging_flags %}
           {% set bd.kind = 'danger' %}
           {% if imaging_flags|length == 1 %}
@@ -1713,9 +1721,7 @@
             {% set bd.text = imaging_flags|length ~ ' R-признака' %}
           {% endif %}
         {% elif lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
-        {% elif pending_list and result_n == 0 %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
         {% elif result_n %}{% set bd.kind = 'neutral' %}{% set bd.text = (ok_lab_n ~ ' в норме') if ok_lab_n > 0 else (result_n|string ~ ' рез.') %}
-        {% elif diag_done %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
         {% endif %}
 
         {% set bm = namespace(kind='placeholder', text='Нет назначений') %}
@@ -1887,10 +1893,7 @@
               <div class="diag-sub">
                 <h4>Лабораторные</h4>
                 <div class="dlist record-list" id="dlist-lab-{{ e.id }}">
-                  {% if not lab_sr and not lab_rep and not lab_obs %}<span class="none">Нет заказов и результатов</span>{% endif %}
-                  {% for s in lab_sr %}<div class="it"><span class="st ord">Заказ</span><span>{{ study_display(s.code) }}</span>{% if s.occurrence_date %}<span class="chip-sub">{{ s.occurrence_date }}</span>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
-                  </div>{% endfor %}
+                  {% if not lab_rep and not lab_obs %}<span class="none">Нет результатов</span>{% endif %}
                   {% for r in lab_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
                     {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
                     <details class="add-panel add-panel--inline"><summary title="Поставить диагноз по этому результату">Диагноз</summary>
@@ -1913,10 +1916,7 @@
               <div class="diag-sub">
                 <h4>Инструментальные</h4>
                 <div class="dlist record-list" id="dlist-ins-{{ e.id }}">
-                  {% if not ins_sr and not ins_rep %}<span class="none">Нет заказов и результатов</span>{% endif %}
-                  {% for s in ins_sr %}<div class="it"><span class="st ord">Заказ</span><span>{{ study_display(s.code) }}</span>{% if s.occurrence_date %}<span class="chip-sub">{{ s.occurrence_date }}</span>{% endif %}
-                    <form method="POST" action="{{ url_for('delete_service_request_route', pid=patient.id, sid=s.id) }}" style="display:inline;margin-left:auto;"><button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button></form>
-                  </div>{% endfor %}
+                  {% if not ins_rep %}<span class="none">Нет результатов</span>{% endif %}
                   {% for r in ins_rep %}<div class="it"><span class="st done">Результат</span><span>{{ study_display(r.code) }}</span>{% if r.conclusion %}<span class="res">{{ r.conclusion }}</span>{% endif %}
                     {% set r_label = study_display(r.code) ~ (': ' ~ r.conclusion if r.conclusion else '') %}
                     <details class="add-panel add-panel--inline"><summary title="Поставить диагноз по этому результату">Диагноз</summary>
