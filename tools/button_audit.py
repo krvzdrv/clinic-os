@@ -178,7 +178,7 @@ def scenario_new_patient(page, audit: Audit):
     elif page.locator('#dob_day').count():
         # день/месяц/год напрямую цифрами — без прокликивания родного календаря (см. new_patient.html)
         page.fill('#dob_day', "15")
-        page.select_option('#dob_month', "01")
+        page.fill('#dob_month', "01")
         page.fill('#dob_year', "1990")
 
     with page.expect_navigation(timeout=10000):

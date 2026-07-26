@@ -20,21 +20,31 @@
   .row{display:flex;gap:12px;}
   .row .field{flex:1;}
   .btn{display:block;width:100% !important;padding:12px;font-size:15px;border-radius:10px;margin-top:8px;}
-  /* Дата рождения — три сегмента на всю ширину формы (как date-input:
-     день / месяц / год с близким визуальным весом, месяц чуть шире). */
+  /* Дата рождения — одна рамка, три одинаковых сегмента (не три «плашки»).
+     Месяц тоже input: нативный select всегда выше/темнее соседних полей. */
   .dob-row{
     display:grid;
-    grid-template-columns:minmax(4.5rem,1.1fr) minmax(7.5rem,1.7fr) minmax(5.5rem,1.3fr);
-    gap:8px;align-items:stretch;width:100%;
+    grid-template-columns:1fr 1fr 1.35fr;
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:8px;
+    background:var(--surface);
+    overflow:hidden;
   }
-  .dob-row input,.dob-row select{
+  .dob-row input{
     width:100%;min-width:0;box-sizing:border-box;
-    text-align:left; /* одинаково во всех трёх — select со стрелкой не центрируют */
+    height:42px;padding:0 12px;margin:0;
+    border:0;border-radius:0;background:transparent;
+    font-size:15px;font-family:var(--font);color:var(--ink);
+    text-align:center;
   }
-  /* Пустой месяц = тот же «placeholder», что ДД/ГГГГ (приглушённый), не чёрный текст. */
-  .dob-row select:has(option[value=""]:checked){color:var(--faint);}
-  .dob-row select option{color:var(--ink);}
-  .dob-row select option[value=""]{color:var(--faint);}
+  .dob-row input + input{border-left:1px solid var(--line);}
+  .dob-row input:focus{
+    outline:none;
+    background:color-mix(in srgb, var(--accent) 6%, transparent);
+    box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .dob-row input::placeholder{color:var(--faint);font-weight:400;}
 </style>
 </head>
 <body>
@@ -66,23 +76,9 @@
     <div class="field">
       <label><i class="ti ti-calendar" aria-hidden="true"></i>Дата рождения</label>
       <div class="dob-row">
-        <input type="text" inputmode="numeric" maxlength="2" id="dob_day" placeholder="ДД" aria-label="День рождения">
-        <select id="dob_month" aria-label="Месяц рождения">
-          <option value="">Месяц</option>
-          <option value="01">январь</option>
-          <option value="02">февраль</option>
-          <option value="03">март</option>
-          <option value="04">апрель</option>
-          <option value="05">май</option>
-          <option value="06">июнь</option>
-          <option value="07">июль</option>
-          <option value="08">август</option>
-          <option value="09">сентябрь</option>
-          <option value="10">октябрь</option>
-          <option value="11">ноябрь</option>
-          <option value="12">декабрь</option>
-        </select>
-        <input type="text" inputmode="numeric" maxlength="4" id="dob_year" placeholder="ГГГГ" aria-label="Год рождения">
+        <input type="text" inputmode="numeric" maxlength="2" id="dob_day" placeholder="ДД" aria-label="День рождения" autocomplete="bday-day">
+        <input type="text" inputmode="numeric" maxlength="2" id="dob_month" placeholder="ММ" aria-label="Месяц рождения" autocomplete="bday-month">
+        <input type="text" inputmode="numeric" maxlength="4" id="dob_year" placeholder="ГГГГ" aria-label="Год рождения" autocomplete="bday-year">
       </div>
       <input type="hidden" name="birth_date" id="birth_date_iso">
     </div>
@@ -90,25 +86,36 @@
   </form>
 </main>
 <script>
-  // День/месяц/год печатаются цифрами напрямую — без прокликивания месяцев
-  // родного календаря назад к нужному году. Собираем ISO-дату в скрытое поле.
+  // День/месяц/год цифрами — без нативного select (он визуально ломал ряд)
+  // и без прокликивания родного календаря. ISO собираем в скрытое поле.
   (function(){
     var day = document.getElementById('dob_day');
     var month = document.getElementById('dob_month');
     var year = document.getElementById('dob_year');
     var iso = document.getElementById('birth_date_iso');
     function pad2(v){ v = String(v||'').trim(); return v.length === 1 ? '0' + v : v; }
+    function digitsOnly(el, max){
+      el.value = String(el.value || '').replace(/\D/g, '').slice(0, max);
+    }
     function sync(){
-      var d = parseInt(day.value, 10), m = month.value, y = parseInt(year.value, 10);
-      if (day.value && m && year.value && year.value.length === 4 &&
-          d >= 1 && d <= 31 && y >= 1900 && y <= new Date().getFullYear()) {
-        iso.value = y + '-' + m + '-' + pad2(d);
+      var d = parseInt(day.value, 10), m = parseInt(month.value, 10), y = parseInt(year.value, 10);
+      if (day.value && month.value && year.value && year.value.length === 4 &&
+          d >= 1 && d <= 31 && m >= 1 && m <= 12 &&
+          y >= 1900 && y <= new Date().getFullYear()) {
+        iso.value = y + '-' + pad2(m) + '-' + pad2(d);
       } else {
         iso.value = '';
       }
     }
-    [day, month, year].forEach(function(el){ el.addEventListener('input', sync); el.addEventListener('change', sync); });
-    day.addEventListener('blur', function(){ if (day.value) day.value = pad2(day.value); });
+    [day, month, year].forEach(function(el){
+      el.addEventListener('input', function(){
+        digitsOnly(el, el === year ? 4 : 2);
+        sync();
+      });
+      el.addEventListener('change', sync);
+    });
+    day.addEventListener('blur', function(){ if (day.value) day.value = pad2(day.value); sync(); });
+    month.addEventListener('blur', function(){ if (month.value) month.value = pad2(month.value); sync(); });
   })();
 </script>
 {% include "_double_submit_guard.html" %}
