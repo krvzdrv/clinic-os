@@ -52,7 +52,7 @@
   .pat-cell .pat-name{
     margin:0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   }
-  .pat-meta{font-size:12px;color:var(--text-muted);margin:0;}
+  .pat-meta{font-size:12px;color:var(--text-muted);margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 
   .now-link{
     display:flex;align-items:center;gap:8px;min-width:0;
@@ -201,7 +201,10 @@
             <div class="icon-avatar sm accent" aria-hidden="true"><span class="ini">{{ ini }}</span></div>
             <div class="pat-text">
               <p class="pat-name">{{ p.full or p.name }}</p>
-              <p class="pat-meta">{{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}</p>
+              <p class="pat-meta">
+                {{ p.age }} лет · {{ "М" if p.gender == "male" else "Ж" }}
+                <span class="stage-tag {{ p.state }}">{{ p.state_label }}</span>
+              </p>
             </div>
           </div>
         </td>

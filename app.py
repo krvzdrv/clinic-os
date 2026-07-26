@@ -149,6 +149,7 @@ def dashboard():
             "severity": c["severity"] if c and c["applicable"] else None,
             "setting": c["setting"] if c and c["applicable"] else None,
             "compliant": bool(c["compliant"]) if c and c["applicable"] else None,
+            "state": (pathways.get(pid) or {}).get("state") or "unknown",
             "state_label": (pathways.get(pid) or {}).get("label") or "—",
             # Аудит в интерфейсе: что сделать сейчас (из cap_cache, без N+1).
             "next_step": (c.get("next_step") if c else None) or None,
