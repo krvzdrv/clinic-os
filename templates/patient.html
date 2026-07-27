@@ -70,12 +70,12 @@
   h2[id],.fstep[id]{scroll-margin-top:64px;}
   {# .enc-card — единая карточка приёма объявлена ниже (см. «Текущий приём — самостоятельная карточка»),
      .enc-head/.enc-date/.enc-complaint из старой версии тулбара не используются — убраны. #}
-  .enc-body{padding:6px 0 0;}
-  /* .enc-sub / .section-label — SSOT в static/clinic.css */
-  .enc-sub table{margin-top:2px;}
-  .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:12px 0;padding:6px 14px 12px;}
-  .unassigned h3{font-size:13px;color:var(--coral-deep);margin:8px 0 4px;}
-  .flow{display:flex;flex-direction:column;gap:14px;}
+  .enc-body{padding:var(--space-2) 0 0;}
+  /* .enc-sub / .section-label / отступы — SSOT в static/clinic.css (--space-*) */
+  .enc-sub table{margin-top:var(--space-1);}
+  .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:var(--space-3) 0;padding:var(--space-2) var(--space-3) var(--space-3);}
+  .unassigned h3{font-size:13px;color:var(--coral-deep);margin:var(--space-2) 0 var(--space-1);}
+  .flow{display:flex;flex-direction:column;gap:var(--space-4);} /* между гармошками */
   /* Секции визита: свёрнуто = кликабельная «полка»; открыто = типографика
      (не ещё одна белая рамка рядом с textarea — иначе иерархия схлопывается). */
   .fstep{margin:0;border:none;background:transparent;}
@@ -129,16 +129,16 @@
   .fstep[open] > summary.section-header .section-chev-right{display:none;}
   .fstep.attention > summary.section-header{border-color:var(--border-danger);}
   /* Плавное раскрытие секции — без прыжка контента ниже (см. smoothToggleDetails). */
-  .fstep-b{padding:10px 2px 6px;overflow:hidden;transition:height .18s ease;}
+  .fstep-b{padding:var(--space-3) 2px var(--space-2);overflow:hidden;transition:height .18s ease;}
   .focus-hint{
-    margin:0 0 10px;padding:8px 10px;font-size:13px;line-height:1.35;font-weight:500;
+    margin:0 0 var(--space-3);padding:var(--space-2) var(--space-3);font-size:13px;line-height:1.35;font-weight:500;
     color:var(--text-primary);background:var(--accent-soft);border:1px solid var(--border-accent);
     border-radius:var(--radius);
   }
-  .text-fact{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:0 0 4px;}
+  .text-fact{display:flex;align-items:flex-start;gap:var(--space-2);flex-wrap:wrap;margin:0 0 var(--space-2);}
   .text-fact .attr-value{flex:1 1 12rem;white-space:pre-wrap;}
   .text-fact .btn-small{flex:0 0 auto;}
-  .plan-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;}
+  .plan-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:flex-start;}
   .plan-alt{display:inline-block;width:max-content;max-width:100%;border:none;background:transparent;padding:0;margin:0;}
   .plan-alt > summary.btn{
     list-style:none;display:inline-flex;align-items:center;cursor:pointer;
@@ -177,9 +177,11 @@
   .next-hint{font-size:12px;color:var(--coral-deep);font-weight:600;margin:6px 0 2px;}
   .mini-btn{font-size:11px;font-weight:600;color:var(--coral-deep);background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:5px;}
   .mini-btn:hover{background:var(--tint);}
-  .fform{margin-top:8px;}
-  .fform form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
-  .fform .field{display:flex;flex-direction:column;gap:4px;}
+  /* Вне .enc-sub формам нужен небольшой верхний отступ; внутри — margin:0 из clinic.css */
+  .fform{margin-top:var(--space-2);}
+  .enc-sub .fform,.add-panel .fform{margin-top:0;}
+  .fform form{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:flex-end;}
+  .fform .field{display:flex;flex-direction:column;gap:var(--space-1);}
   /* Свободный текст (жалоба и т.п.) — растягивать на оставшееся место строки,
      а не оставлять узкое окошко рядом с пустым фоном (Тип/Дата — компактные). */
   .fform .field.grow{flex:1 1 220px;}
@@ -195,12 +197,12 @@
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
   /* Свободный текст — высота от rows, не --control-h */
   .fform textarea{min-width:240px;height:auto;min-height:64px;resize:vertical;padding-top:7px;line-height:1.4;}
-  .fform .form-actions{width:auto;flex:0 0 auto;display:flex;gap:8px;justify-content:flex-start;align-items:center;margin:0;}
+  .fform .form-actions{width:auto;flex:0 0 auto;display:flex;gap:var(--space-2);justify-content:flex-start;align-items:center;margin:0;}
   .fform .form-actions.form-actions--row{width:100%;flex:1 1 100%;}
-  .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
+  .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:var(--space-2);min-height:14px;}
   .fform .note b{color:var(--ink);}
   .fform .note .ref{color:var(--faint);}
-  .fform .hint{font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;white-space:pre-line;width:100%;}
+  .fform .hint{font-size:11px;color:var(--soft);line-height:1.4;margin-top:var(--space-2);white-space:pre-line;width:100%;}
   .fform .hint b{color:var(--ink);}
   .fform .reason-conditions{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--tint);width:100%;}
   .fform .reason-conditions label{flex-direction:row;align-items:baseline;gap:6px;font-size:12px;color:var(--ink);cursor:pointer;font-weight:400;}
@@ -241,8 +243,8 @@
   .fform .input-group input:invalid+.unit-suffix{border-color:var(--coral-deep);}
   /* Лаб / инструментальные: ширина сразу как у открытой формы (JS по select), без скачка */
   .diag-grid{
-    display:inline-flex;flex-direction:column;align-items:stretch;gap:16px;
-    max-width:100%;margin-top:4px;vertical-align:top;
+    display:inline-flex;flex-direction:column;align-items:stretch;gap:var(--space-4);
+    max-width:100%;margin-top:var(--space-1);vertical-align:top;
   }
   .diag-sub{
     border:1px solid var(--line);border-radius:10px;padding:0;background:#fff;overflow:hidden;
@@ -250,10 +252,10 @@
     /* min/width ставит _fitDiagSubs по самой широкой строке формы */
   }
   .diag-sub h4{font-size:13px;letter-spacing:-0.01em;text-transform:none;color:var(--text-secondary);font-weight:600;
-    margin:0;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);line-height:1.3;
+    margin:0;padding:var(--space-2) var(--space-3);background:var(--tint);border-bottom:1px solid var(--line);line-height:1.3;
     white-space:nowrap;}
   .diag-sub .dlist{font-size:13px;color:var(--ink);line-height:1.45;margin:0;}
-  .diag-sub .dlist .it{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);
+  .diag-sub .dlist .it{display:flex;align-items:baseline;gap:var(--space-2);flex-wrap:wrap;padding:var(--space-2) var(--space-3);border-bottom:1px solid var(--line);
     width:max-content;max-width:100%;box-sizing:border-box;}
   .diag-sub .dlist .it:last-child{border-bottom:none;}
   .diag-sub .dlist .st{font-size:11px;font-weight:600;letter-spacing:0;
@@ -261,7 +263,7 @@
   .diag-sub .dlist .st.done{background:var(--green-bg);color:var(--green);}
   .diag-sub .dlist .st.ord{background:var(--accent-soft);color:var(--steel);}
   .diag-sub .dlist .res{color:var(--soft);flex:0 1 auto;min-width:0;}
-  .diag-sub .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;white-space:nowrap;}
+  .diag-sub .none{display:block;padding:var(--space-3) var(--space-3);color:var(--faint);font-size:13px;white-space:nowrap;}
 
   .chart-pane{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;}
   .chart-pane-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -278,7 +280,7 @@
   .record-list .res,.rec-val{color:var(--soft);flex:0 1 auto;min-width:0;}
   .record-list .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
 
-  .add-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:var(--tint);
+  .add-bar{display:flex;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-2) var(--space-3) var(--space-3);border-top:1px solid var(--line);background:var(--tint);
     justify-content:flex-start;align-items:flex-start;}
   /* Закрытая плашка «+ …» — по тексту; открытая — по форме, не на весь экран */
   .add-bar .add-panel{flex:0 0 auto;width:max-content;max-width:100%;min-width:0;}
@@ -291,7 +293,7 @@
   .add-panel[open] > summary{border-bottom:1px solid var(--line);background:#fff;}
   .add-panel[open] > summary::before{content:"▾ ";}
   .add-panel-b{overflow:hidden;transition:height .18s ease;}
-  .add-panel .fform{margin:0;padding:10px;}
+  .add-panel .fform{margin:0;padding:var(--space-3);}
   .add-panel .fform .form-actions{justify-content:flex-start;}
 
   .add-panel--inline{flex:0 0 auto;min-width:auto;margin-left:auto;width:auto;}
@@ -439,23 +441,23 @@
   .attr-row{min-width:0;}
   /* Виталы: колонка = самый длинный ряд (лейбл/значение/бейдж/×), не ширина экрана */
   .obs-attrs{
-    display:inline-flex;flex-direction:column;align-items:stretch;gap:10px;
-    max-width:100%;margin:0 0 10px;vertical-align:top;
+    display:inline-flex;flex-direction:column;align-items:stretch;gap:var(--space-2);
+    max-width:100%;margin:0 0 var(--space-3);vertical-align:top;
   }
-  .obs-attrs .attr-row{width:auto;max-width:100%;}
-  .obs-attrs .attr-value-row{justify-content:flex-start;width:100%;}
+  .obs-attrs .attr-row{width:auto;max-width:100%;margin:0;}
+  .obs-attrs .attr-value-row{justify-content:flex-start;width:100%;gap:var(--space-2);}
   .attr-label{
-    font-size:12px;color:var(--text-secondary);margin:0 0 2px;font-weight:400;line-height:1.3;
+    font-size:12px;color:var(--text-secondary);margin:0 0 var(--space-1);font-weight:400;line-height:1.3;
   }
-  .attr-label .ti{font-size:13px;vertical-align:-2px;margin-right:4px;color:var(--text-secondary);}
+  .attr-label .ti{font-size:13px;vertical-align:-2px;margin-right:var(--space-1);color:var(--text-secondary);}
   .attr-value-row{
-    display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;
+    display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);min-width:0;
   }
   .attr-value{font-size:15px;margin:0;color:var(--text-primary);line-height:1.4;font-weight:500;min-width:0;}
   .attr-value b,.attr-value .k{font-weight:500;}
   .attr-value .none{color:var(--text-muted);font-weight:400;}
   .attr-actions{
-    display:flex;align-items:center;gap:8px;flex:none;
+    display:flex;align-items:center;gap:var(--space-2);flex:none;
   }
   .attr-actions .badge{flex:none;border-radius:12px;white-space:nowrap;font-weight:500;}
   .attr-actions form{display:flex;margin:0;padding:0;line-height:0;}

@@ -41,6 +41,14 @@
   --control-h: 32px;
   --control-font: 13px;
 
+  /* Шкала отступов приёма (иерархия визуально = шаг шкалы):
+     1 micro · 2 control · 3 block · 4 section · 5 stage */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+
   /* ---- Семантические алиасы (для агентов / внешних промптов) ----
      Не дублировать hex: только ссылки на канон выше.
      docs/ui/STYLE_GUIDE.md */
@@ -377,28 +385,34 @@ button.btn-small.primary:hover {
   color: var(--text-secondary);
   text-transform: none;
   letter-spacing: -0.01em;
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-2); /* label → факты/форма */
   line-height: 1.3;
 }
 
 /* Подраздел приёма: заголовок → значения → форма.
    Один паттерн во всех секциях (жалоба / анамнез / осмотр / …).
    Разделение: border-top у .enc-sub. Connector rail сюда не ставить —
-   он только у клинической иерархии диагноза (docs/ui/CLINICAL_HIERARCHY.md). */
+   он только у клинической иерархии диагноза (docs/ui/CLINICAL_HIERARCHY.md).
+
+   Вертикаль:
+     padding-top  --space-4  (воздух после разделителя)
+     label→content --space-2
+     факты→форма  --space-3
+     padding-bottom --space-3 (симметрия к следующему разделителю) */
 .enc-sub {
   margin: 0;
-  padding: 16px 0 4px;
+  padding: var(--space-4) 0 var(--space-3);
   border-top: 1px solid var(--border);
 }
 .enc-sub:first-child,
 .fstep-b > .enc-sub:first-child {
   border-top: none;
-  padding-top: 4px;
+  padding-top: 0;
 }
 /* Первый блок секции (описание, общее состояние, код МКБ…) — без верхней черты. */
 .enc-sub--main {
   border-top: none;
-  padding-top: 4px;
+  padding-top: 0;
 }
 .enc-sub .anam-text-form {
   margin: 0;
@@ -410,8 +424,8 @@ button.btn-small.primary:hover {
 .enc-sub .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 10px;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3); /* чипы → форма */
 }
 .enc-sub .chips:empty {
   display: none;
@@ -421,9 +435,9 @@ button.btn-small.primary:hover {
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px;
+  gap: var(--space-2); /* между показателями — как gap формы */
   max-width: 100%;
-  margin: 0 0 10px;
+  margin: 0 0 var(--space-3); /* список → форма */
   vertical-align: top;
 }
 .enc-sub .obs-attrs:empty {
@@ -433,20 +447,26 @@ button.btn-small.primary:hover {
 .enc-sub .obs-attrs .attr-row {
   width: auto;
   max-width: 100%;
+  margin: 0;
 }
 .enc-sub .obs-attrs .attr-value-row {
   justify-content: flex-start;
   width: 100%;
+  gap: var(--space-2);
 }
 .enc-sub .fform {
   margin: 0;
+}
+.enc-sub .fform .note,
+.enc-sub .fform .hint {
+  margin-top: var(--space-2);
 }
 /* Компактная форма: поля + кнопка в одну линию (кнопка справа от полей).
    Класс на <form> — работает и в .enc-sub, и в add-panel. */
 form.enc-sub-add {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2); /* select · значение · кнопка — один шаг */
   align-items: center; /* select и кнопка на одной линии по высоте */
   justify-content: flex-start;
 }
@@ -542,11 +562,13 @@ form.enc-sub-add .input-group input {
 .gc-choice form.enc-sub-add {
   flex-wrap: nowrap;
   align-items: center;
+  gap: var(--space-2); /* select · бейдж · кнопка — тот же шаг, что у показателей */
 }
 .gc-choice .gc-badge {
   flex: 0 0 auto;
   align-self: center;
   white-space: nowrap;
+  margin: 0;
 }
 
 /* Ошибка валидации в формах приёма — поле + подпись, не только текст в .note */
