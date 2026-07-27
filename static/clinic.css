@@ -433,49 +433,13 @@ form.enc-sub-add input[type="date"] {
   width: 100%;
 }
 
-/* Общее состояние — выбор одного из N (клик = сохранить). */
+/* Общее состояние — список (select) в .fform; масштабируется на большие словари. */
 .gc-choice {
   margin: 0;
 }
-.gc-seg {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-width: 36rem;
-}
-.gc-seg-btn {
-  appearance: none;
-  margin: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-  color: var(--steel);
-  font-family: var(--font);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.2;
-  padding: 8px 12px;
-  min-height: 36px;
-  cursor: pointer;
-}
-.gc-seg-btn:hover:not(.is-selected) {
-  background: var(--tint);
-  border-color: var(--accent-line);
-}
-.gc-seg-btn.is-selected {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  font-weight: 600;
-}
-.gc-seg-btn.is-severe.is-selected {
-  background: var(--critical);
-  border-color: var(--critical);
-  color: #fff;
-}
-.gc-seg-btn:disabled {
-  opacity: 0.55;
-  cursor: wait;
+.gc-choice select[name="key"] {
+  min-width: 16rem;
+  max-width: 28rem;
 }
 .gc-hint {
   margin: 8px 0 0;

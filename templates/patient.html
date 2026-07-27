@@ -245,8 +245,6 @@
   .record-list .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
   .add-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:var(--tint);}
   .add-bar .add-panel{flex:1 1 auto;min-width:0;max-width:100%;}
-  .study-add-kind{margin:0 0 10px;padding:0;}
-  .study-add-kind .field{max-width:20rem;}
   .add-panel{border:1px solid var(--line);border-radius:8px;background:#fff;flex:1 1 140px;min-width:140px;}
   .add-panel > summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12px;font-weight:600;color:var(--steel);}
   .add-panel > summary::-webkit-details-marker{display:none;}
@@ -778,54 +776,50 @@
   </div>
   {% endmacro %}
 
-  {# Лабораторный показатель (числовой результат): WBC, СРБ, ПКТ, PaO2 — это обследование, не осмотр. #}
+  {# Лабораторный показатель: только Анализ + Значение + Сохранить.
+     Дата = сегодня (скрыто / дефолт в fhir_store). Привязка к заказу не в UI —
+     протокол принимает observation без закрытия service_request. #}
   {% macro lab_obs_form(pid, eid, chip_target='', orders=None) %}
   <div class="fform">
     <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <input type="hidden" name="date" value="{{ today }}">
       <div class="field"><label><i class="ti ti-flask" aria-hidden="true"></i>Анализ</label>
         <select name="code" id="labobs-code-{{ eid }}">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
-      {% set ns = namespace(has_ord=false) %}
-      {% for s in orders or [] if study_category(s.code)=='lab' %}{% set ns.has_ord = true %}{% endfor %}
-      {% if ns.has_ord %}
-      <div class="field"><label><i class="ti ti-clipboard-list" aria-hidden="true"></i>К заказу</label>
-        <select name="service_request_id">
-          <option value="">— без заказа —</option>
-          {% for s in orders or [] if study_category(s.code)=='lab' %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
-        </select>
-      </div>
-      {% endif %}
       <div class="field"><label><i class="ti ti-number-123" aria-hidden="true"></i>Значение</label>
         <div class="input-group">
           <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required>
           <span class="unit-suffix" id="labobs-unit-{{ eid }}"></span>
         </div>
       </div>
-      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="date" value="{{ today }}"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
     <div class="note" id="labobs-note-{{ eid }}"></div>
   </div>
   {% endmacro %}
 
-  {# Общее состояние — 5 взаимоисключающих уровней (шкала).
-     Сегменты: один клик = выбор и сохранение, без select и «Сохранить».
-     Показание к госпитализации — бейдж под шкалой + CDS. #}
+  {# Общее состояние — список (select). Масштабируется на сотни значений;
+     выбранное сохраняется по «Сохранить». Бейдж госпитализации — под формой. #}
   {% macro gc_form(pid, eid, current='') %}
-  <form class="gc-choice" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
-    <input type="hidden" name="encounter_id" value="{{ eid }}">
-    <div class="gc-seg" role="radiogroup" aria-label="Общее состояние">
-      {% for k in general_condition_order %}
-      <button type="submit" name="key" value="{{ k }}"
-        class="gc-seg-btn{% if current==k %} is-selected{% endif %}{% if general_condition_needs_inpatient(k) %} is-severe{% endif %}"
-        aria-pressed="{{ 'true' if current==k else 'false' }}">{{ general_condition_display(k) }}</button>
-      {% endfor %}
-    </div>
+  <div class="fform gc-choice">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
+      <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <div class="field">
+        <label class="sr-only">Общее состояние</label>
+        <select name="key" required aria-label="Общее состояние">
+          <option value="">— не выбрано —</option>
+          {% for k in general_condition_order %}
+          <option value="{{ k }}"{% if current==k %} selected{% endif %}>{{ general_condition_display(k) }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+    </form>
     {% if current and general_condition_needs_inpatient(current) %}
     <p class="gc-hint"><span class="badge red">показана госпитализация</span></p>
     {% endif %}
-  </form>
+  </div>
   {% endmacro %}
 
   {# Список исследований: если категория заранее не сужена (cat='all') — группируем
@@ -853,23 +847,17 @@
   </div>
   {% endmacro %}
 
+  {# Инструментальный результат: Тип + Сохранить.
+     Свободный текст заключения протоколу не нужен (сверяется факт исследования
+     и кодированные рентген-признаки ниже). Дата — сегодня. #}
   {% macro rep_form(pid, eid, cat='all', chip_target='', orders=None) %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_report_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_report_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
+      <input type="hidden" name="date" value="{{ today }}">
       <div class="field"><label><i class="ti ti-scan" aria-hidden="true"></i>Тип</label>
         <select name="code">{{ study_code_options(cat) }}</select>
       </div>
-      {% if orders %}
-      <div class="field"><label><i class="ti ti-clipboard-list" aria-hidden="true"></i>К заказу</label>
-        <select name="service_request_id">
-          <option value="">— без заказа —</option>
-          {% for s in orders %}<option value="{{ s.id }}">{{ study_display(s.code) }}{% if s.occurrence_date %} · {{ s.occurrence_date }}{% endif %}</option>{% endfor %}
-        </select>
-      </div>
-      {% endif %}
-      <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="date" value="{{ today }}"></div>
-      <div class="field"><label><i class="ti ti-file-text" aria-hidden="true"></i>Заключение</label><textarea name="conclusion" placeholder="Очаговая инфильтрация S9 справа…"></textarea></div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
   </div>
@@ -1116,24 +1104,12 @@
   </details>
   {% endmacro %}
 
-  {# Обследование: только результат (анализ/заключение). Заказы в UI не создаём —
-     «К заказу» в форме опционально, если заказ уже есть (сид/CDS). #}
+  {# Обследование: только результат. Лаб — Анализ/Значение/Сохранить.
+     Инструментальные — Тип/Заключение/Сохранить (дата сегодня, без «К заказу»). #}
   {% macro study_add(pid, eid, cat, dlist_id, orders=None) %}
   {% call add_panel('Добавить результат') %}
     {% if cat == 'lab' %}
-    <div class="study-add" data-study-add>
-      <div class="fform study-add-kind">
-        <div class="field">
-          <label class="sr-only">Тип результата</label>
-          <select data-study-kind aria-label="Тип результата">
-            <option value="numeric">Числовой результат</option>
-            <option value="report">Текстовое заключение</option>
-          </select>
-        </div>
-      </div>
-      <div data-study-pane="numeric">{{ lab_obs_form(pid, eid, dlist_id, orders) }}</div>
-      <div data-study-pane="report" hidden>{{ rep_form(pid, eid, cat, dlist_id, orders) }}</div>
-    </div>
+    {{ lab_obs_form(pid, eid, dlist_id, orders) }}
     {% else %}
     {{ rep_form(pid, eid, cat, dlist_id, orders) }}
     {% endif %}
@@ -2066,18 +2042,6 @@
 </main>
 <script>
 (function(){
-  // Обследование: одна «Добавить» → выбор типа (заказ / число / заключение).
-  document.addEventListener('change', function(e){
-    var sel = e.target;
-    if(!sel || !sel.matches || !sel.matches('[data-study-kind]')) return;
-    var root = sel.closest('[data-study-add]');
-    if(!root) return;
-    var kind = sel.value;
-    root.querySelectorAll('[data-study-pane]').forEach(function(pane){
-      pane.hidden = pane.getAttribute('data-study-pane') !== kind;
-    });
-  });
-
   // Плавное раскрытие секций/форм (fstep/add-panel/status-add) — без прыжка
   // контента ниже при клике на summary. Высота анимируется по scrollHeight
   // содержимого; open-атрибут выставляется синхронно, чтобы CSS-правила
