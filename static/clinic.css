@@ -449,25 +449,43 @@ button.btn-small.primary:hover {
 .enc-sub .obs-attrs {
   display: inline-flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: stretch; /* все ряды = ширина самого длинного (значение+алерт+×) */
   gap: var(--space-2); /* между показателями — как gap формы */
+  width: max-content;
   max-width: 100%;
   margin: 0 0 var(--space-3); /* список → форма */
   vertical-align: top;
+  box-sizing: border-box;
 }
 .enc-sub .obs-attrs:empty {
   display: none;
   margin: 0;
 }
 .enc-sub .obs-attrs .attr-row {
-  width: auto;
+  width: 100%;
   max-width: 100%;
   margin: 0;
+  box-sizing: border-box;
 }
 .enc-sub .obs-attrs .attr-value-row {
+  display: flex;
+  align-items: center;
   justify-content: flex-start;
   width: 100%;
   gap: var(--space-2);
+  min-width: 0;
+}
+/* Значение слева; алерт+× справа. × у всех рядов на одной вертикали. */
+.enc-sub .obs-attrs .attr-value {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.enc-sub .obs-attrs .attr-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 0 0 auto;
+  margin-left: auto; /* прижать блок алерт+× к правому краю колонки */
 }
 .enc-sub .fform {
   margin: 0;

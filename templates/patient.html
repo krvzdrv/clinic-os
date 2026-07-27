@@ -441,19 +441,21 @@
     display:flex;flex-direction:column;gap:12px;
   }
   .attr-row{min-width:0;}
-  /* Виталы: колонка = самый длинный ряд (лейбл/значение/бейдж/×), не ширина экрана */
+  /* Виталы: колонка = самый длинный ряд; × выровнены справа (см. clinic.css .enc-sub .obs-attrs) */
   .obs-attrs{
     display:inline-flex;flex-direction:column;align-items:stretch;gap:var(--space-2);
-    max-width:100%;margin:0 0 var(--space-3);vertical-align:top;
+    width:max-content;max-width:100%;margin:0 0 var(--space-3);vertical-align:top;box-sizing:border-box;
   }
-  .obs-attrs .attr-row{width:auto;max-width:100%;margin:0;}
-  .obs-attrs .attr-value-row{justify-content:flex-start;width:100%;gap:var(--space-2);}
+  .obs-attrs .attr-row{width:100%;max-width:100%;margin:0;box-sizing:border-box;}
+  .obs-attrs .attr-value-row{display:flex;align-items:center;justify-content:flex-start;width:100%;gap:var(--space-2);min-width:0;}
+  .obs-attrs .attr-value{flex:0 1 auto;min-width:0;}
+  .obs-attrs .attr-actions{margin-left:auto;flex:0 0 auto;}
   .attr-label{
     font-size:12px;color:var(--text-secondary);margin:0 0 var(--space-1);font-weight:400;line-height:1.3;
   }
   .attr-label .ti{font-size:13px;vertical-align:-2px;margin-right:var(--space-1);color:var(--text-secondary);}
   .attr-value-row{
-    display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);min-width:0;
+    display:flex;align-items:center;justify-content:flex-start;gap:var(--space-2);min-width:0;
   }
   .attr-value{font-size:15px;margin:0;color:var(--text-primary);line-height:1.4;font-weight:500;min-width:0;}
   .attr-value b,.attr-value .k{font-weight:500;}
@@ -464,8 +466,7 @@
   /* .badge.alert — единый стиль клинических алертов (clinic.css); тут только раскладка */
   .attr-actions .badge{flex:none;}
   .attr-actions form{display:flex;margin:0;padding:0;line-height:0;}
-  .attr-actions .chip-x{margin:0 !important;opacity:0.65;}
-  .attr-value-row > .badge{flex:none;margin-left:auto;}
+  .attr-actions .chip-x{margin:0 !important;opacity:0.65;flex:none;}
   /* Диагноз status-strip: значение растягивается, badge справа */
   .dx-rail .attr-value{flex:1;font-size:14px;font-weight:400;}
   .dx-rail .attr-row{width:auto;max-width:none;}
