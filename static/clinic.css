@@ -433,7 +433,7 @@ form.enc-sub-add {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  align-items: flex-end;
+  align-items: center; /* select и кнопка на одной линии по высоте */
   justify-content: flex-start;
 }
 /* По умолчанию — по содержимому; широкие «плашки» только с модификатором. */
@@ -458,9 +458,9 @@ form.enc-sub-add .field.field-value .input-group {
   max-width: 100%;
 }
 form.enc-sub-add .field.field-value .input-group input {
-  width: 7rem;
-  flex: 0 0 7rem;
-  min-width: 7rem;
+  width: 5.25rem; /* хватает на пример 97,5 / 36,2 */
+  flex: 0 0 5.25rem;
+  min-width: 5.25rem;
 }
 form.enc-sub-add .field.field-value .input-group .unit-suffix {
   flex: 0 0 auto;
@@ -469,15 +469,22 @@ form.enc-sub-add .field.field-value .input-group .unit-suffix {
   padding: 0 10px;
 }
 form.enc-sub-add .field.field-list {
-  width: 14rem; /* средние словари (общее состояние и т.п.) */
-  max-width: min(14rem, 100%);
+  width: auto; /* фактическая ширина — JS по самому длинному option */
+  max-width: 100%;
+  flex: 0 1 auto;
 }
-/* Длинные названия (МКБ): забирает оставшуюся ширину ряда */
-form.enc-sub-add .field.field-grow {
-  flex: 1 1 16rem;
+/* Словарь: ширина = самый длинный вариант + стрелка, не «на всю строку» */
+form.enc-sub-add .field.field-fit {
   width: auto;
-  min-width: 12rem;
-  max-width: none;
+  max-width: 100%;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+form.enc-sub-add .field.field-fit select,
+form.enc-sub-add .field.field-list select {
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 form.enc-sub-add .field.field-date {
   width: 9.5rem;

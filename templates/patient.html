@@ -750,7 +750,7 @@
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" novalidate>
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field field-grow"><label class="sr-only">Показатель</label>
+      <div class="field field-fit"><label class="sr-only">Показатель</label>
         <select name="code" id="obs-code-{{ uid }}" required aria-label="Показатель">
           <option value="">— не выбран —</option>
           {% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}
@@ -776,7 +776,7 @@
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1" novalidate>
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field field-grow"><label class="sr-only">Анализ</label>
+      <div class="field field-fit"><label class="sr-only">Анализ</label>
         <select name="code" id="labobs-code-{{ eid }}" aria-label="Анализ">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
       <div class="field field-value"><label class="sr-only">Значение</label>
@@ -865,7 +865,7 @@
       <input type="hidden" name="source_label" value="{{ source_label }}">
       <p class="src-hint" style="flex:1 1 100%;"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
-      <div class="field field-grow"><label class="sr-only">Диагноз (МКБ-10)</label>
+      <div class="field field-fit"><label class="sr-only">Диагноз (МКБ-10)</label>
         <select name="code" required aria-label="Диагноз (МКБ-10)">
           <option value="">— не выбран —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
@@ -1007,7 +1007,7 @@
     {% if _opts %}
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field field-list"><label class="sr-only">{{ aria_label }}</label>
+      <div class="field field-fit"><label class="sr-only">{{ aria_label }}</label>
         <select name="key" required aria-label="{{ aria_label }}">
           <option value="">— не выбран —</option>
           {% for key, label in _opts %}
@@ -1859,24 +1859,25 @@
                 <div class="add-bar">
                   {{ study_add(patient.id, e.id, 'instr', 'dlist-ins-' ~ e.id, ins_sr) }}
                 </div>
-                {# Рентген-критерии КП №768 — у инструментальных, не в осмотре. #}
-                {% set imaging_keys = imaging_flags|map(attribute='key')|list %}
-                <section class="enc-sub" id="sub-imaging-flags-{{ e.id }}">
-                  <h3 class="section-label">Рентгенологические признаки</h3>
-                  <div class="chips" id="chips-imaging-flags-{{ e.id }}">
-                    {% for f in imaging_flags %}
-                    {% set is_red = f.key in IMAGING_RED_FLAG_KEYS %}
-                    <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
-                      <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
-                        <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
-                      </form>
-                    </span>
-                    {% endfor %}
-                  </div>
-                  {{ flag_keys_form(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, 'Рентгенологические признаки', imaging_keys) }}
-                </section>
               </div>
             </div>
+            {# Рентген-критерии КП №768 — отдельный подраздел обследования (не внутри
+               карточки «Инструментальные»: там нет горизонтальных отступов .enc-sub). #}
+            {% set imaging_keys = imaging_flags|map(attribute='key')|list %}
+            <section class="enc-sub" id="sub-imaging-flags-{{ e.id }}">
+              <h3 class="section-label">Рентгенологические признаки</h3>
+              <div class="chips" id="chips-imaging-flags-{{ e.id }}">
+                {% for f in imaging_flags %}
+                {% set is_red = f.key in IMAGING_RED_FLAG_KEYS %}
+                <span class="{{ 'tag-chip danger' if is_red else 'tag-chip' }}">{{ flag_options[f.key][0] if f.key in flag_options else f.key }}
+                  <form method="POST" action="{{ url_for('clear_flag_route', pid=patient.id, fid=f.id) }}" style="display:inline;">
+                    <button class="chip-x" type="submit" title="Удалить" aria-label="Удалить">×</button>
+                  </form>
+                </span>
+                {% endfor %}
+              </div>
+              {{ flag_keys_form(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, 'Рентгенологические признаки', imaging_keys) }}
+            </section>
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
@@ -2104,6 +2105,38 @@
   restoreFstepUi();
   window.addEventListener('beforeunload', saveFstepUi);
 
+  // Ширина select = самый длинный option (+ стрелка), не на всю строку формы.
+  function _fitSelectToLongest(sel){
+    if(!sel || sel.tagName !== 'SELECT' || !sel.options || !sel.options.length) return;
+    var probe = document.createElement('span');
+    var cs = window.getComputedStyle(sel);
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none;';
+    probe.style.font = cs.font;
+    probe.style.letterSpacing = cs.letterSpacing;
+    probe.style.textTransform = cs.textTransform;
+    document.body.appendChild(probe);
+    var max = 0;
+    for(var i = 0; i < sel.options.length; i++){
+      probe.textContent = sel.options[i].text || '';
+      if(probe.offsetWidth > max) max = probe.offsetWidth;
+    }
+    document.body.removeChild(probe);
+    // padding поля + место под caret
+    var pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) || 20;
+    var w = Math.ceil(max + pad + 28);
+    var form = sel.closest('form');
+    if(form){
+      var room = form.clientWidth;
+      if(room > 120) w = Math.min(w, room);
+    }
+    sel.style.width = w + 'px';
+  }
+  function _fitEncSelects(root){
+    (root || document).querySelectorAll('form.enc-sub-add select').forEach(_fitSelectToLongest);
+  }
+  _fitEncSelects(document);
+  window.addEventListener('resize', function(){ _fitEncSelects(document); });
+
   // Форма измерения: единица + серый пример числа. После soft_refresh узлы новые — перепривязка.
   var _UNIT_RU = {
     'bpm':'уд/мин','C':'°C','%':'%','/min':'/мин','10^9/L':'×10⁹/л',
@@ -2289,8 +2322,9 @@
         if(nb && cb) cb.replaceWith(document.importNode(nb, true));
       });
       window.scrollTo(0, y);
-      // Новые формы осмотра/лаборатории после swap — снова единица + пример.
+      // Новые формы после swap — единица/пример и ширина select по самому длинному option.
       _bindObsUnitPlaceholders(document);
+      _fitEncSelects(document);
     }).catch(function(){ /* leave UI as-is */ });
   }
 
