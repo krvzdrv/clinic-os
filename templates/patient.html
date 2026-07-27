@@ -1722,7 +1722,8 @@
         {% elif med_done %}{% set bm.kind = 'neutral' %}{% set bm.text = (ed.med|length ~ ' назначение') if ed.med|length == 1 else (ed.med|length ~ ' назначений') %}
         {% endif %}
 
-        {# Одна открытая секция = active_key. soft_refresh синхронизирует open с HTML. #}
+        {# Стартово открыт focus-шаг; уже открытые гармошки клиент не закрывает
+           (soft_refresh / sessionStorage сохраняют open). #}
         {% set open_key = active_key %}
         {% set focus_hint = (v.next_step if v is defined and v.next_step and not v.ok and open_key else none) %}
         <div class="flow">
@@ -2149,18 +2150,33 @@
       });
     }
   }
-  document.querySelectorAll('details.fstep > summary, details.add-panel > summary, details.status-add > summary').forEach(function(summary){
-    summary.addEventListener('click', function(e){
-      e.preventDefault();
-      smoothToggleDetails(summary.parentElement);
+  function _bindDetailsToggles(root){
+    (root || document).querySelectorAll('details.fstep > summary, details.add-panel > summary, details.status-add > summary').forEach(function(summary){
+      if(summary.getAttribute('data-toggle-bound')) return;
+      summary.setAttribute('data-toggle-bound', '1');
+      summary.addEventListener('click', function(e){
+        e.preventDefault();
+        smoothToggleDetails(summary.parentElement);
+      });
     });
-  });
+  }
+  _bindDetailsToggles(document);
 
-  // Scroll после reload. Open секций — из HTML (один focus-шаг), не форсим все open.
-  var _fstepUiKey = 'clinic-os:fstep-ui:v4:' + location.pathname + location.search;
+  // Scroll после reload + какие гармошки были открыты (не схлопывать после save).
+  var _fstepUiKey = 'clinic-os:fstep-ui:v5:' + location.pathname + location.search;
+  function _openFstepIds(){
+    var open = [];
+    document.querySelectorAll('details.fstep[id]').forEach(function(d){
+      if(d.open) open.push(d.id);
+    });
+    return open;
+  }
   function saveFstepUi(){
     try {
-      sessionStorage.setItem(_fstepUiKey, JSON.stringify({y: window.scrollY || 0}));
+      sessionStorage.setItem(_fstepUiKey, JSON.stringify({
+        y: window.scrollY || 0,
+        open: _openFstepIds()
+      }));
     } catch (err) {}
   }
   function restoreFstepUi(){
@@ -2168,6 +2184,12 @@
       var raw = sessionStorage.getItem(_fstepUiKey);
       if(!raw) return;
       var st = JSON.parse(raw);
+      if(st && st.open && st.open.length){
+        st.open.forEach(function(id){
+          var el = document.getElementById(id);
+          if(el) el.open = true;
+        });
+      }
       if(st && typeof st.y === 'number'){
         if('scrollRestoration' in history) history.scrollRestoration = 'manual';
         var y = st.y;
@@ -2177,6 +2199,9 @@
   }
   restoreFstepUi();
   window.addEventListener('beforeunload', saveFstepUi);
+  document.addEventListener('toggle', function(e){
+    if(e.target && e.target.matches && e.target.matches('details.fstep[id]')) saveFstepUi();
+  }, true);
 
   // Факт → «Изменить» для жалобы/анамнеза
   function _bindTextFactEdit(root){
@@ -2513,24 +2538,28 @@
         listIds.push(el.id);
       });
       listIds.forEach(function(id){ swapId(id, true); });
-      // Бейджи + open + тело с сервера (следующий шаг протокола после сохранения).
+      // Бейджи + тело с сервера. Open: не закрывать то, что врач уже раскрыл;
+      // новый focus-шаг с сервера только добавляем к открытым.
       doc.querySelectorAll('details.fstep[id]').forEach(function(neu){
         var cur = document.getElementById(neu.id);
         if(!cur) return;
+        var keepOpen = cur.open || neu.hasAttribute('open');
         cur.className = neu.className;
-        cur.open = neu.hasAttribute('open');
         var nb = neu.querySelector(':scope > summary .section-header__right');
         var cb = cur.querySelector(':scope > summary .section-header__right');
         if(nb && cb) cb.replaceWith(document.importNode(nb, true));
         var nbod = neu.querySelector(':scope > .fstep-b');
         var cbod = cur.querySelector(':scope > .fstep-b');
         if(nbod && cbod) cbod.replaceWith(document.importNode(nbod, true));
+        cur.open = keepOpen;
       });
       window.scrollTo(0, y);
+      _bindDetailsToggles(document);
       _bindObsUnitPlaceholders(document);
       _fitDictionaryControls(document);
       _bindTextFactEdit(document);
       _bindAnamDirty(document);
+      saveFstepUi();
     }).catch(function(){ /* leave UI as-is */ });
   }
 
