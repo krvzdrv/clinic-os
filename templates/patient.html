@@ -1023,8 +1023,8 @@
   </div>
   {% endmacro %}
 
-  {# Клинические флаги из allowlist (чистые названия; значимость — chip + CDS). #}
-  {% macro flag_keys_form(pid, eid, keys, aria_label, exclude_keys=None) %}
+  {# Клинические флаги из allowlist. groups=[(подпись, keys), …] → <optgroup>. #}
+  {% macro flag_keys_form(pid, eid, keys, aria_label, exclude_keys=None, groups=None) %}
   {% set exclude_keys = exclude_keys or [] %}
   {% set _opts = [] %}
   {% for key in keys if key not in exclude_keys and key in flag_options %}
@@ -1037,9 +1037,23 @@
       <div class="field field-fit"><label class="sr-only">{{ aria_label }}</label>
         <select name="key" required aria-label="{{ aria_label }}">
           <option value="">— не выбран —</option>
-          {% for key, label in _opts %}
-          <option value="{{ key }}">{{ label }}</option>
-          {% endfor %}
+          {% if groups %}
+            {% for glabel, gkeys in groups %}
+            {% set _gopts = [] %}
+            {% for key in gkeys if key not in exclude_keys and key in flag_options %}
+              {% set _ = _gopts.append((key, flag_options[key][0])) %}
+            {% endfor %}
+            {% if _gopts %}
+            <optgroup label="{{ glabel }}">
+              {% for key, label in _gopts %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+            </optgroup>
+            {% endif %}
+            {% endfor %}
+          {% else %}
+            {% for key, label in _opts %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          {% endif %}
         </select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Добавить</button></div>
@@ -1831,7 +1845,7 @@
 
             {% set exam_keys = exam_flags|map(attribute='key')|list %}
             <section class="enc-sub" id="sub-exam-flags-{{ e.id }}">
-              <h3 class="section-label">Данные физического обследования</h3>
+              <h3 class="section-label">Клинические признаки</h3>
               <div class="chips" id="chips-exam-flags-{{ e.id }}">
                 {% for f in exam_flags %}
                 {% set is_red = f.key in EXAM_RED_FLAG_KEYS %}
@@ -1842,7 +1856,10 @@
                 </span>
                 {% endfor %}
               </div>
-              {{ flag_keys_form(patient.id, e.id, CAP_PHYSICAL_FLAG_KEYS, 'Данные физического обследования', exam_keys) }}
+              {{ flag_keys_form(
+                   patient.id, e.id, CAP_PHYSICAL_FLAG_KEYS, 'Клинические признаки', exam_keys,
+                   groups=[('Локальные', CAP_LOCAL_FLAG_KEYS), ('Тревожные', CAP_ALERT_FLAG_KEYS)]
+                 ) }}
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',

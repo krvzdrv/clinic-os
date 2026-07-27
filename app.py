@@ -43,7 +43,8 @@ from terminology import (
     EXAM_LOINC, LAB_LOINC, is_exam_loinc, is_lab_loinc,
     GENERAL_CONDITION, GENERAL_CONDITION_ORDER, general_condition_display, general_condition_needs_inpatient,
     vital_status_label, bp_status_label, EXAM_RED_FLAG_KEYS, IMAGING_RED_FLAG_KEYS,
-    CAP_PHYSICAL_FLAG_KEYS, CAP_IMAGING_FLAG_KEYS,
+    CAP_PHYSICAL_FLAG_KEYS, CAP_LOCAL_FLAG_KEYS, CAP_ALERT_FLAG_KEYS,
+    CAP_IMAGING_FLAG_KEYS,
     SPO2_CODE, TEMP_CODE, RR_CODE, HR_CODE, SBP_CODE, DBP_CODE,
     parse_dose_per_day,
 )
@@ -508,6 +509,8 @@ def patient_detail(pid):
             EXAM_RED_FLAG_KEYS=EXAM_RED_FLAG_KEYS,
             IMAGING_RED_FLAG_KEYS=IMAGING_RED_FLAG_KEYS,
             CAP_PHYSICAL_FLAG_KEYS=CAP_PHYSICAL_FLAG_KEYS,
+            CAP_LOCAL_FLAG_KEYS=CAP_LOCAL_FLAG_KEYS,
+            CAP_ALERT_FLAG_KEYS=CAP_ALERT_FLAG_KEYS,
             CAP_IMAGING_FLAG_KEYS=CAP_IMAGING_FLAG_KEYS,
             SPO2_CODE=SPO2_CODE,
             TEMP_CODE=TEMP_CODE,

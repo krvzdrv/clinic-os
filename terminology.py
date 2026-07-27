@@ -276,24 +276,25 @@ def bp_status_label(sbp_value, dbp_value):
     )
 
 
-# Физикальные данные осмотра (КП №768) — короткий UI-список в секции «Осмотр».
-CAP_PHYSICAL_FLAG_KEYS = (
+# Клинические признаки осмотра (КП №768) — короткий UI-список, не полный осмотр.
+# Локальные → R-графия/симптоматика; тревожные → тяжесть/ОРИТ. Ключи в БД те же.
+CAP_LOCAL_FLAG_KEYS = (
     "local_signs",
     "bronchial_obstruction",
+)
+CAP_ALERT_FLAG_KEYS = (
     "consciousness_disorder",
     "shock",
 )
+CAP_PHYSICAL_FLAG_KEYS = CAP_LOCAL_FLAG_KEYS + CAP_ALERT_FLAG_KEYS
 # Рентген-критерии КП №768 — UI у инструментальных / заключения R-графии.
 CAP_IMAGING_FLAG_KEYS = (
     "bilateral_infiltration",
     "cavity",
     "pleural_effusion",
 )
-# Красный chip у физикальных: критерии тяжести / госпитализации / ОРИТ.
-EXAM_RED_FLAG_KEYS = frozenset({
-    "shock",
-    "consciousness_disorder",
-})
+# Красный chip: критерии тяжести / госпитализации / ОРИТ.
+EXAM_RED_FLAG_KEYS = frozenset(CAP_ALERT_FLAG_KEYS)
 # Красный chip у рентген-признаков (все три — критерии №768).
 IMAGING_RED_FLAG_KEYS = frozenset(CAP_IMAGING_FLAG_KEYS)
 
@@ -433,11 +434,11 @@ CLINICAL_FLAGS = {
     "drug_addiction":       ("Наркомания", "social_risk"),
     "malnutrition":         ("Выраженный дефицит массы тела", "social_risk"),
     "pregnancy":            ("Беременность", "social_risk"),
-    # Данные физического обследования (КП №768) — UI: CAP_PHYSICAL_FLAG_KEYS
-    "local_signs":          ("Аускультативные знаки в лёгких (влажные хрипы)", "exam"),
+    # Клинические признаки (КП №768) — UI: CAP_PHYSICAL_FLAG_KEYS; category в БД = exam
+    "local_signs":          ("Влажные хрипы", "exam"),
     "bronchial_obstruction":("Бронхообструкция", "exam"),
     "consciousness_disorder":("Нарушение сознания", "exam"),
-    "shock":                ("Септический шок (вазопрессоры ≥4 ч)", "exam"),
+    "shock":                ("Септический шок", "exam"),
     # Рентгенологические данные (КП №768) — UI: CAP_IMAGING_FLAG_KEYS у R-графии
     "bilateral_infiltration":("Двустороннее или многоочаговое поражение лёгких", "imaging"),
     "cavity":               ("Полости распада", "imaging"),
@@ -464,8 +465,8 @@ CLINICAL_FLAGS = {
 # Человекочитаемые названия категорий флагов (вместо технических кодов social_risk/exam/...).
 FLAG_CATEGORY_LABELS = {
     "social_risk":  "Социальные факторы риска",
-    # Дословно КП №768 (показания к госпитализации, п.1).
-    "exam":        "Данные физического обследования",
+    # Не «данные физ. обследования» целиком — только флаги сверки протокола.
+    "exam":        "Клинические признаки",
     "imaging":     "Рентгенологические признаки",
     "context":     "Контекст этиологии",
     "complication": "Осложнения",
