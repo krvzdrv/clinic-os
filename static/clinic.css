@@ -481,22 +481,26 @@ form.enc-sub-add .field.field-value .input-group .unit-suffix {
   flex-shrink: 0;
   white-space: nowrap;
   padding: 0 10px;
+  box-sizing: border-box;
+  /* min-width ставит JS по самой длинной единице в том же select — без скачков */
 }
 form.enc-sub-add .field.field-list {
-  width: auto; /* фактическая ширина — JS по самому длинному option */
+  width: auto; /* px + min-width — JS по самому длинному option */
   max-width: 100%;
-  flex: 0 1 auto;
+  flex: 0 0 auto; /* не сжимать при смене выбранного пункта */
 }
-/* Словарь: ширина = самый длинный вариант + стрелка, не «на всю строку» */
+/* Словарь: ширина поля = самый длинный option (JS), select на 100% поля — статично */
 form.enc-sub-add .field.field-fit {
   width: auto;
   max-width: 100%;
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-width: 0;
 }
 form.enc-sub-add .field.field-fit select,
-form.enc-sub-add .field.field-list select {
-  width: auto;
+form.enc-sub-add .field.field-list select,
+.med-linked .field.field-fit select,
+.med-params .field.field-fit select {
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }

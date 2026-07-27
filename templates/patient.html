@@ -857,7 +857,7 @@
   <div class="fform">
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_service_request_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">Исследование</label>
+      <div class="field field-fit"><label class="sr-only">Исследование</label>
         <select name="code" aria-label="Исследование">{{ study_code_options(cat) }}</select>
       </div>
       <div class="field"><label class="sr-only">Дата</label><input type="date" name="occurrence_date" value="{{ today }}" aria-label="Дата"></div>
@@ -958,7 +958,7 @@
       <input type="hidden" name="override_reason" id="med-reason-{{ uid }}" value="">
       {% if replace_abt %}<input type="hidden" name="replace_abt" value="1">{% endif %}
       <div class="med-linked">
-        <div class="field"><label class="sr-only">Препарат</label>
+        <div class="field field-fit"><label class="sr-only">Препарат</label>
           <select name="code" id="med-code-{{ uid }}" required aria-label="Препарат">
             <option value="">— не выбран —</option>
             {# В option — только имя; группа — optgroup (без энциклопедии в каждой строке). #}
@@ -982,7 +982,7 @@
             <datalist id="med-dose-list-{{ uid }}"></datalist>
           </div>
           <div class="field"><label><i class="ti ti-repeat" aria-hidden="true"></i>Кратность</label><input type="text" name="frequency" id="med-freq-{{ uid }}" list="freq-canon" placeholder="3 раза в сутки"></div>
-          <div class="field"><label><i class="ti ti-route" aria-hidden="true"></i>Маршрут</label>
+          <div class="field field-fit"><label><i class="ti ti-route" aria-hidden="true"></i>Маршрут</label>
             <select name="route" id="med-route-{{ uid }}"><option value="oral">внутрь</option><option value="iv">в/в</option><option value="im">в/м</option><option value="inh">ингаляционно</option></select>
           </div>
           <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>С</label><input type="date" name="med_date" value="{{ today }}"></div>
@@ -2207,44 +2207,103 @@
   }
   _bindTextFactEdit(document);
 
-  // Ширина select = самый длинный option (+ стрелка), не на всю строку формы.
-  function _fitSelectToLongest(sel){
-    if(!sel || sel.tagName !== 'SELECT' || !sel.options || !sel.options.length) return;
-    var probe = document.createElement('span');
-    var cs = window.getComputedStyle(sel);
-    probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none;';
-    probe.style.font = cs.font;
-    probe.style.letterSpacing = cs.letterSpacing;
-    probe.style.textTransform = cs.textTransform;
-    document.body.appendChild(probe);
-    var max = 0;
-    for(var i = 0; i < sel.options.length; i++){
-      probe.textContent = sel.options[i].text || '';
-      if(probe.offsetWidth > max) max = probe.offsetWidth;
-    }
-    document.body.removeChild(probe);
-    // padding поля + место под caret
-    var pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) || 20;
-    var w = Math.ceil(max + pad + 28);
-    var form = sel.closest('form');
-    if(form){
-      var room = form.clientWidth;
-      if(room > 120) w = Math.min(w, room);
-    }
-    sel.style.width = w + 'px';
-  }
-  function _fitEncSelects(root){
-    (root || document).querySelectorAll('form.enc-sub-add select').forEach(_fitSelectToLongest);
-  }
-  _fitEncSelects(document);
-  window.addEventListener('resize', function(){ _fitEncSelects(document); });
-
   // Форма измерения: единица + серый пример числа. После soft_refresh узлы новые — перепривязка.
   var _UNIT_RU = {
     'bpm':'уд/мин','C':'°C','%':'%','/min':'/мин','10^9/L':'×10⁹/л',
     'mg/L':'мг/л','ng/mL':'нг/мл','mmHg':'мм рт.ст.','umol/L':'мкмоль/л',
     'mmol/L':'ммоль/л','g/L':'г/л','fL':'фл','pg':'пг'
   };
+
+  // Ширина плашки select: по самому длинному option — дальше статично
+  // (не скачет при смене пункта; width:auto в WebKit следует за текстом).
+  function _measureTextWidth(text, cs){
+    var probe = document.createElement('span');
+    probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none;';
+    probe.style.font = cs.font;
+    probe.style.letterSpacing = cs.letterSpacing;
+    probe.style.textTransform = cs.textTransform;
+    probe.textContent = text || '';
+    document.body.appendChild(probe);
+    var w = probe.offsetWidth;
+    document.body.removeChild(probe);
+    return w;
+  }
+  function _fitSelectToLongest(sel){
+    if(!sel || sel.tagName !== 'SELECT' || !sel.options || !sel.options.length) return;
+    if(sel.getAttribute('aria-hidden') === 'true') return;
+    if(sel.disabled && sel.options.length === 1) return;
+    var optKey = Array.prototype.map.call(sel.options, function(o){ return o.text; }).join('\n');
+    var cs = window.getComputedStyle(sel);
+    var max = 0;
+    for(var i = 0; i < sel.options.length; i++){
+      var tw = _measureTextWidth(sel.options[i].text || '', cs);
+      if(tw > max) max = tw;
+    }
+    var groups = sel.querySelectorAll('optgroup');
+    for(var g = 0; g < groups.length; g++){
+      var gw = _measureTextWidth(groups[g].label || '', cs);
+      if(gw > max) max = gw;
+    }
+    if(max < 8) return;
+    var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+    if(!pad) pad = 20;
+    var w = Math.ceil(max + pad + 28); /* caret */
+    var room = (sel.closest('.enc-card, .fstep-b, main') || document.documentElement).clientWidth;
+    if(room > 160) w = Math.min(w, room - 24);
+    // Ширину держим на .field — select width:100%, смена option не меняет layout.
+    var field = sel.closest('.field');
+    if(field){
+      field.style.width = w + 'px';
+      field.style.minWidth = w + 'px';
+      field.style.flex = '0 0 auto';
+      sel.style.width = '100%';
+      sel.style.minWidth = '0';
+    } else {
+      sel.style.width = w + 'px';
+      sel.style.minWidth = w + 'px';
+    }
+    sel.setAttribute('data-fit-key', optKey);
+    sel.setAttribute('data-fit-w', String(w));
+  }
+  function _fitEncSelects(root){
+    var scope = root || document;
+    scope.querySelectorAll(
+      'form.enc-sub-add select, form[data-med="1"] select[name="code"], form[data-med="1"] select[name="route"]'
+    ).forEach(_fitSelectToLongest);
+  }
+  function _fitUnitSuffixes(root){
+    (root || document).querySelectorAll('select[name="code"][id^="obs-code-"], select[name="code"][id^="labobs-code-"]').forEach(function(sel){
+      var prefix = sel.id.indexOf('labobs-code-') === 0 ? 'labobs-' : 'obs-';
+      var eid = sel.id.replace(prefix + 'code-', '');
+      var suf = document.getElementById(prefix + 'unit-' + eid);
+      if(!suf) return;
+      var cs = window.getComputedStyle(suf);
+      var max = 0;
+      for(var i = 0; i < sel.options.length; i++){
+        var u = sel.options[i].getAttribute('data-unit') || '';
+        var ru = _UNIT_RU[u] || u;
+        if(!ru) continue;
+        var tw = _measureTextWidth(ru, cs);
+        if(tw > max) max = tw;
+      }
+      if(max > 0){
+        var pad = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+        var uw = Math.ceil(max + pad);
+        suf.style.width = uw + 'px';
+        suf.style.minWidth = uw + 'px';
+        suf.style.boxSizing = 'border-box';
+      }
+    });
+  }
+  function _fitDictionaryControls(root){
+    _fitEncSelects(root);
+    _fitUnitSuffixes(root);
+  }
+  _fitDictionaryControls(document);
+  if(document.fonts && document.fonts.ready){
+    document.fonts.ready.then(function(){ _fitDictionaryControls(document); });
+  }
+  window.addEventListener('resize', function(){ _fitDictionaryControls(document); });
   function _bindObsUnitPlaceholders(root){
     (root || document).querySelectorAll('select[name="code"]').forEach(function(sel){
       if(!sel.id || sel.getAttribute('data-unit-bound')) return;
@@ -2427,7 +2486,7 @@
       });
       window.scrollTo(0, y);
       _bindObsUnitPlaceholders(document);
-      _fitEncSelects(document);
+      _fitDictionaryControls(document);
       _bindTextFactEdit(document);
       _bindAnamDirty(document);
     }).catch(function(){ /* leave UI as-is */ });
