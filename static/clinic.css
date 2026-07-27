@@ -418,11 +418,25 @@ button.btn-small.primary:hover {
   margin: 0;
 }
 .enc-sub .obs-attrs {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 100%;
   margin: 0 0 10px;
+  vertical-align: top;
 }
 .enc-sub .obs-attrs:empty {
   display: none;
   margin: 0;
+}
+.enc-sub .obs-attrs .attr-row {
+  width: auto;
+  max-width: 100%;
+}
+.enc-sub .obs-attrs .attr-value-row {
+  justify-content: flex-start;
+  width: 100%;
 }
 .enc-sub .fform {
   margin: 0;
@@ -517,12 +531,18 @@ form.enc-sub-add .input-group input {
   min-height: 0;
 }
 
-/* Общее состояние — список (select) в .fform; масштабируется на большие словари. */
+/* Общее состояние — select + бейдж справа + кнопка в одной линии */
 .gc-choice {
   margin: 0;
 }
-.gc-hint {
-  margin: 8px 0 0;
+.gc-choice form.enc-sub-add {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+.gc-choice .gc-badge {
+  flex: 0 0 auto;
+  align-self: center;
+  white-space: nowrap;
 }
 
 /* Ошибка валидации в формах приёма — поле + подпись, не только текст в .note */
@@ -601,6 +621,15 @@ form.enc-sub-add select.is-invalid,
   background: var(--surface);
   padding: 16px 18px 14px;
   margin: 0 0 16px;
+}
+/* Подсказка протокола — в зоне первого взгляда при скролле приёма
+   (#now-action самостоятельно или CDS, вложенный в карточку диагноза). */
+#now-action,
+.cds.verdict-panel.dx-issue {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  box-shadow: 0 1px 0 var(--line);
 }
 .cds-critical,
 .cds-warn,

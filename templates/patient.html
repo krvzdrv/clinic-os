@@ -130,6 +130,25 @@
   .fstep.attention > summary.section-header{border-color:var(--border-danger);}
   /* Плавное раскрытие секции — без прыжка контента ниже (см. smoothToggleDetails). */
   .fstep-b{padding:10px 2px 6px;overflow:hidden;transition:height .18s ease;}
+  .focus-hint{
+    margin:0 0 10px;padding:8px 10px;font-size:13px;line-height:1.35;font-weight:500;
+    color:var(--text-primary);background:var(--accent-soft);border:1px solid var(--border-accent);
+    border-radius:var(--radius);
+  }
+  .text-fact{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:0 0 4px;}
+  .text-fact .attr-value{flex:1 1 12rem;white-space:pre-wrap;}
+  .text-fact .btn-small{flex:0 0 auto;}
+  .plan-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;}
+  .plan-alt{display:inline-block;width:max-content;max-width:100%;border:none;background:transparent;padding:0;margin:0;}
+  .plan-alt > summary.btn{
+    list-style:none;display:inline-flex;align-items:center;cursor:pointer;
+  }
+  .plan-alt > summary.btn::-webkit-details-marker{display:none;}
+  .plan-alt > summary.btn::before{content:none;}
+  .plan-alt[open]{display:flex;flex-direction:column;align-items:flex-start;gap:8px;width:max-content;max-width:100%;}
+  .plan-alt-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:0;}
+  .plan-alt-form .field{margin:0;}
+  .plan-alt-form input[type="number"]{width:5rem;height:var(--control-h);box-sizing:border-box;}
   .visit-list{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;}
   .visit-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;text-decoration:none;color:inherit;font-size:13px;}
   .visit-row:hover{border-color:var(--steel);}
@@ -220,14 +239,34 @@
   .fform .input-group input{border-radius:var(--radius) 0 0 var(--radius);border-right:none;height:100%;}
   .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 10px;font-size:var(--control-font);color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) 0;white-space:nowrap;flex-shrink:0;min-width:2rem;justify-content:center;box-sizing:border-box;}
   .fform .input-group input:invalid+.unit-suffix{border-color:var(--coral-deep);}
-  /* Панель данных: список → действия «+» (не три формы сразу) */
-  /* Столбцом: лаборатория → инструментальные — в две колонки формы и длинные названия ломаются */
-  .diag-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:4px;}
+  /* Лаб / инструментальные: одна колонка = самый широкий блок (как .obs-attrs), не на весь экран */
+  .diag-grid{
+    display:inline-flex;flex-direction:column;align-items:stretch;gap:16px;
+    max-width:100%;margin-top:4px;vertical-align:top;
+  }
+  .diag-sub{
+    border:1px solid var(--line);border-radius:10px;padding:0;background:#fff;overflow:hidden;
+    width:auto;max-width:100%;box-sizing:border-box;
+  }
+  .diag-sub h4{font-size:13px;letter-spacing:-0.01em;text-transform:none;color:var(--text-secondary);font-weight:600;
+    margin:0;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);line-height:1.3;
+    white-space:nowrap;}
+  .diag-sub .dlist{font-size:13px;color:var(--ink);line-height:1.45;margin:0;}
+  .diag-sub .dlist .it{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);
+    width:max-content;max-width:100%;box-sizing:border-box;}
+  .diag-sub .dlist .it:last-child{border-bottom:none;}
+  .diag-sub .dlist .st{font-size:11px;font-weight:600;letter-spacing:0;
+    padding:2px 7px;border-radius:4px;background:var(--tint);color:var(--faint);flex:none;}
+  .diag-sub .dlist .st.done{background:var(--green-bg);color:var(--green);}
+  .diag-sub .dlist .st.ord{background:var(--accent-soft);color:var(--steel);}
+  .diag-sub .dlist .res{color:var(--soft);flex:0 1 auto;min-width:0;}
+  .diag-sub .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;white-space:nowrap;}
+
   .chart-pane{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;}
   .chart-pane-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);}
   .chart-pane-h h4{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft);font-weight:700;margin:0;}
-  .record-list{font-size:13px;color:var(--ink);padding:4px 0;min-height:36px;}
+  .record-list{font-size:13px;color:var(--ink);padding:4px 0;min-height:0;}
   .record-list .it,.record-list .rec{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;
     padding:8px 12px;border-bottom:1px solid var(--line);}
   .record-list .it:last-child,.record-list .rec:last-child{border-bottom:none;}
@@ -235,33 +274,30 @@
     padding:2px 7px;border-radius:4px;background:var(--tint);color:var(--faint);flex:none;}
   .record-list .st.done,.rec-kind.done{background:var(--green-bg);color:var(--green);}
   .record-list .st.ord,.rec-kind.ord{background:var(--accent-soft);color:var(--steel);}
-  .record-list .res,.rec-val{color:var(--soft);flex:1;min-width:120px;}
+  .record-list .res,.rec-val{color:var(--soft);flex:0 1 auto;min-width:0;}
   .record-list .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
-  .add-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:var(--tint);}
-  .add-bar .add-panel{flex:1 1 auto;min-width:0;max-width:100%;}
-  .add-panel{border:1px solid var(--line);border-radius:8px;background:#fff;flex:1 1 140px;min-width:140px;}
-  .add-panel > summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12px;font-weight:600;color:var(--steel);}
+
+  .add-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px 10px;border-top:1px solid var(--line);background:var(--tint);
+    justify-content:flex-start;align-items:flex-start;}
+  /* Закрытая плашка «+ …» — по тексту; открытая — по форме, не на весь экран */
+  .add-bar .add-panel{flex:0 0 auto;width:max-content;max-width:100%;min-width:0;}
+  .add-panel{border:1px solid var(--line);border-radius:8px;background:#fff;flex:0 0 auto;width:max-content;max-width:100%;min-width:0;}
+  .add-panel > summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12px;font-weight:600;color:var(--steel);white-space:nowrap;}
   .add-panel > summary::-webkit-details-marker{display:none;}
   .add-panel > summary::before{content:"+ ";font-weight:700;}
   .add-panel:not([open]) > :not(summary){display:none !important;}
-  .add-panel[open]{flex:1 1 100%;}
+  .add-panel[open]{flex:0 1 auto;width:max-content;max-width:100%;}
   .add-panel[open] > summary{border-bottom:1px solid var(--line);background:#fff;}
-  /* Открыто = «свернуть», не «удалить» — шеврон, а не ×, чтобы не путать
-     с крестиком удаления у чипов (.tag-chip .chip-x). Закрывать явной
-     кнопкой «Отмена» в форме, а не только повторным кликом по заголовку. */
   .add-panel[open] > summary::before{content:"▾ ";}
-  /* Плавное раскрытие формы — без прыжка контента ниже (см. smoothToggleDetails). */
   .add-panel-b{overflow:hidden;transition:height .18s ease;}
   .add-panel .fform{margin:0;padding:10px;}
   .add-panel .fform .form-actions{justify-content:flex-start;}
 
-  /* Диагноз прямо из результата: компактный триггер внутри строки .it,
-     разворачивается в форму на всю ширину, как обычный add-panel. */
-  .add-panel--inline{flex:0 0 auto;min-width:auto;margin-left:auto;}
+  .add-panel--inline{flex:0 0 auto;min-width:auto;margin-left:auto;width:auto;}
   .add-panel--inline > summary{padding:3px 8px;font-size:11px;color:var(--steel);
     background:var(--accent-soft);border-radius:6px;}
   .add-panel--inline > summary::before{content:"+ ";}
-  .add-panel--inline[open]{flex:1 1 100%;margin-left:0;}
+  .add-panel--inline[open]{flex:1 1 100%;width:100%;margin-left:0;}
   .add-panel--inline[open] > summary{border-radius:6px 6px 0 0;}
   .src-hint{margin:0 0 8px;font-size:12px;color:var(--soft);display:flex;align-items:center;gap:4px;}
   .src-hint b{color:var(--ink);font-weight:600;}
@@ -270,19 +306,6 @@
   .chart-rail a{font-size:12px;font-weight:600;color:var(--soft);text-decoration:none;
     padding:5px 10px;border-radius:6px;background:transparent;}
   .chart-rail a:hover{background:var(--tint);color:var(--steel);}
-  .diag-sub{border:1px solid var(--line);border-radius:10px;padding:0;background:#fff;overflow:hidden;}
-  /* Как .section-label: sentence case, не ALL CAPS. */
-  .diag-sub h4{font-size:13px;letter-spacing:-0.01em;text-transform:none;color:var(--text-secondary);font-weight:600;
-    margin:0;padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);line-height:1.3;}
-  .diag-sub .dlist{font-size:13px;color:var(--ink);line-height:1.45;margin:0;}
-  .diag-sub .dlist .it{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--line);}
-  .diag-sub .dlist .it:last-child{border-bottom:none;}
-  .diag-sub .dlist .st{font-size:11px;font-weight:600;letter-spacing:0;
-    padding:2px 7px;border-radius:4px;background:var(--tint);color:var(--faint);}
-  .diag-sub .dlist .st.done{background:var(--green-bg);color:var(--green);}
-  .diag-sub .dlist .st.ord{background:var(--accent-soft);color:var(--steel);}
-  .diag-sub .dlist .res{color:var(--soft);}
-  .diag-sub .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
 
   /* Removable membership — размеры/стили .tag-chip в clinic.css (--control-h) */
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
@@ -413,9 +436,13 @@
     display:flex;flex-direction:column;gap:12px;
   }
   .attr-row{min-width:0;}
-  /* Виталы: узкая колонка — × рядом со значением, не у края экрана (exam-vitals form) */
-  .obs-attrs{display:flex;flex-direction:column;gap:14px;max-width:420px;}
-  .obs-attrs .attr-row{max-width:420px;}
+  /* Виталы: колонка = самый длинный ряд (лейбл/значение/бейдж/×), не ширина экрана */
+  .obs-attrs{
+    display:inline-flex;flex-direction:column;align-items:stretch;gap:10px;
+    max-width:100%;margin:0 0 10px;vertical-align:top;
+  }
+  .obs-attrs .attr-row{width:auto;max-width:100%;}
+  .obs-attrs .attr-value-row{justify-content:flex-start;width:100%;}
   .attr-label{
     font-size:12px;color:var(--text-secondary);margin:0 0 2px;font-weight:400;line-height:1.3;
   }
@@ -435,6 +462,8 @@
   .attr-value-row > .badge{flex:none;border-radius:6px;white-space:nowrap;margin-left:auto;}
   /* Диагноз status-strip: значение растягивается, badge справа */
   .dx-rail .attr-value{flex:1;font-size:14px;font-weight:400;}
+  .dx-rail .attr-row{width:auto;max-width:none;}
+  .dx-rail .attr-value-row{justify-content:space-between;width:100%;}
 
   /* Issue / CDS внутри диагноза — один акцент рамкой */
   .dx-card .dx-issue.cds{
@@ -588,7 +617,6 @@
   .visit-row .vd{font-weight:500;min-width:5.5em;color:var(--text-primary);}
   .visit-row .vs{flex:1;color:var(--text-secondary);min-width:120px;}
   .visit-row-static{cursor:default;}
-  .obs-attrs{display:flex;flex-direction:column;gap:10px;margin:0 0 10px;}
 </style>
 </head>
 <body>
@@ -791,13 +819,12 @@
   </div>
   {% endmacro %}
 
-  {# Общее состояние — список (select). Масштабируется на сотни значений;
-     выбранное сохраняется по «Сохранить». Бейдж госпитализации — под формой. #}
+  {# Общее состояние: select → бейдж справа от значения → Сохранить/Изменить. #}
   {% macro gc_form(pid, eid, current='') %}
   <div class="fform gc-choice">
     <form class="enc-sub-add" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field field-list">
+      <div class="field field-fit">
         <label class="sr-only">Общее состояние</label>
         <select name="key" required aria-label="Общее состояние">
           <option value="">— не выбрано —</option>
@@ -806,11 +833,11 @@
           {% endfor %}
         </select>
       </div>
-      <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
+      {% if current and general_condition_needs_inpatient(current) %}
+      <span class="badge red gc-badge">показана госпитализация</span>
+      {% endif %}
+      <div class="form-actions"><button class="btn-small" type="submit">{{ 'Изменить' if current else 'Сохранить' }}</button></div>
     </form>
-    {% if current and general_condition_needs_inpatient(current) %}
-    <p class="gc-hint"><span class="badge red">показана госпитализация</span></p>
-    {% endif %}
   </div>
   {% endmacro %}
 
@@ -1023,37 +1050,52 @@
   </div>
   {% endmacro %}
 
-  {# Жалоба и анамнез — всегда видимые textarea (без плашек/add-panel). #}
+  {# Жалоба / анамнез: факт + «Изменить», иначе сразу textarea. #}
   {% macro complaint_form(pid, eid, current='') %}
-  <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1" data-keep-fields="1">
-      {# Заголовок секции fstep уже «Жалоба» — label не дублируем. #}
-      <div class="field field-full"><label class="sr-only">Жалоба</label>
-        <textarea name="complaint" rows="3" maxlength="300" aria-label="Жалоба" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
-      </div>
-      <div class="form-actions">
-        <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
-        <span class="save-status" aria-live="polite"></span>
-      </div>
-    </form>
+  <div class="fform anam-text-form text-fact-edit"{% if current %} data-has-fact="1"{% endif %}>
+    {% if current %}
+    <div class="text-fact">
+      <p class="attr-value">{{ current }}</p>
+      <button type="button" class="btn-small" data-text-edit>Изменить</button>
+    </div>
+    {% endif %}
+    <div class="text-edit"{% if current %} hidden{% endif %}>
+      <form method="POST" action="{{ url_for('update_encounter_complaint_route', pid=pid, eid=eid) }}" data-ajax="1" data-keep-fields="1">
+        <div class="field field-full"><label class="sr-only">Жалоба</label>
+          <textarea name="complaint" rows="3" maxlength="300" aria-label="Жалоба" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»">{{ current or '' }}</textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
+          {% if current %}<button type="button" class="btn-small" data-text-cancel>Отмена</button>{% endif %}
+          <span class="save-status" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
   </div>
   {% endmacro %}
 
-  {# Свободный анамнез: один текст на приём — сохранить заменяет прежние записи. #}
   {% macro anam_form(pid, eid, current='') %}
-  <div class="fform anam-text-form">
-    <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-keep-fields="1">
-      <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <input type="hidden" name="replace" value="1">
-      {# Текст анамнеза под заголовком fstep; «Факторы риска» — отдельный подблок ниже. #}
-      <div class="field field-full"><label class="sr-only">Анамнез</label>
-        <textarea name="text" rows="4" aria-label="Анамнез" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
-      </div>
-      <div class="form-actions">
-        <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
-        <span class="save-status" aria-live="polite"></span>
-      </div>
-    </form>
+  <div class="fform anam-text-form text-fact-edit"{% if current %} data-has-fact="1"{% endif %}>
+    {% if current %}
+    <div class="text-fact">
+      <p class="attr-value">{{ current }}</p>
+      <button type="button" class="btn-small" data-text-edit>Изменить</button>
+    </div>
+    {% endif %}
+    <div class="text-edit"{% if current %} hidden{% endif %}>
+      <form method="POST" action="{{ url_for('add_anamnesis_route', pid=pid) }}" data-ajax="1" data-keep-fields="1">
+        <input type="hidden" name="encounter_id" value="{{ eid }}">
+        <input type="hidden" name="replace" value="1">
+        <div class="field field-full"><label class="sr-only">Анамнез</label>
+          <textarea name="text" rows="4" aria-label="Анамнез" placeholder="Анамнез заболевания и жизни — произвольным текстом">{{ current or '' }}</textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-small btn-save" type="submit" disabled>Сохранить</button>
+          {% if current %}<button type="button" class="btn-small" data-text-cancel>Отмена</button>{% endif %}
+          <span class="save-status" aria-live="polite"></span>
+        </div>
+      </form>
+    </div>
   </div>
   {% endmacro %}
 
@@ -1519,8 +1561,13 @@
         {% set med_done = ed.med|length > 0 %}
         {# Активный шаг = фокус протокола (что исправить) или первый незаполненный. #}
         {% set focus = (v.focus_stage if v is defined and v.focus_stage and not v.ok else none) %}
-        {% set active_key = focus or 'med' %}
-        {% if not focus %}
+        {# Одна открытая секция: фокус протокола или первый незаполненный шаг. #}
+        {% set active_key = none %}
+        {% if focus == 'actions' %}{% set active_key = 'exam' %}
+        {% elif focus == 'reassess' %}{% set active_key = 'med' %}
+        {% elif focus == 'repeat_cxr' %}{% set active_key = none %}
+        {% elif focus %}{% set active_key = focus %}
+        {% else %}
           {% if not complaint_done %}{% set active_key = 'complaint' %}
           {% elif not anam_done %}{% set active_key = 'anam' %}
           {% elif not exam_done %}{% set active_key = 'exam' %}
@@ -1660,11 +1707,13 @@
         {% elif med_done %}{% set bm.kind = 'neutral' %}{% set bm.text = (ed.med|length ~ ' назначение') if ed.med|length == 1 else (ed.med|length ~ ' назначений') %}
         {% endif %}
 
-        {# Все гармошки приёма открыты при входе и после сохранения.
-           Свернуть можно вручную; AJAX soft_refresh не трогает details.open. #}
+        {# Одна открытая секция = active_key. soft_refresh синхронизирует open с HTML. #}
+        {% set open_key = active_key %}
+        {% set focus_hint = (v.next_step if v is defined and v.next_step and not v.ok and open_key else none) %}
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
-               open=true) %}
+               open=(open_key == 'complaint')) %}
+            {% if open_key == 'complaint' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             {# Тот же .enc-sub, что у подразделов осмотра — не «голое» поле. #}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Описание</h3>
@@ -1673,7 +1722,8 @@
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
+               open=(open_key == 'anam'), badge2_kind=ba2.kind, badge2_text=ba2.text) %}
+            {% if open_key == 'anam' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {# Подразделы — как в Осмотре: .enc-sub + .section-label + border-top.
                Без connector rail (rail только у диагноза → лечение/цели).
@@ -1699,7 +1749,8 @@
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
-               open=true) %}
+               open=(open_key == 'exam')) %}
+            {% if open_key == 'exam' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             <section class="enc-sub enc-sub--main" id="sub-gc-{{ e.id }}">
               <h3 class="section-label">Общее состояние</h3>
               {{ gc_form(patient.id, e.id, gc_flag or '') }}
@@ -1795,7 +1846,8 @@
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
-               open=true) %}
+               open=(open_key == 'cond')) %}
+            {% if open_key == 'cond' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
             <section class="enc-sub enc-sub--main">
@@ -1819,7 +1871,8 @@
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
-               open=true) %}
+               open=(open_key == 'diag')) %}
+            {% if open_key == 'diag' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             <div class="diag-grid">
               <div class="diag-sub">
                 <h4>Лабораторные</h4>
@@ -1861,8 +1914,10 @@
                 </div>
               </div>
             </div>
-            {# Рентген-критерии КП №768 — отдельный подраздел обследования (не внутри
-               карточки «Инструментальные»: там нет горизонтальных отступов .enc-sub). #}
+            {# Рентген-признаки — только при результате/заказе CXR, уже отмеченных
+               флагах или фокусе обследования (gap по протоколу). #}
+            {% set has_cxr_ctx = imaging_flags or ins_rep or (ins_sr|length > 0) or (open_key == 'diag') %}
+            {% if has_cxr_ctx %}
             {% set imaging_keys = imaging_flags|map(attribute='key')|list %}
             <section class="enc-sub" id="sub-imaging-flags-{{ e.id }}">
               <h3 class="section-label">Рентгенологические признаки</h3>
@@ -1878,10 +1933,12 @@
               </div>
               {{ flag_keys_form(patient.id, e.id, CAP_IMAGING_FLAG_KEYS, 'Рентгенологические признаки', imaging_keys) }}
             </section>
+            {% endif %}
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
-               open=true) %}
+               open=(open_key == 'med')) %}
+            {% if open_key == 'med' and focus_hint %}<p class="focus-hint">Ожидается: {{ focus_hint }}</p>{% endif %}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Препараты</h3>
             <div class="chips" id="chips-med-{{ e.id }}">
@@ -2005,7 +2062,7 @@
 
   <details class="more-card"{% if focus_now == 'reassess' and not v.suggest_atc %} open{% endif %}>
     <summary>Планирование и выписка</summary>
-    <div class="actions" style="margin-top:4px;">
+    <div class="actions plan-actions" style="margin-top:4px;">
       <form method="POST" action="{{ url_for('schedule_repeat_cxr_route', pid=patient.id) }}" style="display:inline;">
         <input type="hidden" name="days" value="35">
         <button class="btn ghost" type="submit">Контроль R-графии через 5 нед</button>
@@ -2015,6 +2072,15 @@
         <button class="btn ghost" type="submit">Контроль АБТ через 3 дня</button>
       </form>
       {% endif %}
+      <details class="plan-alt">
+        <summary class="btn ghost">Контроль эффекта АБТ (другой срок)</summary>
+        <form method="POST" action="{{ url_for('schedule_followup_route', pid=patient.id) }}" class="plan-alt-form">
+          <div class="field"><label class="sr-only">Через (дней)</label>
+            <input type="number" name="days" value="3" min="1" max="90" aria-label="Через (дней)">
+          </div>
+          <div class="form-actions"><button class="btn-small" type="submit">Запланировать</button></div>
+        </form>
+      </details>
       {% if cap.applicable and cap.discharge and cap.discharge.met %}
       <form method="POST" action="{{ url_for('cap_discharge_route', pid=patient.id) }}" style="display:inline;">
         <button class="btn ghost" type="submit">Выписать</button>
@@ -2024,13 +2090,6 @@
     {% if cap.applicable and cap.discharge and not cap.discharge.met %}
     <p class="empty" style="margin-top:10px;">К выписке не готов: {{ cap.discharge.missing|join('; ') if cap.discharge.missing is defined else 'критерии не выполнены' }}</p>
     {% endif %}
-    <details class="mini-form" style="margin-top:10px;">
-      <summary>Контроль эффекта АБТ (другой срок)</summary>
-      <form method="POST" action="{{ url_for('schedule_followup_route', pid=patient.id) }}">
-        <div class="field"><label><i class="ti ti-calendar-time" aria-hidden="true"></i>Через (дней)</label><input type="number" name="days" value="3"></div>
-        <div class="form-actions"><button class="btn-small" type="submit">Запланировать</button></div>
-      </form>
-    </details>
   </details>
 
 </main>
@@ -2079,10 +2138,8 @@
     });
   });
 
-  // После full reload сохраняем только scroll. Гармошки всегда открыты из HTML;
-  // sessionStorage.open раньше схлопывал секции при повторном входе в карточку.
-  // AJAX soft_refresh сам держит details.open без перезагрузки.
-  var _fstepUiKey = 'clinic-os:fstep-ui:v3:' + location.pathname + location.search;
+  // Scroll после reload. Open секций — из HTML (один focus-шаг), не форсим все open.
+  var _fstepUiKey = 'clinic-os:fstep-ui:v4:' + location.pathname + location.search;
   function saveFstepUi(){
     try {
       sessionStorage.setItem(_fstepUiKey, JSON.stringify({y: window.scrollY || 0}));
@@ -2099,11 +2156,39 @@
         requestAnimationFrame(function(){ window.scrollTo(0, y); });
       }
     } catch (err) {}
-    // На всякий случай — все секции приёма открыты (в т.ч. после старого кэша).
-    document.querySelectorAll('details.fstep[id]').forEach(function(d){ d.open = true; });
   }
   restoreFstepUi();
   window.addEventListener('beforeunload', saveFstepUi);
+
+  // Факт → «Изменить» для жалобы/анамнеза
+  function _bindTextFactEdit(root){
+    (root || document).querySelectorAll('.text-fact-edit').forEach(function(box){
+      if(box.getAttribute('data-text-bound')) return;
+      box.setAttribute('data-text-bound','1');
+      var fact = box.querySelector('.text-fact');
+      var edit = box.querySelector('.text-edit');
+      if(!fact || !edit) return;
+      var editBtn = box.querySelector('[data-text-edit]');
+      var cancelBtn = box.querySelector('[data-text-cancel]');
+      if(editBtn){
+        editBtn.addEventListener('click', function(){
+          fact.hidden = true;
+          edit.hidden = false;
+          var ta = edit.querySelector('textarea');
+          if(ta){ ta.focus(); }
+          var save = edit.querySelector('.btn-save');
+          if(save) save.disabled = false;
+        });
+      }
+      if(cancelBtn){
+        cancelBtn.addEventListener('click', function(){
+          edit.hidden = true;
+          fact.hidden = false;
+        });
+      }
+    });
+  }
+  _bindTextFactEdit(document);
 
   // Ширина select = самый длинный option (+ стрелка), не на всю строку формы.
   function _fitSelectToLongest(sel){
@@ -2310,21 +2395,24 @@
         listIds.push(el.id);
       });
       listIds.forEach(function(id){ swapId(id, true); });
-      // Бейджи и CSS-класс секции — без смены details.open.
+      // Бейджи + open + тело с сервера (следующий шаг протокола после сохранения).
       doc.querySelectorAll('details.fstep[id]').forEach(function(neu){
         var cur = document.getElementById(neu.id);
         if(!cur) return;
-        var wasOpen = cur.open;
         cur.className = neu.className;
-        cur.open = wasOpen;
+        cur.open = neu.hasAttribute('open');
         var nb = neu.querySelector(':scope > summary .section-header__right');
         var cb = cur.querySelector(':scope > summary .section-header__right');
         if(nb && cb) cb.replaceWith(document.importNode(nb, true));
+        var nbod = neu.querySelector(':scope > .fstep-b');
+        var cbod = cur.querySelector(':scope > .fstep-b');
+        if(nbod && cbod) cbod.replaceWith(document.importNode(nbod, true));
       });
       window.scrollTo(0, y);
-      // Новые формы после swap — единица/пример и ширина select по самому длинному option.
       _bindObsUnitPlaceholders(document);
       _fitEncSelects(document);
+      _bindTextFactEdit(document);
+      _bindAnamDirty(document);
     }).catch(function(){ /* leave UI as-is */ });
   }
 
@@ -2375,24 +2463,28 @@
   }
 
   // Dirty-state: кнопка активна только при несохранённых изменениях в textarea.
-  document.querySelectorAll('.fform.anam-text-form textarea').forEach(function(ta){
-    var form = ta.closest('form');
-    var btn = form && form.querySelector('.btn-save');
-    if(!btn) return;
-    var savedValue = ta.value;
-    function sync(){
-      var dirty = ta.value !== savedValue;
-      btn.disabled = !dirty;
-      btn.classList.toggle('is-dirty', dirty);
-      btn.classList.remove('is-saving', 'is-saved');
-      if(dirty) btn.textContent = 'Сохранить';
-      else if(!btn.classList.contains('is-saved')) btn.textContent = 'Сохранить';
-    }
-    ta.addEventListener('input', sync);
-    form.addEventListener('_saved', function(){ savedValue = ta.value; });
-    form.addEventListener('_sync-save', sync);
-    sync();
-  });
+  function _bindAnamDirty(root){
+    (root || document).querySelectorAll('.fform.anam-text-form textarea').forEach(function(ta){
+      if(ta.getAttribute('data-dirty-bound')) return;
+      ta.setAttribute('data-dirty-bound','1');
+      var form = ta.closest('form');
+      var btn = form && form.querySelector('.btn-save');
+      if(!btn) return;
+      var savedValue = ta.value;
+      function sync(){
+        var dirty = ta.value !== savedValue;
+        btn.disabled = !dirty;
+        btn.classList.toggle('is-dirty', dirty);
+        btn.classList.remove('is-saving', 'is-saved');
+        if(!btn.classList.contains('is-saved')) btn.textContent = 'Сохранить';
+      }
+      ta.addEventListener('input', sync);
+      form.addEventListener('_saved', function(){ savedValue = ta.value; sync(); });
+      form.addEventListener('_sync-save', sync);
+      sync();
+    });
+  }
+  _bindAnamDirty(document);
 
   function _clearFieldErrors(form){
     if(!form) return;
