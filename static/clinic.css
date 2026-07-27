@@ -37,6 +37,9 @@
 
   --font: "IBM Plex Sans", "Segoe UI", sans-serif;
   --radius: 8px;
+  /* Единая высота контролов приёма: input/select/.btn/.btn-small/.tag-chip */
+  --control-h: 32px;
+  --control-font: 13px;
 
   /* ---- Семантические алиасы (для агентов / внешних промптов) ----
      Не дублировать hex: только ссылки на канон выше.
@@ -168,10 +171,11 @@ button.btn-small {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 32px;
+  height: var(--control-h);
+  min-height: var(--control-h);
   padding: 0 14px;
   font-family: var(--font);
-  font-size: 13px;
+  font-size: var(--control-font);
   border-radius: var(--radius);
   line-height: 1;
   cursor: pointer;
@@ -309,31 +313,53 @@ button.btn-small.primary:hover {
   white-space: nowrap;
 }
 
-/* Removable tag chip — членство в множестве (есть ×), не status badge */
+/* Removable tag chip — членство в множестве (есть ×), не status badge.
+   Высота = --control-h, как у полей/кнопок формы приёма. */
 .tag-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  box-sizing: border-box;
+  height: var(--control-h);
+  min-height: var(--control-h);
   background: var(--surface-2);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: var(--control-font);
   font-weight: 500;
-  padding: 3px 6px 3px 10px;
-  border-radius: 12px;
+  padding: 0 6px 0 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
-  line-height: 1.3;
+  line-height: 1;
 }
-.tag-chip.danger { background: var(--bg-danger); color: var(--text-danger); border-color: transparent; }
-.tag-chip.warning { background: var(--bg-warning); color: var(--text-warning); border-color: transparent; }
+.tag-chip.danger {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+  border-color: var(--border-danger);
+}
+.tag-chip.warning {
+  background: var(--bg-warning);
+  color: var(--text-warning);
+  border-color: var(--border-warning);
+}
+.tag-chip .chip-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.tag-chip.danger .chip-sub,
+.tag-chip.warning .chip-sub {
+  color: inherit;
+  opacity: 0.75;
+}
 .tag-chip .chip-x,
 .tag-chip button.chip-x {
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
   margin: 0 !important;
   background: transparent !important;
   color: inherit !important;
-  opacity: 0.6;
+  opacity: 0.55;
   font-size: 14px !important;
 }
 .tag-chip .chip-x:hover,
@@ -410,12 +436,23 @@ form.enc-sub-add {
   align-items: flex-end;
   justify-content: flex-start;
 }
+/* По умолчанию — по содержимому; широкие «плашки» только с модификатором. */
 form.enc-sub-add .field {
-  flex: 0 1 16rem;
-  width: 16rem;
+  flex: 0 0 auto;
+  width: auto;
   max-width: 100%;
-  min-width: 10rem;
+  min-width: 0;
   margin: 0;
+}
+form.enc-sub-add .field.field-code {
+  width: 11rem; /* Показатель / Анализ / Тип */
+}
+form.enc-sub-add .field.field-value {
+  width: 7.25rem; /* число + единица */
+}
+form.enc-sub-add .field.field-list {
+  width: 14rem; /* длинные словари (общее состояние, МКБ) */
+  max-width: min(14rem, 100%);
 }
 form.enc-sub-add .field.field-full {
   flex: 1 1 100%;
@@ -429,17 +466,28 @@ form.enc-sub-add .form-actions {
 }
 form.enc-sub-add select,
 form.enc-sub-add input[type="text"],
-form.enc-sub-add input[type="date"] {
+form.enc-sub-add input[type="number"],
+form.enc-sub-add input[type="date"],
+form.enc-sub-add .input-group {
+  width: 100%;
+  height: var(--control-h);
+  min-height: var(--control-h);
+  box-sizing: border-box;
+  font-size: var(--control-font);
+  border-radius: var(--radius);
+}
+form.enc-sub-add .input-group input {
+  height: 100%;
+  min-height: 0;
+}
+form.enc-sub-add .field.field-value input[name="value_numeric"] {
+  min-width: 0;
   width: 100%;
 }
 
 /* Общее состояние — список (select) в .fform; масштабируется на большие словари. */
 .gc-choice {
   margin: 0;
-}
-.gc-choice select[name="key"] {
-  min-width: 16rem;
-  max-width: 28rem;
 }
 .gc-hint {
   margin: 8px 0 0;
@@ -469,7 +517,7 @@ form.enc-sub-add input[type="date"] {
 .page-banner a.btn,
 .page-banner .btn-small {
   flex: none;
-  height: 34px;
+  height: var(--control-h);
   padding: 0 14px;
   display: inline-flex;
   align-items: center;

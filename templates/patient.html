@@ -53,7 +53,7 @@
   .mini-form .field{display:flex;flex-direction:column;gap:4px;}
   /* Единый лейбл форм: 12px sentence-case (page-system), не 11px uppercase */
   .mini-form label{font-size:12px;letter-spacing:normal;text-transform:none;color:var(--text-secondary);font-weight:400;height:auto;line-height:1.3;margin-bottom:2px;}
-  .mini-form input,.mini-form select,.mini-form textarea{height:36px;padding:0 10px;font-size:14px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
+  .mini-form input,.mini-form select,.mini-form textarea{height:var(--control-h);padding:0 10px;font-size:var(--control-font);border:1px solid var(--line);border-radius:var(--radius);background:#fff;font-family:inherit;color:var(--ink);box-sizing:border-box;}
   .mini-form select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
   .mini-form textarea{min-width:280px;resize:vertical;padding-top:7px;line-height:1.3;}
@@ -170,26 +170,20 @@
   .fform .field.field-full textarea{width:100%;box-sizing:border-box;min-height:5.6em;}
   .fform label{font-size:12px;letter-spacing:normal;text-transform:none;color:var(--text-secondary);font-weight:400;height:auto;line-height:1.3;display:inline-flex;align-items:center;gap:6px;}
   .fform label .ti{font-size:13px;color:var(--text-secondary);}
-  .fform input,.fform select,.fform textarea{height:36px;padding:0 10px;font-size:13px;border:1px solid var(--line);border-radius:6px;background:#fff;font-family:inherit;color:var(--ink);}
+  /* Высота контролов = --control-h (32px) из clinic.css — как .btn/.btn-small/.tag-chip */
+  .fform input,.fform select,.fform textarea{height:var(--control-h);padding:0 10px;font-size:var(--control-font);border:1px solid var(--line);border-radius:var(--radius);background:#fff;font-family:inherit;color:var(--ink);box-sizing:border-box;}
   .fform select{padding-right:28px;appearance:none;-webkit-appearance:none;cursor:pointer;
     background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%238a877d' d='M0 0l5 6 5-6z'/></svg>");background-repeat:no-repeat;background-position:right 10px center;}
-  /* Свободный текст (анамнез, заключение) — под несколько предложений,
-     не под одну строку, как у input; высота растёт от rows, не фиксирована
-     (height:auto перекрывает общий height:36px у .fform input/select/textarea). */
+  /* Свободный текст — высота от rows, не --control-h */
   .fform textarea{min-width:240px;height:auto;min-height:64px;resize:vertical;padding-top:7px;line-height:1.4;}
-  /* Кнопка — flex-элемент рядом с полями (справа от последнего), не width:100%
-     на новой строке. После field-full (textarea) естественно переносится вниз. */
   .fform .form-actions{width:auto;flex:0 0 auto;display:flex;gap:8px;justify-content:flex-start;align-items:center;margin:0;}
-  /* Явно на всю строку — только если нужно (редко). */
   .fform .form-actions.form-actions--row{width:100%;flex:1 1 100%;}
   .fform .note{width:100%;font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;min-height:14px;}
   .fform .note b{color:var(--ink);}
   .fform .note .ref{color:var(--faint);}
   .fform .hint{font-size:11px;color:var(--soft);line-height:1.4;margin-top:6px;white-space:pre-line;width:100%;}
   .fform .hint b{color:var(--ink);}
-  /* Повод приёма: продолжение по диагнозу(ам) — явный выбор при открытии,
-     не додумывается системой (docs/explain/07-encounter-types.md). */
-  .fform .reason-conditions{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--tint);width:100%;}
+  .fform .reason-conditions{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--radius);background:var(--tint);width:100%;}
   .fform .reason-conditions label{flex-direction:row;align-items:baseline;gap:6px;font-size:12px;color:var(--ink);cursor:pointer;font-weight:400;}
   .fform .reason-conditions input[type=checkbox]{width:auto;height:auto;margin:0;flex:none;}
   .fform .reason-conditions .rc-code{color:var(--faint);font-weight:400;}
@@ -207,7 +201,7 @@
   .cds-ov-check{display:flex;align-items:flex-start;gap:8px;font-size:13px;margin-bottom:10px;cursor:pointer;}
   .cds-ov-label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
   .cds-ov-label .req{color:var(--text-danger);}
-  .cds-ov-reason{width:100%;min-height:56px;font-size:13px;padding:8px;border:0.5px solid var(--border);border-radius:8px;resize:vertical;margin-bottom:12px;box-sizing:border-box;font-family:inherit;}
+  .cds-ov-reason{width:100%;min-height:56px;font-size:13px;padding:8px;border:0.5px solid var(--border);border-radius:var(--radius);resize:vertical;margin-bottom:12px;box-sizing:border-box;font-family:inherit;}
   .cds-ov-hard .cds-ov-reason{border-color:var(--border-danger);min-height:64px;}
   .cds-ov-err{color:var(--text-danger);font-size:13px;margin:0 0 8px;}
   .cds-ov-actions{display:flex;gap:8px;flex-wrap:wrap;}
@@ -222,10 +216,9 @@
   #triage-text{font-size:14px;font-weight:500;flex:1;}
   #triage-panel .triage-chev{font-size:16px;flex:none;margin-left:auto;}
   .enc-more{margin:8px 0 0;text-align:center;}
-  /* Группа «поле + единица измерения сбоку»: число вводит врач, единица — статичная подпись */
-  .fform .input-group{display:flex;align-items:stretch;height:36px;}
-  .fform .input-group input{border-radius:6px 0 0 6px;border-right:none;}
-  .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 10px;font-size:13px;color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 6px 6px 0;white-space:nowrap;min-width:34px;justify-content:center;}
+  .fform .input-group{display:flex;align-items:stretch;height:var(--control-h);min-height:var(--control-h);}
+  .fform .input-group input{border-radius:var(--radius) 0 0 var(--radius);border-right:none;height:100%;}
+  .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 8px;font-size:var(--control-font);color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) 0;white-space:nowrap;min-width:2rem;justify-content:center;box-sizing:border-box;}
   .fform .input-group input:invalid+.unit-suffix{border-color:var(--coral-deep);}
   /* Панель данных: список → действия «+» (не три формы сразу) */
   .diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
@@ -291,9 +284,8 @@
   .diag-sub .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
   @media(max-width:760px){.diag-grid{grid-template-columns:1fr;}}
 
-  /* Removable membership — только .tag-chip из clinic.css (не status badge) */
+  /* Removable membership — размеры/стили .tag-chip в clinic.css (--control-h) */
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
-  .tag-chip .chip-sub{color:var(--text-muted);font-size:11px;margin-left:2px;}
   .anam-note{background:var(--tint);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-bottom:6px;font-size:13px;line-height:1.5;color:var(--ink);white-space:pre-wrap;position:relative;}
   .anam-note .chip-x{position:absolute;top:6px;right:6px;}
   .sub-h{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);font-weight:500;margin:16px 0 8px;}
@@ -757,19 +749,19 @@
   <div class="fform">
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">Показатель</label>
+      <input type="hidden" name="date" value="{{ today }}">
+      <div class="field field-code"><label class="sr-only">Показатель</label>
         <select name="code" id="obs-code-{{ uid }}" required aria-label="Показатель">
           <option value="">— не выбран —</option>
           {% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}
         </select>
       </div>
-      <div class="field"><label class="sr-only">Значение</label>
+      <div class="field field-value"><label class="sr-only">Значение</label>
         <div class="input-group">
           <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ uid }}" placeholder="Значение" required aria-label="Значение">
           <span class="unit-suffix" id="obs-unit-{{ uid }}"></span>
         </div>
       </div>
-      <div class="field"><label class="sr-only">Дата</label><input type="date" name="date" value="{{ today }}" aria-label="Дата"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
     <div class="note" id="obs-note-{{ uid }}"></div>
@@ -781,15 +773,15 @@
      протокол принимает observation без закрытия service_request. #}
   {% macro lab_obs_form(pid, eid, chip_target='', orders=None) %}
   <div class="fform">
-    <form method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field"><label><i class="ti ti-flask" aria-hidden="true"></i>Анализ</label>
-        <select name="code" id="labobs-code-{{ eid }}">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
+      <div class="field field-code"><label class="sr-only">Анализ</label>
+        <select name="code" id="labobs-code-{{ eid }}" aria-label="Анализ">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
-      <div class="field"><label><i class="ti ti-number-123" aria-hidden="true"></i>Значение</label>
+      <div class="field field-value"><label class="sr-only">Значение</label>
         <div class="input-group">
-          <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required>
+          <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required aria-label="Значение">
           <span class="unit-suffix" id="labobs-unit-{{ eid }}"></span>
         </div>
       </div>
@@ -805,7 +797,7 @@
   <div class="fform gc-choice">
     <form class="enc-sub-add" method="POST" action="{{ url_for('set_general_condition_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field">
+      <div class="field field-list">
         <label class="sr-only">Общее состояние</label>
         <select name="key" required aria-label="Общее состояние">
           <option value="">— не выбрано —</option>
@@ -855,8 +847,8 @@
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_report_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field"><label><i class="ti ti-scan" aria-hidden="true"></i>Тип</label>
-        <select name="code">{{ study_code_options(cat) }}</select>
+      <div class="field field-list"><label class="sr-only">Тип</label>
+        <select name="code" aria-label="Тип исследования">{{ study_code_options(cat) }}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
     </form>
@@ -873,7 +865,7 @@
       <input type="hidden" name="source_label" value="{{ source_label }}">
       <p class="src-hint" style="flex:1 1 100%;"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
-      <div class="field"><label class="sr-only">Диагноз (МКБ-10)</label>
+      <div class="field field-list"><label class="sr-only">Диагноз (МКБ-10)</label>
         <select name="code" required aria-label="Диагноз (МКБ-10)">
           <option value="">— не выбран —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
@@ -989,7 +981,7 @@
     {% if _opts %}
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">Фактор риска</label>
+      <div class="field field-list"><label class="sr-only">Фактор риска</label>
         <select name="key" required aria-label="Фактор риска">
           <option value="">— не выбран —</option>
           {% for key, label in _opts %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
@@ -1014,7 +1006,7 @@
     {% if _opts %}
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_flag_route', pid=pid) }}" data-ajax="1">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
-      <div class="field"><label class="sr-only">{{ aria_label }}</label>
+      <div class="field field-list"><label class="sr-only">{{ aria_label }}</label>
         <select name="key" required aria-label="{{ aria_label }}">
           <option value="">— не выбран —</option>
           {% for key, label in _opts %}
