@@ -881,7 +881,7 @@
     <form class="enc-sub-add" method="POST" action="{{ url_for('add_report_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}">
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field field-list"><label class="sr-only">Тип</label>
+      <div class="field field-fit"><label class="sr-only">Тип</label>
         <select name="code" aria-label="Тип исследования">{{ study_code_options(cat) }}</select>
       </div>
       <div class="form-actions"><button class="btn-small" type="submit">Сохранить</button></div>
@@ -2328,12 +2328,12 @@
       }
     });
   }
-  // Плашки «Лабораторные» / «Инструментальные»: ширина сразу под открытую форму,
-  // чтобы клик «+ Добавить результат» не раздвигал карточку.
-  function _fitDiagSubs(root){
-    (root || document).querySelectorAll('.diag-sub').forEach(function(sub){
-      var panel = sub.querySelector(':scope > .add-bar > details.add-panel:not(.add-panel--inline)');
-      if(!panel) return;
+  // Плашки «Лабораторные» / «Инструментальные»: одна ширина на весь .diag-grid
+  // (по самой широкой форме в одну линию: select · значение · Сохранить).
+  function _measureDiagSubNeed(sub){
+    var panel = sub.querySelector(':scope > .add-bar > details.add-panel:not(.add-panel--inline)');
+    var need = 0;
+    if(panel){
       var wasOpen = panel.open;
       var prevCss = panel.style.cssText;
       panel.open = true;
@@ -2347,25 +2347,57 @@
       }
       _fitEncSelects(panel);
       _fitUnitSuffixes(panel);
-      var need = Math.ceil(panel.getBoundingClientRect().width);
-      var form = panel.querySelector('form');
-      if(form) need = Math.max(need, Math.ceil(form.scrollWidth + 22));
+      var form = panel.querySelector('form.enc-sub-add') || panel.querySelector('form');
+      if(form){
+        var prevWrap = form.style.flexWrap;
+        form.style.flexWrap = 'nowrap';
+        need = Math.max(need, Math.ceil(form.scrollWidth + 28));
+        form.style.flexWrap = prevWrap;
+      }
+      need = Math.max(need, Math.ceil(panel.getBoundingClientRect().width));
       panel.style.cssText = prevCss;
       if(!wasOpen) panel.open = false;
-      var h4 = sub.querySelector(':scope > h4');
-      if(h4) need = Math.max(need, Math.ceil(h4.scrollWidth + 24));
-      sub.querySelectorAll(':scope > .dlist .it').forEach(function(it){
-        need = Math.max(need, Math.ceil(it.scrollWidth + 2));
+    }
+    var h4 = sub.querySelector(':scope > h4');
+    if(h4) need = Math.max(need, Math.ceil(h4.scrollWidth + 24));
+    sub.querySelectorAll(':scope > .dlist .it').forEach(function(it){
+      need = Math.max(need, Math.ceil(it.scrollWidth + 2));
+    });
+    var none = sub.querySelector(':scope > .dlist .none');
+    if(none) need = Math.max(need, Math.ceil(none.scrollWidth + 24));
+    return need;
+  }
+  function _fitDiagSubs(root){
+    var scope = root || document;
+    var grids = scope.querySelectorAll('.diag-grid');
+    if(!grids.length){
+      /* одиночные .diag-sub вне сетки */
+      scope.querySelectorAll('.diag-sub').forEach(function(sub){
+        var need = _measureDiagSubNeed(sub);
+        var room = (sub.closest('.fstep-b') || document.documentElement).clientWidth;
+        if(room > 160) need = Math.min(need, room - 8);
+        if(need > 80){
+          sub.style.width = need + 'px';
+          sub.style.minWidth = need + 'px';
+          sub.style.maxWidth = '100%';
+        }
       });
-      var none = sub.querySelector(':scope > .dlist .none');
-      if(none) need = Math.max(need, Math.ceil(none.scrollWidth + 24));
-      var room = (sub.closest('.fstep-b') || document.documentElement).clientWidth;
-      if(room > 160) need = Math.min(need, room - 8);
-      if(need > 80){
-        sub.style.width = need + 'px';
-        sub.style.minWidth = need + 'px';
+      return;
+    }
+    grids.forEach(function(grid){
+      var subs = grid.querySelectorAll(':scope > .diag-sub');
+      var maxNeed = 0;
+      subs.forEach(function(sub){
+        maxNeed = Math.max(maxNeed, _measureDiagSubNeed(sub));
+      });
+      var room = (grid.closest('.fstep-b') || document.documentElement).clientWidth;
+      if(room > 160) maxNeed = Math.min(maxNeed, room - 8);
+      if(maxNeed <= 80) return;
+      subs.forEach(function(sub){
+        sub.style.width = maxNeed + 'px';
+        sub.style.minWidth = maxNeed + 'px';
         sub.style.maxWidth = '100%';
-      }
+      });
     });
   }
   function _fitDictionaryControls(root){
