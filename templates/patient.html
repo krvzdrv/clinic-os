@@ -284,7 +284,7 @@
 
   .add-bar{display:flex;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-2) var(--space-3) var(--space-3);border-top:1px solid var(--line);background:var(--tint);
     justify-content:flex-start;align-items:flex-start;}
-  /* Закрытая плашка «+ …» — по тексту; открытая — по форме, не на весь экран */
+  /* Закрытая плашка «+ …» — по тексту; открытая вне обследования — по форме */
   .add-bar .add-panel{flex:0 0 auto;width:max-content;max-width:100%;min-width:0;}
   .add-panel{border:1px solid var(--line);border-radius:8px;background:#fff;flex:0 0 auto;width:max-content;max-width:100%;min-width:0;}
   .add-panel > summary{cursor:pointer;list-style:none;padding:7px 10px;font-size:12px;font-weight:600;color:var(--steel);white-space:nowrap;}
@@ -297,6 +297,31 @@
   .add-panel-b{overflow:hidden;transition:height .18s ease;}
   .add-panel .fform{margin:0;padding:var(--space-3);}
   .add-panel .fform .form-actions{justify-content:flex-start;}
+  /* Обследование: открытая плашка на всю карточку; Сохранить — всегда справа в ряду */
+  .diag-sub > .add-bar{align-items:stretch;}
+  .diag-sub > .add-bar > .add-panel,
+  .diag-sub > .add-bar > .add-panel[open]{
+    flex:1 1 100%;width:100%;max-width:100%;box-sizing:border-box;
+  }
+  .diag-sub > .add-bar > .add-panel[open] .add-panel-b,
+  .diag-sub > .add-bar > .add-panel[open] .fform{width:100%;box-sizing:border-box;}
+  .diag-sub form.enc-sub-add{
+    display:flex;flex-wrap:nowrap;align-items:center;width:100%;max-width:100%;
+    gap:var(--space-2);box-sizing:border-box;
+  }
+  .diag-sub form.enc-sub-add .field.field-fit,
+  .diag-sub form.enc-sub-add .field.field-list{
+    flex:1 1 auto;min-width:0;max-width:none; /* select забирает свободное место слева */
+  }
+  .diag-sub form.enc-sub-add .field.field-fit select,
+  .diag-sub form.enc-sub-add .field.field-list select{width:100%;max-width:100%;}
+  .diag-sub form.enc-sub-add .field.field-value{flex:0 0 auto;}
+  .diag-sub form.enc-sub-add .form-actions{
+    margin-left:auto;flex:0 0 auto; /* кнопка у правого края карточки */
+  }
+  .diag-sub form.enc-sub-add .form-actions .btn-small{
+    min-width:6.25rem;justify-content:center;box-sizing:border-box;
+  }
 
   .add-panel--inline{flex:0 0 auto;min-width:auto;margin-left:auto;width:auto;}
   .add-panel--inline > summary{padding:3px 8px;font-size:11px;color:var(--steel);
@@ -2284,11 +2309,20 @@
     var room = (sel.closest('.enc-card, .fstep-b, main') || document.documentElement).clientWidth;
     if(room > 160) w = Math.min(w, room - 24);
     // Ширину держим на .field — select width:100%, смена option не меняет layout.
+    // В .diag-sub select растёт (flex), кнопка margin-left:auto справа; min-width = longest.
     var field = sel.closest('.field');
+    var inDiag = !!sel.closest('.diag-sub');
     if(field){
-      field.style.width = w + 'px';
-      field.style.minWidth = w + 'px';
-      field.style.flex = '0 0 auto';
+      if(inDiag){
+        field.style.width = '';
+        field.style.minWidth = w + 'px';
+        field.style.flex = '1 1 auto';
+        field.style.maxWidth = 'none';
+      } else {
+        field.style.width = w + 'px';
+        field.style.minWidth = w + 'px';
+        field.style.flex = '0 0 auto';
+      }
       sel.style.width = '100%';
       sel.style.minWidth = '0';
     } else {

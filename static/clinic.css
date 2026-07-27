@@ -503,25 +503,19 @@ form.enc-sub-add {
   align-items: center; /* select и кнопка на одной линии по высоте */
   justify-content: flex-start;
 }
-/* В карточках обследования форма не переносит кнопку — стандарт: … · значение · Сохранить */
-.diag-sub form.enc-sub-add,
-.add-panel form.enc-sub-add {
+/* Обследование: форма на всю карточку, Сохранить прижата вправо (стандарт ряда).
+   Детали каскада — также в patient.html (.diag-sub > .add-bar …). */
+.diag-sub form.enc-sub-add {
   flex-wrap: nowrap;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
 }
-.diag-sub .add-panel[open] {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
+.diag-sub form.enc-sub-add .form-actions {
+  margin-left: auto;
+  flex: 0 0 auto;
 }
-.diag-sub .add-panel[open] .add-panel-b,
-.diag-sub .add-panel[open] .fform {
-  width: 100%;
-  box-sizing: border-box;
-}
-/* Одна ширина кнопки справа от значения (Сохранить / Изменить / Добавить) */
+/* Одна ширина кнопки справа (Сохранить / Изменить / Добавить) */
 form.enc-sub-add .form-actions .btn-small {
   min-width: 6.25rem;
   justify-content: center;
