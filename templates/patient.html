@@ -67,34 +67,14 @@
   .step{display:inline-block;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid var(--line);background:var(--tint);color:var(--faint);}
   .step.active{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
   .arrow{color:var(--faint);font-size:14px;margin:0 4px;}
-  .section-nav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:6px;
-    background:rgba(241,245,249,.94);backdrop-filter:blur(6px);
-    padding:8px 0;margin:0 0 14px;border-bottom:1px solid var(--line);}
-  .section-nav a{font-size:12px;font-weight:600;color:var(--soft);background:#fff;
-    border:1px solid var(--line);border-radius:8px;padding:5px 12px;text-decoration:none;white-space:nowrap;}
-  .section-nav a:hover{background:var(--coral);color:#fff;border-color:var(--coral-deep);}
   h2[id],.fstep[id]{scroll-margin-top:64px;}
-  .enc-card{border:1px solid var(--line);border-radius:12px;background:#fff;margin:12px 0;overflow:hidden;}
-  .enc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--tint);border-bottom:1px solid var(--line);}
-  .enc-head .enc-date{font-family:var(--font);font-weight:600;font-size:15px;}
-  .enc-head .enc-complaint{font-size:13px;color:var(--soft);flex:1;min-width:160px;}
-  .enc-body{padding:6px 14px 12px;}
+  {# .enc-card — единая карточка приёма объявлена ниже (см. «Текущий приём — самостоятельная карточка»),
+     .enc-head/.enc-date/.enc-complaint из старой версии тулбара не используются — убраны. #}
+  .enc-body{padding:6px 0 0;}
   /* .enc-sub / .section-label — SSOT в static/clinic.css */
   .enc-sub table{margin-top:2px;}
   .unassigned{border:1px dashed var(--line);border-radius:12px;background:#fff;margin:12px 0;padding:6px 14px 12px;}
   .unassigned h3{font-size:13px;color:var(--coral-deep);margin:8px 0 4px;}
-  .pill{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;}
-  .inline-add{margin-top:14px;border-top:1px dashed var(--line);border-radius:0;padding-top:6px;}
-  .inline-add summary{padding-left:0;}
-  .tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line);margin-bottom:16px;
-    position:sticky;top:0;z-index:50;background:rgba(241,245,249,.96);backdrop-filter:blur(6px);padding:8px 0 0;}
-  .tab{font-family:inherit;font-size:13px;font-weight:600;color:var(--faint);background:transparent;
-    border:none;border-bottom:2px solid transparent;border-radius:0;padding:10px 14px;cursor:pointer;white-space:nowrap;margin-bottom:-1px;}
-  .tab:hover{color:var(--coral-deep);}
-  .tab.active{background:transparent;color:var(--ink);border-bottom-color:var(--coral);}
-  .panel{display:none;}
-  .panel.active{display:block;animation:fade .12s ease;}
-  @keyframes fade{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
   .flow{display:flex;flex-direction:column;gap:14px;}
   /* Секции визита: свёрнуто = кликабельная «полка»; открыто = типографика
      (не ещё одна белая рамка рядом с textarea — иначе иерархия схлопывается). */
@@ -390,6 +370,13 @@
     padding:0;margin:0 0 12px;
   }
   .dx-card:last-child{margin-bottom:0;}
+  /* Точечная подсветка после постановки диагноза (soft refresh) — глазами видно,
+     где появилось изменение, без перезагрузки страницы и прыжка скролла. */
+  @keyframes dxCardPulse{
+    0%{box-shadow:0 0 0 3px var(--bg-accent);border-color:var(--border-accent);}
+    100%{box-shadow:0 0 0 0 transparent;border-color:var(--border);}
+  }
+  .dx-card.just-updated{animation:dxCardPulse 1.6s ease-out;}
   /* Диагноз сворачивается так же, как блок приёмов (history-fold).
      display:flex у .dx-rail иначе оставляет тело видимым в закрытом <details>. */
   details.dx-card > summary.dx-head{
@@ -473,11 +460,6 @@
   .dx-follow{margin:8px 0 0;padding:0 2px;font-size:13px;color:var(--text-muted);}
   .dx-follow .attr-label{margin-bottom:4px;}
 
-  .tabs .tab-more{margin-left:auto;opacity:.85;}
-  details.more-tabs{margin:0 0 14px;}
-  details.more-tabs > summary{cursor:pointer;font-size:12px;color:var(--faint);font-weight:600;list-style:none;}
-  details.more-tabs .tabs-secondary{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
-
   .flow-group{margin:10px 0;padding:10px 0 4px;border-top:1px dashed var(--line);}
   .flow-group:first-child{border-top:none;margin-top:0;padding-top:0;}
   .flow-group-h{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);font-weight:500;margin:16px 0 8px;}
@@ -505,9 +487,13 @@
   .history-fold[open] > summary.enc-summary .enc-chev-right{display:none;}
   .enc-summary .btn-small{pointer-events:auto;}
   .history-fold .enc-panel{padding:0 14px 14px;}
-  .history-fold .enc-card{
-    border:none;border-radius:0;background:transparent;box-shadow:none;margin:0;overflow:visible;
+  /* Текущий приём — самостоятельная карточка (как dx-card), не спрятана в фолд:
+     врач должен видеть и редактировать её сразу, без лишнего клика по summary. */
+  .enc-card{
+    border:1px solid var(--border);border-radius:var(--radius);background:var(--surface-1);
+    padding:14px 16px 16px;margin:0 0 16px;
   }
+  .enc-card:last-child{margin-bottom:0;}
   /* Тулбар приёма: строка статуса + строка действий (одинаковая высота 32px),
      мета (повод/жалоба) отдельно — чтобы кнопки не «плясали» в одном wrap с текстом. */
   .enc-toolbar{
@@ -938,9 +924,10 @@
         <p class="hint">Ничего не отмечено — считаем новой жалобой/проблемой, диагноз свяжется, когда его поставят.</p>
       </div>
       {% endif %}
+      {# Жалоба вводится один раз — в шаге «Жалоба» сразу после открытия приёма
+         (см. COMPLAINT_ANAMNESIS_UX_BRIEF.md): не дублируем поле здесь. #}
       <div class="field"><label><i class="ti ti-category" aria-hidden="true"></i>Тип</label><select name="class"><option value="ambulatory">амбулаторный приём</option><option value="inpatient">стационарный приём</option><option value="followup">контрольный визит</option></select></div>
       <div class="field"><label><i class="ti ti-calendar" aria-hidden="true"></i>Дата</label><input type="date" name="start" value="{{ today }}"></div>
-      <div class="field grow"><label><i class="ti ti-message-2" aria-hidden="true"></i>Жалоба сегодня</label><input type="text" name="complaint" placeholder="Кашель, лихорадка 3 дня — или «жалоб нет, контроль»"></div>
       <div class="form-actions">
         {% if cancel %}<button type="button" class="btn ghost btn-small" onclick="var d=this.closest('details.add-panel'); if(d) d.open=false;">Отмена</button>{% endif %}
         <button class="btn-small" type="submit">Открыть приём</button>
@@ -1309,10 +1296,27 @@
   {% endmacro %}
 
   {% set triage_conditions = triage_conditions if triage_conditions is defined else [] %}
-  <div id="triage-panel" role="button" tabindex="0" style="display:none;"
+  {# Рендерим вердикт сразу в HTML (не только после JS) — подсказка/проверка должна
+     быть видна без зависимости от клиентского скрипта. JS ниже лишь дублирует текст
+     на случай динамических данных (soft refresh) и добавляет переход по клику. #}
+  {% set _triage_issues = [] %}
+  {% set _triage_cond_ids = [] %}
+  {% for tc in triage_conditions %}
+    {% for issue in (tc.issues or []) %}
+      {% set _ = _triage_issues.append({'conditionName': tc.name, 'text': issue.text or issue.message or ''}) %}
+    {% endfor %}
+    {% if tc.id not in _triage_cond_ids %}{% set _ = _triage_cond_ids.append(tc.id) %}{% endif %}
+  {% endfor %}
+  {% set triage_text = '' %}
+  {% if _triage_issues|length == 1 %}
+    {% set triage_text = _triage_issues[0].text ~ ' — ' ~ _triage_issues[0].conditionName %}
+  {% elif _triage_issues|length > 1 %}
+    {% set triage_text = _triage_issues|length|string ~ ' действия требуются по ' ~ _triage_cond_ids|length|string ~ ' диагнозам' %}
+  {% endif %}
+  <div id="triage-panel" role="button" tabindex="0" style="display:{{ 'flex' if _triage_issues else 'none' }};"
        aria-label="Требуются действия по диагнозам">
     <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-    <span id="triage-text"></span>
+    <span id="triage-text">{{ triage_text }}</span>
     <i class="ti ti-chevron-right triage-chev" aria-hidden="true"></i>
   </div>
   <script type="application/json" id="triage-data">{{ triage_conditions|tojson }}</script>
@@ -1481,52 +1485,10 @@
      конкретного приёма — в его собственной карточке (enc-toolbar) ниже. #}
   {% set enc_total_n = encounters_total if encounters_total is defined and encounters_total else (encounters_data|length if encounters_data else (1 if current_ed else 0)) %}
   {% set enc_multi = enc_total_n > 1 %}
-  {# Пока у пациента обычно один приём — открыт сразу, быстрее ввод. #}
-  <details class="history-fold" open>
-    <summary class="enc-summary">
-      <div class="icon-avatar{% if enc_open %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
-      {% if enc_multi %}
-      <span class="enc-title">Приёмы<span class="enc-meta">{{ enc_total_n }}</span></span>
-      {% else %}
-      <span class="enc-title">{{ enc_title }}{% if current_ed %}<span class="enc-meta">{{ current_ed.encounter.start }}</span>{% endif %}</span>
-      {% endif %}
-      <span class="enc-end">
-        <i class="ti ti-chevron-right enc-chev enc-chev-right" aria-hidden="true"></i>
-        <i class="ti ti-chevron-down enc-chev enc-chev-down" aria-hidden="true"></i>
-      </span>
-    </summary>
-
-  <div class="enc-panel">
+  {# Текущий приём — не под фолдом: врач должен видеть и вести его сразу, как diagnostic
+     dx-card. Прошлые приёмы — отдельный history-fold ниже (см. dx-history для диагнозов). #}
   <section id="panel-encounters">
   <h2 id="sec-encounters" class="sr-only">Приём</h2>
-
-  {% if encounters_data and (encounters_data|length > 1 or (encounters_total is defined and encounters_total > 1)) %}
-  <div class="visit-list" id="visit-list" aria-label="История приёмов"
-       data-pid="{{ patient.id }}"
-       data-offset="{{ (enc_offset|default(0)) + (enc_limit|default(20)) }}"
-       data-has-more="{{ 1 if enc_has_more|default(false) else 0 }}">
-    {% for ved in encounters_data %}
-      {% set ve = ved.encounter %}
-      {% set vsum %}{% if ved.cond %}{{ ved.cond[0].display }}{% elif ved.med %}{{ ved.med[0].display }}{% else %}{{ ve.complaint or '—' }}{% endif %}{% endset %}
-      <a class="visit-row{% if ve.id == current_eid %} current{% endif %}"
-         href="{{ url_for('patient_detail', pid=patient.id, e=ve.id) }}">
-        <div class="icon-avatar sm{% if ve.status != 'finished' %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
-        <span class="vd">{{ ve.start }}</span>
-        {% if ve.class == 'inpatient' %}<span class="category-tag">стационар</span>
-        {% elif ve.class == 'followup' %}<span class="category-tag">контроль</span>
-        {% else %}<span class="category-tag">амбулаторно</span>{% endif %}
-        {% if ve.status == 'finished' %}<span class="badge grey">закрыт</span>
-        {% else %}<span class="badge accent">открыт</span>{% endif %}
-        <span class="vs">{{ vsum|trim }}</span>
-      </a>
-    {% endfor %}
-  </div>
-  {% if enc_has_more|default(false) %}
-  <div class="enc-more">
-    <button type="button" class="btn ghost btn-small" id="enc-show-more">Показать ещё</button>
-  </div>
-  {% endif %}
-  {% endif %}
 
   {% if current_ed %}
     {% set ed = current_ed %}
@@ -1733,7 +1695,7 @@
            Пользователь может свернуть; open+scroll помнит sessionStorage. #}
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
-               open=true) %}
+               open=(st_complaint in ('active', 'attention'))) %}
             {# Тот же .enc-sub, что у подразделов осмотра — не «голое» поле. #}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Описание</h3>
@@ -1742,7 +1704,7 @@
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
+               open=(st_anam in ('active', 'attention')), badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {# Подразделы — как в Осмотре: .enc-sub + .section-label + border-top.
                Без connector rail (rail только у диагноза → лечение/цели).
@@ -1768,7 +1730,7 @@
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
-               open=true) %}
+               open=(st_exam in ('active', 'attention'))) %}
             <section class="enc-sub enc-sub--main" id="sub-gc-{{ e.id }}">
               <h3 class="section-label">Общее состояние</h3>
               {{ gc_form(patient.id, e.id, gc_flag or '') }}
@@ -1864,7 +1826,7 @@
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
-               open=true) %}
+               open=(st_cond in ('active', 'attention'))) %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
             <section class="enc-sub enc-sub--main">
@@ -1888,7 +1850,7 @@
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
-               open=true) %}
+               open=(st_diag in ('active', 'attention'))) %}
             <div class="diag-grid">
               <div class="diag-sub">
                 <h4>Лабораторные</h4>
@@ -1949,7 +1911,7 @@
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
-               open=true) %}
+               open=(st_med in ('active', 'attention'))) %}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Препараты</h3>
             <div class="chips" id="chips-med-{{ e.id }}">
@@ -1985,6 +1947,47 @@
       </div>
     </details>
   </div>
+  {% endif %}
+
+  {% if enc_multi %}
+  <details class="history-fold" id="enc-history">
+    <summary class="enc-summary">
+      <div class="icon-avatar sm" aria-hidden="true"><i class="ti ti-history"></i></div>
+      <span class="enc-title">История приёмов<span class="enc-meta">{{ enc_total_n - 1 if current_ed else enc_total_n }}</span></span>
+      <span class="enc-end">
+        <i class="ti ti-chevron-right enc-chev enc-chev-right" aria-hidden="true"></i>
+        <i class="ti ti-chevron-down enc-chev enc-chev-down" aria-hidden="true"></i>
+      </span>
+    </summary>
+    <div class="enc-panel">
+      <div class="visit-list" id="visit-list" aria-label="История приёмов"
+           data-pid="{{ patient.id }}"
+           data-offset="{{ (enc_offset|default(0)) + (enc_limit|default(20)) }}"
+           data-has-more="{{ 1 if enc_has_more|default(false) else 0 }}">
+        {% for ved in encounters_data %}
+          {% set ve = ved.encounter %}
+          {% if ve.id != current_eid %}
+          {% set vsum %}{% if ved.cond %}{{ ved.cond[0].display }}{% elif ved.med %}{{ ved.med[0].display }}{% else %}{{ ve.complaint or '—' }}{% endif %}{% endset %}
+          <a class="visit-row" href="{{ url_for('patient_detail', pid=patient.id, e=ve.id) }}">
+            <div class="icon-avatar sm{% if ve.status != 'finished' %} accent{% endif %}" aria-hidden="true"><i class="ti ti-calendar-event"></i></div>
+            <span class="vd">{{ ve.start }}</span>
+            {% if ve.class == 'inpatient' %}<span class="category-tag">стационар</span>
+            {% elif ve.class == 'followup' %}<span class="category-tag">контроль</span>
+            {% else %}<span class="category-tag">амбулаторно</span>{% endif %}
+            {% if ve.status == 'finished' %}<span class="badge grey">закрыт</span>
+            {% else %}<span class="badge accent">открыт</span>{% endif %}
+            <span class="vs">{{ vsum|trim }}</span>
+          </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% if enc_has_more|default(false) %}
+      <div class="enc-more">
+        <button type="button" class="btn ghost btn-small" id="enc-show-more">Показать ещё</button>
+      </div>
+      {% endif %}
+    </div>
+  </details>
   {% endif %}
 
   {% if has_unassigned %}
@@ -2060,8 +2063,6 @@
     </details>
   </details>
 
-  </div>{# /enc-panel #}
-  </details>{# /history-fold #}
 </main>
 <script>
 (function(){
@@ -2464,7 +2465,17 @@
         _setSaveStatus(form, 'Сохранено', true);
         // CDS / бейджи / списки — без full reload; details.open не трогаем.
         if(data.soft_refresh || form.closest('#now-action')){
-          _softRefreshUi();
+          var isNewCondition = data.id && form.getAttribute('action').indexOf('/condition') !== -1;
+          var refreshed = _softRefreshUi();
+          if(isNewCondition && refreshed && refreshed.then){
+            refreshed.then(function(){
+              var card = document.getElementById('condition-' + data.id);
+              if(card){
+                card.classList.add('just-updated');
+                card.addEventListener('animationend', function(){ card.classList.remove('just-updated'); }, {once:true});
+              }
+            });
+          }
         }
       } else if(data && data.need_confirm){
         _setSaveStatus(form, '', null);
