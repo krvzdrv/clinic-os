@@ -447,12 +447,41 @@ form.enc-sub-add .field {
 form.enc-sub-add .field.field-code {
   width: 11rem; /* Показатель / Анализ / Тип */
 }
+/* Число шире (видно пример 97,5 / 36,2); единица — по содержимому, не сжимается */
 form.enc-sub-add .field.field-value {
-  width: 7.25rem; /* число + единица */
+  width: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+form.enc-sub-add .field.field-value .input-group {
+  width: auto;
+  max-width: 100%;
+}
+form.enc-sub-add .field.field-value .input-group input {
+  width: 7rem;
+  flex: 0 0 7rem;
+  min-width: 7rem;
+}
+form.enc-sub-add .field.field-value .input-group .unit-suffix {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 0 10px;
 }
 form.enc-sub-add .field.field-list {
-  width: 14rem; /* длинные словари (общее состояние, МКБ) */
+  width: 14rem; /* средние словари (общее состояние и т.п.) */
   max-width: min(14rem, 100%);
+}
+/* Длинные названия (МКБ): забирает оставшуюся ширину ряда */
+form.enc-sub-add .field.field-grow {
+  flex: 1 1 16rem;
+  width: auto;
+  min-width: 12rem;
+  max-width: none;
+}
+form.enc-sub-add .field.field-date {
+  width: 9.5rem;
+  flex: 0 0 9.5rem;
 }
 form.enc-sub-add .field.field-full {
   flex: 1 1 100%;
@@ -480,10 +509,6 @@ form.enc-sub-add .input-group input {
   height: 100%;
   min-height: 0;
 }
-form.enc-sub-add .field.field-value input[name="value_numeric"] {
-  min-width: 0;
-  width: 100%;
-}
 
 /* Общее состояние — список (select) в .fform; масштабируется на большие словари. */
 .gc-choice {
@@ -491,6 +516,32 @@ form.enc-sub-add .field.field-value input[name="value_numeric"] {
 }
 .gc-hint {
   margin: 8px 0 0;
+}
+
+/* Ошибка валидации в формах приёма — поле + подпись, не только текст в .note */
+.fform input.is-invalid,
+.fform select.is-invalid,
+form.enc-sub-add input.is-invalid,
+form.enc-sub-add select.is-invalid,
+.fform textarea.is-invalid {
+  border-color: var(--text-danger) !important;
+  background: var(--bg-danger);
+  outline: none;
+}
+.fform .input-group:has(input.is-invalid) input,
+.fform .input-group:has(input.is-invalid) .unit-suffix {
+  border-color: var(--text-danger) !important;
+}
+.fform .input-group:has(input.is-invalid) .unit-suffix {
+  background: var(--bg-danger);
+  color: var(--text-danger);
+}
+.fform .note .field-error,
+.fform .hint .field-error,
+.field-error {
+  color: var(--text-danger);
+  font-size: 12px;
+  font-weight: 500;
 }
 .enc-sub-empty {
   margin: 0;

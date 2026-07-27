@@ -218,10 +218,11 @@
   .enc-more{margin:8px 0 0;text-align:center;}
   .fform .input-group{display:flex;align-items:stretch;height:var(--control-h);min-height:var(--control-h);}
   .fform .input-group input{border-radius:var(--radius) 0 0 var(--radius);border-right:none;height:100%;}
-  .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 8px;font-size:var(--control-font);color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) 0;white-space:nowrap;min-width:2rem;justify-content:center;box-sizing:border-box;}
+  .fform .input-group .unit-suffix{display:flex;align-items:center;padding:0 10px;font-size:var(--control-font);color:var(--soft);background:var(--tint);border:1px solid var(--line);border-radius:0 var(--radius) var(--radius) 0;white-space:nowrap;flex-shrink:0;min-width:2rem;justify-content:center;box-sizing:border-box;}
   .fform .input-group input:invalid+.unit-suffix{border-color:var(--coral-deep);}
   /* Панель данных: список → действия «+» (не три формы сразу) */
-  .diag-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px;}
+  /* Столбцом: лаборатория → инструментальные — в две колонки формы и длинные названия ломаются */
+  .diag-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:4px;}
   .chart-pane{border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden;}
   .chart-pane-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
     padding:10px 12px;background:var(--tint);border-bottom:1px solid var(--line);}
@@ -282,7 +283,6 @@
   .diag-sub .dlist .st.ord{background:var(--accent-soft);color:var(--steel);}
   .diag-sub .dlist .res{color:var(--soft);}
   .diag-sub .none{display:block;padding:14px 12px;color:var(--faint);font-size:13px;}
-  @media(max-width:760px){.diag-grid{grid-template-columns:1fr;}}
 
   /* Removable membership — размеры/стили .tag-chip в clinic.css (--control-h) */
   .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
@@ -747,10 +747,10 @@
   {% macro obs_form(pid, eid, chip_target='', uid=None) %}
   {% set uid = uid or eid %}
   <div class="fform">
-    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" novalidate>
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field field-code"><label class="sr-only">Показатель</label>
+      <div class="field field-grow"><label class="sr-only">Показатель</label>
         <select name="code" id="obs-code-{{ uid }}" required aria-label="Показатель">
           <option value="">— не выбран —</option>
           {% for c, lbl in exam_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}
@@ -758,7 +758,7 @@
       </div>
       <div class="field field-value"><label class="sr-only">Значение</label>
         <div class="input-group">
-          <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ uid }}" placeholder="Значение" required aria-label="Значение">
+          <input type="text" inputmode="decimal" name="value_numeric" id="obs-value-{{ uid }}" placeholder="97,5" required aria-label="Значение">
           <span class="unit-suffix" id="obs-unit-{{ uid }}"></span>
         </div>
       </div>
@@ -773,15 +773,15 @@
      протокол принимает observation без закрытия service_request. #}
   {% macro lab_obs_form(pid, eid, chip_target='', orders=None) %}
   <div class="fform">
-    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1">
+    <form class="enc-sub-add" method="POST" action="{{ url_for('add_observation_route', pid=pid) }}" data-ajax="1" data-chip-target="{{ chip_target }}" data-lab="1" novalidate>
       <input type="hidden" name="encounter_id" value="{{ eid }}">
       <input type="hidden" name="date" value="{{ today }}">
-      <div class="field field-code"><label class="sr-only">Анализ</label>
+      <div class="field field-grow"><label class="sr-only">Анализ</label>
         <select name="code" id="labobs-code-{{ eid }}" aria-label="Анализ">{% for c, lbl in lab_loinc.items() %}<option value="{{ c }}" data-unit="{{ loinc_unit(c) }}" data-low="{{ loinc_reference(c)[0] }}" data-high="{{ loinc_reference(c)[1] }}" data-sane-low="{{ sane_range(c)[0] if sane_range(c) else '' }}" data-sane-high="{{ sane_range(c)[1] if sane_range(c) else '' }}">{{ lbl }}</option>{% endfor %}</select>
       </div>
       <div class="field field-value"><label class="sr-only">Значение</label>
         <div class="input-group">
-          <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="значение" required aria-label="Значение">
+          <input type="text" inputmode="decimal" name="value_numeric" id="labobs-value-{{ eid }}" placeholder="7" required aria-label="Значение">
           <span class="unit-suffix" id="labobs-unit-{{ eid }}"></span>
         </div>
       </div>
@@ -865,7 +865,7 @@
       <input type="hidden" name="source_label" value="{{ source_label }}">
       <p class="src-hint" style="flex:1 1 100%;"><i class="ti ti-arrow-back-up" aria-hidden="true"></i>По результату: <b>{{ source_label }}</b></p>
       {% endif %}
-      <div class="field field-list"><label class="sr-only">Диагноз (МКБ-10)</label>
+      <div class="field field-grow"><label class="sr-only">Диагноз (МКБ-10)</label>
         <select name="code" required aria-label="Диагноз (МКБ-10)">
           <option value="">— не выбран —</option>
           {# Группы из protocol_registry (+ коморбидность) — не хардкод ВП/ЖДА.
@@ -879,8 +879,9 @@
           {% endfor %}
         </select>
       </div>
-      <div class="field"><label class="sr-only">Название</label><input type="text" name="display" placeholder="Название по коду МКБ" required aria-label="Название"></div>
-      <div class="field"><label class="sr-only">Дата</label><input type="date" name="onset_date" value="{{ today }}" aria-label="Дата"></div>
+      {# Название — из data-display выбранного кода; дублирующий input не показываем #}
+      <input type="hidden" name="display" value="">
+      <div class="field field-date"><label class="sr-only">Дата</label><input type="date" name="onset_date" value="{{ today }}" aria-label="Дата"></div>
       <div class="form-actions"><button class="btn-small" type="submit">Поставить диагноз</button></div>
     </form>
   </div>
@@ -1659,11 +1660,11 @@
         {% elif med_done %}{% set bm.kind = 'neutral' %}{% set bm.text = (ed.med|length ~ ' назначение') if ed.med|length == 1 else (ed.med|length ~ ' назначений') %}
         {% endif %}
 
-        {# Все гармошки открыты по умолчанию — проще ориентироваться по приёму.
-           Пользователь может свернуть; open+scroll помнит sessionStorage. #}
+        {# Все гармошки приёма открыты при входе и после сохранения.
+           Свернуть можно вручную; AJAX soft_refresh не трогает details.open. #}
         <div class="flow">
           {% call fstep('Жалоба', 'ti-message-2', st_complaint, bj.kind, bj.text, 'flow-complaint',
-               open=(st_complaint in ('active', 'attention'))) %}
+               open=true) %}
             {# Тот же .enc-sub, что у подразделов осмотра — не «голое» поле. #}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Описание</h3>
@@ -1672,7 +1673,7 @@
           {% endcall %}
 
           {% call fstep('Анамнез', 'ti-notes', st_anam, ba.kind, ba.text, 'flow-anam',
-               open=(st_anam in ('active', 'attention')), badge2_kind=ba2.kind, badge2_text=ba2.text) %}
+               open=true, badge2_kind=ba2.kind, badge2_text=ba2.text) %}
             {% set anam_text = anam_notes|map(attribute='key')|list|join('\n') %}
             {# Подразделы — как в Осмотре: .enc-sub + .section-label + border-top.
                Без connector rail (rail только у диагноза → лечение/цели).
@@ -1698,7 +1699,7 @@
           {% endcall %}
 
           {% call fstep('Осмотр', 'ti-stethoscope', st_exam, be.kind, be.text, 'flow-exam',
-               open=(st_exam in ('active', 'attention'))) %}
+               open=true) %}
             <section class="enc-sub enc-sub--main" id="sub-gc-{{ e.id }}">
               <h3 class="section-label">Общее состояние</h3>
               {{ gc_form(patient.id, e.id, gc_flag or '') }}
@@ -1794,7 +1795,7 @@
             </section>
           {% endcall %}
           {% call fstep('Диагноз', 'ti-file-description', st_cond, bc.kind, bc.text, 'flow-cond',
-               open=(st_cond in ('active', 'attention'))) %}
+               open=true) %}
             {% set diag_anam = anam_done %}
             {% set diag_exam = exam_done %}
             <section class="enc-sub enc-sub--main">
@@ -1818,7 +1819,7 @@
           {% endcall %}
 
           {% call fstep('Обследование', 'ti-flask', st_diag, bd.kind, bd.text, 'flow-diag',
-               open=(st_diag in ('active', 'attention'))) %}
+               open=true) %}
             <div class="diag-grid">
               <div class="diag-sub">
                 <h4>Лабораторные</h4>
@@ -1879,7 +1880,7 @@
           {% endcall %}
 
           {% call fstep('Лечение', 'ti-pill', st_med, bm.kind, bm.text, 'flow-med',
-               open=(st_med in ('active', 'attention'))) %}
+               open=true) %}
             <section class="enc-sub enc-sub--main">
               <h3 class="section-label">Препараты</h3>
             <div class="chips" id="chips-med-{{ e.id }}">
@@ -2077,16 +2078,13 @@
     });
   });
 
-  // Сохранить/восстановить открытые гармошки и scroll — иначе после AJAX-reload
-  // секция схлопывается и страница прыгает вверх.
-  var _fstepUiKey = 'clinic-os:fstep-ui:v2:' + location.pathname + location.search;
+  // После full reload сохраняем только scroll. Гармошки всегда открыты из HTML;
+  // sessionStorage.open раньше схлопывал секции при повторном входе в карточку.
+  // AJAX soft_refresh сам держит details.open без перезагрузки.
+  var _fstepUiKey = 'clinic-os:fstep-ui:v3:' + location.pathname + location.search;
   function saveFstepUi(){
-    var open = [];
-    document.querySelectorAll('details.fstep[id]').forEach(function(d){
-      if(d.open) open.push(d.id);
-    });
     try {
-      sessionStorage.setItem(_fstepUiKey, JSON.stringify({open: open, y: window.scrollY || 0}));
+      sessionStorage.setItem(_fstepUiKey, JSON.stringify({y: window.scrollY || 0}));
     } catch (err) {}
   }
   function restoreFstepUi(){
@@ -2094,62 +2092,64 @@
       var raw = sessionStorage.getItem(_fstepUiKey);
       if(!raw) return;
       var st = JSON.parse(raw);
-      if(st && Array.isArray(st.open)){
-        document.querySelectorAll('details.fstep[id]').forEach(function(d){
-          d.open = st.open.indexOf(d.id) !== -1;
-        });
-      }
       if(st && typeof st.y === 'number'){
         if('scrollRestoration' in history) history.scrollRestoration = 'manual';
         var y = st.y;
         requestAnimationFrame(function(){ window.scrollTo(0, y); });
       }
     } catch (err) {}
+    // На всякий случай — все секции приёма открыты (в т.ч. после старого кэша).
+    document.querySelectorAll('details.fstep[id]').forEach(function(d){ d.open = true; });
   }
   restoreFstepUi();
-  document.querySelectorAll('details.fstep').forEach(function(d){
-    d.addEventListener('toggle', saveFstepUi);
-  });
   window.addEventListener('beforeunload', saveFstepUi);
 
-  // Форма измерения: единица и референс для выбранного показателя — одной строкой под формой.
-  document.querySelectorAll('select[name="code"]').forEach(function(sel){
-    if(!sel.id) return;
-    var prefix='';
-    if(sel.id.indexOf('obs-code-')===0){ prefix='obs-'; }
-    else if(sel.id.indexOf('labobs-code-')===0){ prefix='labobs-'; }
-    else return;
-    var eid=sel.id.replace(prefix+'code-','');
-    function upd(){
-      var o=sel.options[sel.selectedIndex];
-      var note=document.getElementById(prefix+'note-'+eid);
-      var val=document.getElementById(prefix+'value-'+eid);
-      if(!note) return;
-      var u=o.getAttribute('data-unit')||'';
-      var lo=o.getAttribute('data-low'),hi=o.getAttribute('data-high');
-      var ref=(lo&&hi)?(lo+'–'+hi):(lo?('≥'+lo):(hi?('≤'+hi):''));
-      var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
-      var sane=(slo&&shi)?(slo+'–'+shi):'';
-      note.innerHTML = (ref ? '<span class="ref">Норма: '+ref+'</span>' : '') + (sane ? ((ref?' &nbsp;·&nbsp; ':'')+'<span class="ref">Допустимо: '+sane+'</span>') : '');
-      if(val){
-        var units={'bpm':'уд/мин','C':'°C','%':'%','/min':'/мин','10^9/L':'×10⁹/л','mg/L':'мг/л','ng/mL':'нг/мл','mmHg':'мм рт.ст.'};
-        var ru=units[u]||u;
-        // Единица измерения — статичная подпись сбоку от поля (врач вводит только число).
+  // Форма измерения: единица + серый пример числа. После soft_refresh узлы новые — перепривязка.
+  var _UNIT_RU = {
+    'bpm':'уд/мин','C':'°C','%':'%','/min':'/мин','10^9/L':'×10⁹/л',
+    'mg/L':'мг/л','ng/mL':'нг/мл','mmHg':'мм рт.ст.','umol/L':'мкмоль/л',
+    'mmol/L':'ммоль/л','g/L':'г/л','fL':'фл','pg':'пг'
+  };
+  function _bindObsUnitPlaceholders(root){
+    (root || document).querySelectorAll('select[name="code"]').forEach(function(sel){
+      if(!sel.id || sel.getAttribute('data-unit-bound')) return;
+      var prefix='';
+      if(sel.id.indexOf('obs-code-')===0){ prefix='obs-'; }
+      else if(sel.id.indexOf('labobs-code-')===0){ prefix='labobs-'; }
+      else return;
+      sel.setAttribute('data-unit-bound','1');
+      var eid=sel.id.replace(prefix+'code-','');
+      function upd(){
+        var o=sel.options[sel.selectedIndex];
+        if(!o) return;
+        var note=document.getElementById(prefix+'note-'+eid);
+        var val=document.getElementById(prefix+'value-'+eid);
+        var u=o.getAttribute('data-unit')||'';
+        var lo=o.getAttribute('data-low'),hi=o.getAttribute('data-high');
+        var ref=(lo&&hi)?(lo+'–'+hi):(lo?('≥'+lo):(hi?('≤'+hi):''));
+        var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
+        var sane=(slo&&shi)?(slo+'–'+shi):'';
+        if(note){
+          note.innerHTML = (ref ? '<span class="ref">Норма: '+ref+'</span>' : '') + (sane ? ((ref?' &nbsp;·&nbsp; ':'')+'<span class="ref">Допустимо: '+sane+'</span>') : '');
+        }
+        var ru=_UNIT_RU[u]||u;
         var suf=document.getElementById(prefix+'unit-'+eid);
         if(suf){ suf.textContent = ru ? ru : ''; }
-        // Placeholder — только пример числа, без единицы.
-        var ph='значение';
-        if(o.value==='8310-5'){ ph='36.2 или 36,2'; }
-        else if(lo&&hi){
-          var mid=(parseFloat(lo)+parseFloat(hi))/2;
-          var ex=Math.round(mid*100)/100;
-          ph='например '+String(ex).replace('.',',');
+        if(val){
+          var ph='';
+          if(o.value==='8310-5'){ ph='36,2'; }
+          else if(lo&&hi){
+            var mid=(parseFloat(lo)+parseFloat(hi))/2;
+            var ex=Math.round(mid*100)/100;
+            ph=String(ex).replace('.',',');
+          }
+          val.placeholder=ph;
         }
-        val.placeholder=ph;
       }
-    }
-    sel.addEventListener('change',upd); upd();
-  });
+      sel.addEventListener('change',upd); upd();
+    });
+  }
+  _bindObsUnitPlaceholders(document);
 
   // Форма назначения: выбор из каталога → авто-подстановка названия/дозы/кратности,
   // фильтрация маршрутов, подсказка со взрослой дозой (КП №768).
@@ -2222,11 +2222,15 @@
     if(!disp) return;
     function upd(){
       var o=sel.options[sel.selectedIndex];
-      if(o && o.getAttribute('data-display') && (!disp.value || disp.value===disp._lastAuto)){
+      if(o && o.getAttribute('data-display')){
         disp.value=o.getAttribute('data-display'); disp._lastAuto=disp.value;
+      } else if(!sel.value){
+        disp.value='';
       }
     }
     sel.addEventListener('change',upd);
+    form.addEventListener('submit',upd);
+    upd();
   });
   // ---------- AJAX без full reload: гармошки не закрываются и не прыгают ----------
   // Принцип: details.open принадлежит пользователю — скрипт его не трогает.
@@ -2285,6 +2289,8 @@
         if(nb && cb) cb.replaceWith(document.importNode(nb, true));
       });
       window.scrollTo(0, y);
+      // Новые формы осмотра/лаборатории после swap — снова единица + пример.
+      _bindObsUnitPlaceholders(document);
     }).catch(function(){ /* leave UI as-is */ });
   }
 
@@ -2354,6 +2360,41 @@
     sync();
   });
 
+  function _clearFieldErrors(form){
+    if(!form) return;
+    form.querySelectorAll('.is-invalid').forEach(function(el){
+      el.classList.remove('is-invalid');
+      el.removeAttribute('aria-invalid');
+    });
+  }
+  function _markFieldError(form, selector, msg){
+    if(!form) return;
+    _clearFieldErrors(form);
+    var el = selector ? form.querySelector(selector) : null;
+    if(el){
+      el.classList.add('is-invalid');
+      el.setAttribute('aria-invalid', 'true');
+      try { el.focus({preventScroll:false}); } catch(e) { el.focus(); }
+    }
+    var note = form.parentNode && form.parentNode.querySelector('.note, .hint');
+    if(note && msg){
+      note.innerHTML = '<span class="field-error">'+msg+'</span>';
+    }
+  }
+  // Сброс подсветки при правке поля.
+  document.addEventListener('input', function(e){
+    var t = e.target;
+    if(!t || !t.classList || !t.classList.contains('is-invalid')) return;
+    t.classList.remove('is-invalid');
+    t.removeAttribute('aria-invalid');
+  });
+  document.addEventListener('change', function(e){
+    var t = e.target;
+    if(!t || !t.classList || !t.classList.contains('is-invalid')) return;
+    t.classList.remove('is-invalid');
+    t.removeAttribute('aria-invalid');
+  });
+
   function _ajaxSubmit(form, submitter){
     var btn=submitter || form.querySelector('button[type="submit"]');
     var isSaveBtn = btn && btn.classList.contains('btn-save');
@@ -2366,19 +2407,32 @@
     if(form.getAttribute('action').indexOf('/observation')!==-1){
       var sel=form.querySelector('select[name="code"]');
       var inp=form.querySelector('input[name="value_numeric"]');
+      if(sel && (!sel.value || sel.selectedIndex < 0)){
+        _markFieldError(form, 'select[name="code"]', 'Выберите показатель');
+        return;
+      }
+      if(inp && !String(inp.value || '').trim()){
+        _markFieldError(form, 'input[name="value_numeric"]', 'Укажите значение');
+        return;
+      }
       if(sel&&inp&&inp.value){
         var o=sel.options[sel.selectedIndex];
         var slo=o.getAttribute('data-sane-low'),shi=o.getAttribute('data-sane-high');
         if(slo&&shi){
           var v=parseFloat(inp.value.replace(',','.'));
           if(isNaN(v)||v<parseFloat(slo)||v>parseFloat(shi)){
-            if(note){ note.innerHTML='<span style="color:var(--text-danger)">Недопустимое значение. Допустимо: '+slo+'–'+shi+' '+o.getAttribute('data-unit')+'</span>'; }
+            _markFieldError(
+              form,
+              'input[name="value_numeric"]',
+              'Недопустимое значение. Допустимо: '+slo+'–'+shi+' '+(o.getAttribute('data-unit')||'')
+            );
             return;
           }
         }
       }
     }
 
+    _clearFieldErrors(form);
     if(btn && !isSaveBtn){ btn.disabled=true; btn.style.opacity='0.6'; }
     _setSaveStatus(form, 'Сохраняю…', null);
     // submitter обязателен для сегментов (несколько button[name=key]) — иначе key не уйдёт.
@@ -2438,14 +2492,26 @@
         _showCdsConfirm(form, data.cds, data.level || 'soft', data.error || '');
       } else if(data && data.error){
         _setSaveStatus(form, 'Ошибка', false);
-        if(note){ note.innerHTML='<span style="color:var(--text-danger)">'+data.error+'</span>'; }
+        var errSel = null;
+        if(form.getAttribute('action').indexOf('/observation')!==-1){
+          errSel = 'input[name="value_numeric"]';
+        } else if(form.getAttribute('action').indexOf('/anamnesis')!==-1){
+          errSel = 'textarea[name="text"], textarea[name="anamnesis"], textarea';
+        } else if(form.getAttribute('action').indexOf('/general_condition')!==-1){
+          errSel = 'select[name="key"]';
+        } else if(form.querySelector('select[name="code"]')){
+          errSel = 'select[name="code"]';
+        } else if(form.querySelector('input[name="value_numeric"]')){
+          errSel = 'input[name="value_numeric"]';
+        }
+        _markFieldError(form, errSel, data.error);
       } else if(data && data.ok && data.cds && data.cds.length){
         if(note){ note.innerHTML='<span style="color:var(--text-warning)">'+data.cds.map(function(c){return c.message;}).join(' · ')+'</span>'; }
       }
     }).catch(function(){
       if(btn && !isSaveBtn){ btn.disabled=false; btn.style.opacity=''; }
       _setSaveStatus(form, 'Ошибка сети', false);
-      if(note){ note.innerHTML='<span style="color:var(--text-danger)">Ошибка сети. Повторите.</span>'; }
+      if(note){ note.innerHTML='<span class="field-error">Ошибка сети. Повторите.</span>'; }
     });
   }
 
