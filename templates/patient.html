@@ -1155,7 +1155,7 @@
   {% endmacro %}
 
   {# Обследование: только результат. Лаб — Анализ/Значение/Сохранить.
-     Инструментальные — Тип/Заключение/Сохранить (дата сегодня, без «К заказу»). #}
+     Инструментальные — Тип/Сохранить (дата сегодня, без «К заказу»). #}
   {% macro study_add(pid, eid, cat, dlist_id, orders=None) %}
   {% call add_panel('Добавить результат') %}
     {% if cat == 'lab' %}
@@ -1702,10 +1702,10 @@
           {% else %}{% set bc.text = _cn ~ ' диагнозов' %}{% endif %}
         {% endif %}
 
-        {% set bd = namespace(kind='placeholder', text='Нет результатов') %}
-        {# Приоритет бейджа «Обследование» — docs/ui/encounter-sections-collapsed.html §3.
-           CDS (missing_cbc и т.п.) — только в карточке диагноза сверху, не в бейдже секции.
-           Заказы в UI не показываем — бейдж только по результатам. #}
+        {# Бейдж «Обследование» — docs/ui/encounter-sections-collapsed.html §3–4.
+           CDS (missing_cbc…) — в карточке диагноза сверху, не здесь.
+           Пусто → «Не назначено»; есть заказ без результата → «Ожидает результатов». #}
+        {% set bd = namespace(kind='placeholder', text='Не назначено') %}
         {% if imaging_flags %}
           {% set bd.kind = 'danger' %}
           {% if imaging_flags|length == 1 %}
@@ -1715,6 +1715,7 @@
           {% endif %}
         {% elif lab_abn_n %}{% set bd.kind = 'danger' %}{% set bd.text = lab_abn_n ~ ' вне референса' %}
         {% elif result_n %}{% set bd.kind = 'neutral' %}{% set bd.text = (ok_lab_n ~ ' в норме') if ok_lab_n > 0 else (result_n|string ~ ' рез.') %}
+        {% elif pending_list %}{% set bd.kind = 'accent' %}{% set bd.text = 'Ожидает результатов' %}
         {% endif %}
 
         {% set bm = namespace(kind='placeholder', text='Нет назначений') %}

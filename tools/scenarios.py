@@ -106,8 +106,11 @@ def req(pid, code, days_ago=0, status="active"):
     fs.add_service_request(pid, code, code, occurrence_date=_days_ago(days_ago), status=status)
 
 
-def flag(pid, key, value="true"):
-    fs.add_flag(pid, key, value)
+def flag(pid, key, value="true", category=None):
+    if category:
+        fs.add_flag(pid, key, value, category=category)
+    else:
+        fs.add_flag(pid, key, value)
 
 
 def allergy(pid, code="penicillin", display="Пенициллин", reaction_type="unknown"):
@@ -560,7 +563,8 @@ def s_ida_positive_outpatient_mild():
     pid = make_patient(35, gender="female", family="Ферротестова")
     add_anemia(pid)
     add_encounter(pid, cls="ambulatory")
-    flag(pid, "Слабость, бледность")
+    # Основание диагноза — анамнез (категория), не свободный ключ exam.
+    flag(pid, "Слабость, бледность", category="anamnesis")
     _ida_full_labs(pid, hb=100)
     med(pid, IRON_ORAL, route="oral", start_days_ago=0, duration_days=60)
     return {"applicable": True, "setting": "outpatient", "compliant": True,
