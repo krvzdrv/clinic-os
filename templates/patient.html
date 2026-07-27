@@ -40,6 +40,8 @@
   .badge.green{background:var(--green-bg);color:var(--green);}
   .badge.red{background:var(--red-bg);color:var(--red);}
   .badge.grey{background:var(--tint);color:var(--faint);}
+  /* Клинический алерт = тот же вид, что в clinic.css (.badge.alert) */
+  .badge.alert{display:inline-flex;align-items:center;font-size:11px;font-weight:500;padding:2px 8px;border-radius:12px;line-height:1.35;white-space:nowrap;margin:0;background:var(--bg-danger);color:var(--text-danger);}
   table{width:100%;border-collapse:collapse;margin-top:8px;}
   th{text-align:left;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:6px 10px;border-bottom:2px solid var(--line);}
   td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;}
@@ -459,10 +461,11 @@
   .attr-actions{
     display:flex;align-items:center;gap:var(--space-2);flex:none;
   }
-  .attr-actions .badge{flex:none;border-radius:12px;white-space:nowrap;font-weight:500;}
+  /* .badge.alert — единый стиль клинических алертов (clinic.css); тут только раскладка */
+  .attr-actions .badge{flex:none;}
   .attr-actions form{display:flex;margin:0;padding:0;line-height:0;}
   .attr-actions .chip-x{margin:0 !important;opacity:0.65;}
-  .attr-value-row > .badge{flex:none;border-radius:6px;white-space:nowrap;margin-left:auto;}
+  .attr-value-row > .badge{flex:none;margin-left:auto;}
   /* Диагноз status-strip: значение растягивается, badge справа */
   .dx-rail .attr-value{flex:1;font-size:14px;font-weight:400;}
   .dx-rail .attr-row{width:auto;max-width:none;}
@@ -837,7 +840,7 @@
         </select>
       </div>
       {% if current and general_condition_needs_inpatient(current) %}
-      <span class="badge red gc-badge">показана госпитализация</span>
+      <span class="badge alert gc-badge">показана госпитализация</span>
       {% endif %}
       <div class="form-actions"><button class="btn-small" type="submit">{{ 'Изменить' if current else 'Сохранить' }}</button></div>
     </form>
@@ -1802,7 +1805,7 @@
                       <div class="attr-value-row">
                         <p class="attr-value">{% if bp.sbp and bp.dbp %}{{ bp.sbp.value_numeric }} / {{ bp.dbp.value_numeric }} mmHg{% elif bp.sbp %}{{ bp.sbp.value_numeric }} mmHg{% else %}{{ bp.dbp.value_numeric }} mmHg{% endif %}</p>
                         <div class="attr-actions">
-                          {% if bp_label %}<span class="badge red">{{ bp_label }}</span>{% endif %}
+                          {% if bp_label %}<span class="badge alert">{{ bp_label }}</span>{% endif %}
                           <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=(bp.sbp.id if bp.sbp else bp.dbp.id)) }}">
                             {% if bp.sbp and bp.dbp %}<input type="hidden" name="also" value="{{ bp.dbp.id }}">{% endif %}
                             <button class="chip-x" type="submit" title="Удалить АД" aria-label="Удалить АД">×</button>
@@ -1819,7 +1822,7 @@
                       <div class="attr-value-row">
                         <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
                         <div class="attr-actions">
-                          {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                          {% if vlabel %}<span class="badge alert">{{ vlabel }}</span>{% endif %}
                           <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
                             <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
                           </form>
@@ -1836,7 +1839,7 @@
                   <div class="attr-value-row">
                     <p class="attr-value">{{ o.value_numeric }}{% if o.value_unit %} {{ o.value_unit }}{% endif %}</p>
                     <div class="attr-actions">
-                      {% if vlabel %}<span class="badge red">{{ vlabel }}</span>{% endif %}
+                      {% if vlabel %}<span class="badge alert">{{ vlabel }}</span>{% endif %}
                       <form method="POST" action="{{ url_for('delete_observation_route', pid=patient.id, oid=o.id) }}">
                         <button class="chip-x" type="submit" title="Удалить {{ olabel }}" aria-label="Удалить {{ olabel }}">×</button>
                       </form>
