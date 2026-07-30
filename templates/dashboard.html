@@ -17,7 +17,14 @@
     background:var(--border);border-radius:12px;overflow:hidden;
     margin-bottom:20px;
   }
-  .metric-cell{padding:16px 18px;background:var(--surface-1);}
+  .metric-cell{
+    padding:16px 18px;background:var(--surface-1);
+    animation:metricEnter 220ms var(--ease-out-ui, cubic-bezier(0.23, 1, 0.32, 1)) backwards;
+  }
+  @keyframes metricEnter {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .metric-cell .k{font-size:12px;color:var(--text-secondary);font-weight:500;margin:0 0 6px;}
   .metric-cell .v{font-size:1.75rem;font-weight:500;letter-spacing:-.02em;color:var(--text-primary);margin:0;line-height:1.15;}
   .metric-cell .v.green{color:var(--text-success);}
@@ -40,8 +47,27 @@
   }
   table.pat-table td{padding:10px 16px;border-bottom:1px solid var(--border);vertical-align:middle;}
   table.pat-table tr:last-child td{border-bottom:none;}
-  table.pat-table tr.pat-row{cursor:pointer;}
+  table.pat-table tr.pat-row{
+    cursor:pointer;
+    animation:rowEnter 220ms var(--ease-out-ui, cubic-bezier(0.23, 1, 0.32, 1)) backwards;
+    transition:background-color 160ms ease;
+  }
+  table.pat-table tr.pat-row:nth-child(1) { animation-delay: 0ms; }
+  table.pat-table tr.pat-row:nth-child(2) { animation-delay: 30ms; }
+  table.pat-table tr.pat-row:nth-child(3) { animation-delay: 60ms; }
+  table.pat-table tr.pat-row:nth-child(4) { animation-delay: 90ms; }
+  table.pat-table tr.pat-row:nth-child(5) { animation-delay: 120ms; }
+  table.pat-table tr.pat-row:nth-child(6) { animation-delay: 150ms; }
+  table.pat-table tr.pat-row:nth-child(7) { animation-delay: 180ms; }
+  table.pat-table tr.pat-row:nth-child(8) { animation-delay: 210ms; }
+  table.pat-table tr.pat-row:nth-child(9) { animation-delay: 240ms; }
+  table.pat-table tr.pat-row:nth-child(10) { animation-delay: 270ms; }
+  @keyframes rowEnter {
+    from { opacity: 0; transform: translateX(-6px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
   table.pat-table tr.pat-row:hover td{background:var(--surface-2);}
+  table.pat-table tr.pat-row:active td{background:var(--tint);}
   a{color:var(--text-primary);text-decoration:none;font-weight:500;}
   a:hover{color:var(--text-accent);}
 
@@ -87,22 +113,22 @@
 
   {% set rate_ok = measure.rate >= 70 %}
   <div class="metric-bar">
-    <div class="metric-cell">
+    <div class="metric-cell" style="animation-delay:0ms">
       <p class="k">Диагноз установлен</p>
       <p class="v">{{ measure.total }}</p>
       <p class="sub">из {{ total }} пациентов</p>
     </div>
-    <div class="metric-cell">
+    <div class="metric-cell" style="animation-delay:50ms">
       <p class="k">Соответствует</p>
       <p class="v green">{{ measure.compliant }}</p>
       <p class="sub">ведение по протоколу</p>
     </div>
-    <div class="metric-cell">
+    <div class="metric-cell" style="animation-delay:100ms">
       <p class="k">Есть отклонения</p>
       <p class="v red">{{ measure.with_warnings }}</p>
       <p class="sub">нужно внимание врача</p>
     </div>
-    <div class="metric-cell">
+    <div class="metric-cell" style="animation-delay:150ms">
       <p class="k">Доля соответствия</p>
       <div class="v-row">
         <p class="v">{{ measure.rate }}%</p>
