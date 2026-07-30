@@ -1150,7 +1150,7 @@ function submitMedication(e){
   .then(data => {
     if (data.need_confirm) {
       const level = data.level || 'soft';
-      showCds(level, data.cds || []);
+      showCds(level, data.cds || [], form.querySelector('button[type="submit"]'));
     } else if (data.ok) {
       location.reload();
     } else {
@@ -1169,8 +1169,18 @@ function submitMedication(e){
   return false;
 }
 
-function showCds(level, issues){
+function showCds(level, issues, trigger){
   const id = level === 'hard' ? 'cdsHard' : 'cdsSoft';
+  const overlay = document.getElementById(id);
+  const dialog = overlay.querySelector('.cds-dialog');
+  // transform-origin от кнопки-триггера (если передана), иначе центр
+  if (trigger && dialog) {
+    const r = trigger.getBoundingClientRect();
+    const d = dialog.getBoundingClientRect();
+    const x = ((r.left + r.width / 2 - d.left) / d.width * 100).toFixed(1);
+    const y = ((r.top + r.height / 2 - d.top) / d.height * 100).toFixed(1);
+    dialog.style.setProperty('--transform-origin', `${x}% ${y}%`);
+  }
   document.getElementById(id + 'Proto').textContent = issues[0].protocol_label || 'Проверка лекарств';
   document.getElementById(id + 'Msg').textContent = issues[0].message;
   const list = document.getElementById(id + 'List');
@@ -1180,7 +1190,7 @@ function showCds(level, issues){
     li.textContent = i.message;
     list.appendChild(li);
   });
-  document.getElementById(id).classList.add('open');
+  overlay.classList.add('open');
 }
 
 function closeCds(id){

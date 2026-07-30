@@ -1537,3 +1537,136 @@ body.patient-page .btn.primary:hover { background: var(--accent-hover); }
   body.patient-page .data-row .dr-name { min-width: 0; flex: 1 1 100%; }
   body.patient-page .add-row form.med-form-compact .field.field-fit { flex: 1 1 100%; }
 }
+
+/* ============================================================
+   UI POLISH — анимации по принципам Emil Kowalski (Vercel/Linear)
+   - ease-out + custom curve для enter
+   - < 300ms для UI
+   - scale(0.95) + opacity: 0 вместо scale(0)
+   - transform-origin от триггера
+   - только transform + opacity (GPU)
+   ============================================================ */
+:root {
+  --ease-out-ui: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-ui: cubic-bezier(0.77, 0, 0.175, 1);
+  --dur-fast: 160ms;
+  --dur-ui: 220ms;
+  --dur-slow: 320ms;
+}
+
+/* Кнопки: мгновенный отклик при нажатии */
+.btn, .btn-small, .action-btn, .s-edit, .chip-x, .icon-btn, .dr-x, .v-x {
+  transition: transform var(--dur-fast) var(--ease-out-ui), background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, opacity var(--dur-fast) ease;
+}
+.btn:active, .btn-small:active, .action-btn:active, .s-edit:active, .chip-x:active, .icon-btn:active, .dr-x:active, .v-x:active {
+  transform: scale(0.97);
+}
+
+/* Секции приёма: открытие с лёгким подъёмом и прозрачностью */
+.section-body {
+  display: none;
+  padding: 0 16px 16px 16px;
+}
+.section.open .section-body {
+  display: block;
+  animation: sectionEnter var(--dur-ui) var(--ease-out-ui);
+}
+@keyframes sectionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Issue-блоки: каскадное появление */
+.issue {
+  animation: issueEnter var(--dur-ui) var(--ease-out-ui);
+}
+.issue:nth-of-type(1) { animation-delay: 0ms; }
+.issue:nth-of-type(2) { animation-delay: 50ms; }
+.issue:nth-of-type(3) { animation-delay: 100ms; }
+@keyframes issueEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Вердикт-баннер: появление сверху */
+.verdict {
+  animation: verdictEnter var(--dur-ui) var(--ease-out-ui);
+}
+@keyframes verdictEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* CDS-диалоги: origin от кнопки, scale(0.95) + opacity */
+.cds-overlay {
+  transition: opacity var(--dur-ui) ease;
+}
+.cds-dialog {
+  transform-origin: var(--transform-origin, center bottom);
+  transition: transform var(--dur-ui) var(--ease-out-ui), opacity var(--dur-ui) var(--ease-out-ui);
+}
+.cds-overlay:not(.open) .cds-dialog {
+  transform: scale(0.95);
+  opacity: 0;
+}
+.cds-overlay.open .cds-dialog {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Popover поиска МКБ/препарата: origin от поля */
+.dx-popover {
+  transform-origin: var(--transform-origin, center top);
+  transition: transform var(--dur-fast) var(--ease-out-ui), opacity var(--dur-fast) var(--ease-out-ui);
+}
+.dx-popover:not(.open) {
+  transform: scale(0.97);
+  opacity: 0;
+}
+.dx-popover.open {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* History-fold: плавное раскрытие */
+.history-fold .history-body {
+  animation: sectionEnter var(--dur-ui) var(--ease-out-ui);
+}
+
+/* Витальные показатели: лёгкое появление */
+.vital {
+  transition: transform var(--dur-fast) var(--ease-out-ui), border-color var(--dur-fast) ease, background-color var(--dur-fast) ease;
+}
+.vital:hover {
+  transform: translateY(-1px);
+}
+
+/* Доступность: reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .section.open .section-body, .issue, .verdict, .cds-dialog, .dx-popover {
+    animation: none;
+  }
+}
