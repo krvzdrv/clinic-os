@@ -202,6 +202,8 @@ def main():
         for pat in (
             r'section-placeholder section-header__badge">\s*([^<]+?)\s*<',
             r'section-badge[^"]* section-header__badge">\s*(?:<i[^>]*></i>\s*)?([^<]+?)\s*<',
+            r's-badge[^"]*section-header__badge">\s*([^<]+?)\s*<',
+            r'class="s-badge[^"]*">\s*([^<]+?)\s*<',
         ):
             m = re.search(pat, chunk, re.S)
             if m:

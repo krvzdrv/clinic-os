@@ -439,6 +439,10 @@ def antibiotics_in_last_3mo(pid):
     for m in get_all_medications(pid):
         code = m.get("code") or ""
         d = m.get("date")
+        # Пропускаем текущую активную АБТ данного эпизода: она началась с onset
+        # или позже и не является «предшествующей» терапией.
+        if m.get("status") == "active":
+            continue
         if code.startswith("J01") and d and d < cond["onset_date"] and d >= cutoff:
             return True
     return has_clinical_flag(pid, "abt_3mo")

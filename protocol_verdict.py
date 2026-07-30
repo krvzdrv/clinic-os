@@ -583,10 +583,13 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
 
     tier = "ok" if ok else ("critical" if primary_code in _CRITICAL_CODES else "warn")
 
-    # Предвыбор препарата: лечение и reassess (кроме «ещё не оценили эффект»).
+    # Предвыбор препарата: лечение и reassess (кроме «ещё не оценили эффект»),
+    # а также любой случай, где среди gaps есть проблема терапии (нет АБТ/не первая линия) —
+    # даже если primary gap критический (госпитализация/ОРИТ), врачу нужно видеть ожидаемый препарат.
+    has_therapy_gap = any(g.get("code") in _THERAPY_GAP_CODES for g in gaps)
     suggest_med = (
         not ok
-        and focus in ("med", "reassess")
+        and (focus in ("med", "reassess") or has_therapy_gap)
         and primary_code not in ("no_reassessment", "no_hb_reassessment")
     )
     # Маршрут — явно из ожидаемого режима (ЖДА: перорально/в/в по факторам, не по setting),

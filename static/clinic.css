@@ -835,3 +835,705 @@ form.enc-sub-add select.is-invalid,
 .history-fold:not([open]) > :not(summary) { display: none !important; }
 details.dx-card:not([open]) > :not(summary) { display: none !important; }
 
+/* ============================================================
+   Episode / patient-card redesign (from docs/ui/encounter_episode_prototype.html)
+   Scoped helpers for patient page; tokens already in :root above.
+   ============================================================ */
+:root {
+  --mono: "IBM Plex Mono", "SF Mono", monospace;
+  --space-6: 28px;
+  --radius-lg: 12px;
+  --amber: #8a6416;
+  --amber-bg: #f6efe0;
+  --amber-line: #e3d3ac;
+}
+
+body.patient-page .wrap.shell { max-width: 840px; margin: 0 auto; padding: var(--space-6) var(--space-5) 80px; }
+body.patient-page .wrap.shell > .back { display: none; }
+
+/* ============================================================
+   ГЛОБАЛЬНАЯ ПАНЕЛЬ — сюда переехали действия уровня раздела
+   («Новый пациент», «Экспорт CSV»), они больше не смешаны с
+   действиями конкретной карты пациента.
+   ============================================================ */
+.gnav{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:var(--space-3) var(--space-5);
+  background:var(--ink); color:var(--cream);
+  font-size:13px;
+}
+.gnav a{color:var(--cream); text-decoration:none; opacity:.8; display:flex; align-items:center; gap:6px;}
+.gnav a:hover{opacity:1;}
+.gnav .gnav-actions{display:flex; gap:var(--space-2);}
+.gnav .gbtn{
+  padding:6px 12px; border-radius:6px; border:1px solid rgba(231,230,226,.25);
+  font-size:12.5px; opacity:.9;
+}
+.gnav .gbtn:hover{opacity:1; background:rgba(231,230,226,.08);}
+
+.shell{max-width:840px; margin:0 auto; padding:var(--space-6) var(--space-5) 80px;}
+
+/* ============================================================
+   ШАПКА ПАЦИЕНТА
+   ============================================================ */
+.pt-head{
+  display:flex; align-items:flex-start; justify-content:space-between;
+  margin-bottom:var(--space-5);
+}
+.pt-id{display:flex; gap:var(--space-4); align-items:center;}
+.pt-avatar{
+  width:52px; height:52px; border-radius:50%; background:var(--accent-soft);
+  color:var(--accent); display:flex; align-items:center; justify-content:center;
+  font-weight:600; font-size:17px; flex:none;
+}
+.pt-name{font-size:21px; font-weight:600; letter-spacing:-0.01em; margin:0 0 4px;}
+.pt-meta{font-size:13px; color:var(--faint); display:flex; gap:10px; align-items:center;}
+.pt-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--faint);}
+.allergy-pill{
+  display:inline-flex; align-items:center; gap:6px; margin-top:8px;
+  font-size:12px; padding:3px 10px; border-radius:20px;
+  background:var(--green-bg); color:var(--green); border:1px solid var(--green-line);
+}
+.allergy-pill.has-allergy{background:var(--red-bg); color:var(--red); border-color:var(--red-line);}
+
+.pt-actions{position:relative;}
+.icon-btn{
+  width:34px; height:34px; border-radius:8px; border:1px solid var(--line);
+  background:var(--surface); color:var(--soft); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:16px;
+}
+.icon-btn:hover{background:var(--tint);}
+.menu{
+  position:absolute; right:0; top:42px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:0 8px 24px rgba(28,27,25,.12); min-width:190px;
+  display:none; overflow:hidden; z-index:20;
+}
+.menu.open{display:block;}
+.menu button{
+  width:100%; text-align:left; padding:10px 14px; border:none; background:none; font-size:13px;
+  color:var(--ink); cursor:pointer; display:flex; align-items:center; gap:8px;
+}
+.menu button:hover{background:var(--tint);}
+.menu button.danger{color:var(--red);}
+.menu hr{border:none; border-top:1px solid var(--line); margin:4px 0;}
+
+/* ============================================================
+   СТАТУС ПРОТОКОЛА — самостоятельный баннер, не растворён
+   в общем потоке секций
+   ============================================================ */
+.protocol-banner{
+  display:flex; align-items:center; gap:var(--space-3);
+  background:var(--green-bg); border:1px solid var(--green-line); color:var(--green);
+  border-radius:var(--radius-lg); padding:12px 16px; margin-bottom:var(--space-4);
+  font-size:13px;
+}
+.protocol-banner .pb-icon{
+  width:26px; height:26px; border-radius:50%; background:var(--surface);
+  display:flex; align-items:center; justify-content:center; flex:none; font-size:14px;
+}
+.protocol-banner b{font-weight:600;}
+.protocol-banner .pb-sub{color:var(--soft); opacity:.85; margin-top:2px;}
+.protocol-banner .pb-link{margin-left:auto; font-size:12.5px; color:var(--green); text-decoration:underline; white-space:nowrap; cursor:pointer;}
+
+/* ============================================================
+   КАРТА ЭПИЗОДА — диагноз-контейнер верхнего уровня
+   ============================================================ */
+.episode{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  margin-bottom:var(--space-5); overflow:hidden;
+}
+.episode-head{
+  padding:16px 18px; border-bottom:1px solid var(--line);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+}
+.episode-title{font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+.icd-chip{
+  font-family:var(--mono); font-size:11.5px; background:var(--accent-soft); color:var(--accent);
+  padding:2px 7px; border-radius:5px; font-weight:600; letter-spacing:.01em;
+}
+.episode-sub{font-size:12.5px; color:var(--faint); margin-top:4px; display:flex; gap:8px; align-items:center;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--steel); display:inline-block;}
+/* .btn SSOT in clinic.css */
+
+/* .btn.primary uses .btn + accent fill elsewhere */
+
+
+
+.episode-body{padding:16px 18px; display:flex; flex-direction:column; gap:14px;}
+.kv-row{display:flex; gap:var(--space-4); font-size:13px;}
+.kv-row .kv-label{color:var(--faint); min-width:132px; flex:none; padding-top:1px;}
+.kv-row .kv-value{color:var(--ink); line-height:1.5;}
+.goal-check{color:var(--green); font-weight:600; display:inline-flex; align-items:center; gap:5px; font-size:12.5px; margin-left:8px;}
+
+/* ============================================================
+   СЕКЦИИ ПРИЁМА — единый паттерн: заголовок (иконка, título,
+   бейдж статуса, карандаш-редактирование) + тело в view-режиме.
+   При клике на карандаш view-строки превращаются в edit-строки
+   БЕЗ смены раскладки блока (одна и та же сетка).
+   ============================================================ */
+.section{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg);
+  margin-bottom:var(--space-3); overflow:hidden;
+}
+.section-head{
+  display:flex; align-items:center; gap:10px; padding:13px 16px; cursor:pointer;
+  user-select:none;
+}
+.section-head:hover{background:var(--tint);}
+.s-rail{width:3px; align-self:stretch; border-radius:2px; background:var(--line); margin-right:2px;}
+.section.done .s-rail{background:var(--green);}
+.section.warn .s-rail{background:var(--amber);}
+/* open alone must not recolor rail — status colors stay (spec lock) */
+.section.open .s-rail{background:inherit;}
+.s-icon{width:20px; text-align:center; color:var(--soft); font-size:15px;}
+.s-title{font-size:14px; font-weight:600; flex:1;}
+.s-badge{
+  font-size:11.5px; padding:2px 9px; border-radius:20px; font-weight:600;
+  background:var(--tint); color:var(--soft); border:1px solid var(--line);
+}
+.s-badge.ok{background:var(--green-bg); color:var(--green); border-color:var(--green-line);}
+.s-badge.warn{background:var(--amber-bg); color:var(--amber); border-color:var(--amber-line);}
+.s-edit{
+  width:28px; height:28px; border-radius:6px; border:1px solid transparent; background:none;
+  color:var(--faint); display:flex; align-items:center; justify-content:center; cursor:pointer;
+}
+.s-edit:hover{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line);}
+.s-chev{color:var(--faint); font-size:12px; transition:transform .15s;}
+.section.open .s-chev{transform:rotate(90deg);}
+
+.section-body{display:none; padding:0 16px 16px 16px;}
+.section.open .section-body{display:block;}
+
+.field-block + .field-block{margin-top:14px; padding-top:14px; border-top:1px dashed var(--line);}
+.field-label{font-size:11.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); margin-bottom:6px; font-weight:600;}
+.field-view{font-size:13.5px; line-height:1.55; color:var(--ink);}
+.field-edit{display:none;}
+.section.editing .field-view{display:none;}
+.section.editing .field-edit{display:block;}
+
+textarea, input[type=text], input[type=date], input[type=number], select{
+  font-family:var(--font); font-size:var(--control-font); color:var(--ink);
+  border:1px solid var(--line); border-radius:6px; background:var(--surface);
+  padding:0 10px; height:var(--control-h);
+}
+textarea{padding:8px 10px; height:auto; width:100%; resize:vertical; min-height:56px;}
+.edit-row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.edit-actions{display:flex; gap:8px; margin-top:10px;}
+
+/* чипы — теги для факторов риска, признаков, кодов */
+.chips{display:flex; flex-wrap:wrap; gap:6px;}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; font-size:12.5px;
+  background:var(--tint); border:1px solid var(--line); border-radius:20px; padding:4px 6px 4px 11px;
+}
+.chip .chip-x{
+  width:16px; height:16px; border-radius:50%; border:none; background:none; color:var(--faint);
+  cursor:pointer; font-size:13px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+.chip .chip-x:hover{background:var(--red-bg); color:var(--red);}
+.chip-add{border-style:dashed; color:var(--faint); cursor:pointer;}
+
+/* показатели — данные, моноширинный акцент на цифрах */
+.vitals-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px;}
+.vital{
+  border:1px solid var(--line); border-radius:8px; padding:10px 12px; position:relative;
+  background:var(--tint);
+}
+.vital .v-label{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.03em;}
+.vital .v-val{font-family:var(--mono); font-size:19px; font-weight:600; margin-top:3px; display:flex; align-items:baseline; gap:4px;}
+.vital .v-unit{font-family:var(--font); font-size:11.5px; color:var(--faint); font-weight:400;}
+.vital.flag .v-val{color:var(--red);}
+.vital .v-flag{position:absolute; top:8px; right:10px; font-size:12px; color:var(--red);}
+
+/* таблица данных: лаб/инструмент/препараты — grid 150|110|1fr|auto (прототип v2) */
+.data-list{display:flex; flex-direction:column;}
+.data-row{
+  display:grid; grid-template-columns:150px 110px 1fr auto; align-items:baseline; column-gap:10px;
+  padding:9px 0; border-bottom:1px solid var(--line); font-size:13px;
+}
+.data-row:last-child{border-bottom:none;}
+.data-row .dr-name{font-weight:600;}
+.data-row .dr-val{font-family:var(--mono); color:var(--ink);}
+.data-row .dr-val.flag{color:var(--red); font-weight:600;}
+.data-row .dr-val.flag::after{content:" ↑";}
+.data-row .dr-val.flag.down::after{content:" ↓";}
+.data-row .dr-val.text{font-family:var(--font); font-weight:400; grid-column:2 / span 2;}
+.data-row .dr-meta{color:var(--faint); font-size:12px; grid-column:3;}
+.dr-tail{display:flex; align-items:center; gap:8px; justify-self:end;}
+.dr-link{
+  font-size:12px; color:var(--steel); display:inline-flex; align-items:center; gap:4px; cursor:pointer;
+  white-space:nowrap; border:none; background:none; padding:0; font-family:inherit;
+}
+.dr-link:hover{text-decoration:underline;}
+.dr-x{border:none; background:none; color:var(--faint); cursor:pointer; font-size:13px; padding:2px;}
+.dr-x:hover{color:var(--red);}
+.dr-x-form{display:inline; margin:0;}
+.linked-dx{
+  font-size:12px; background:var(--accent-soft); color:var(--accent); border-radius:14px; padding:2px 9px;
+  display:inline-flex; align-items:center; gap:5px;
+}
+/* Слот «диагноз по результату» — в своей строке, соседи не ездят */
+.dxr-panel{
+  display:none; grid-column:1 / -1; margin-top:8px; padding:10px 12px; background:var(--tint);
+  border:1px dashed var(--line); border-radius:8px;
+}
+.data-row.dxr-open .dxr-panel{display:block;}
+.dxr-panel .dxr-ctx{font-size:12px; color:var(--faint); margin-bottom:8px; display:flex; align-items:center; gap:6px;}
+.dxr-panel .dxr-ctx b{color:var(--ink); font-weight:600;}
+.dxr-panel .dxr-row,
+.dxr-panel form.dxr-row{
+  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  margin:0; padding:0; border:none;
+}
+.dxr-close{margin-left:auto; border:none; background:none; color:var(--faint); cursor:pointer; font-size:13px;}
+.dxr-close:hover{color:var(--red);}
+
+.subhead{font-size:12px; font-weight:600; color:var(--faint); text-transform:uppercase; letter-spacing:.03em; margin:0 0 8px;}
+.diag-basis{
+  display:inline-flex; gap:12px; font-size:12px; color:var(--faint); background:var(--tint);
+  border:1px solid var(--line); border-radius:20px; padding:4px 12px; margin-bottom:10px;
+}
+.diag-basis b{color:var(--soft); font-weight:600;}
+.diag-basis .ok{color:var(--green); font-weight:600;}
+
+/* Только border-TOP — разделитель, НЕ рамка вокруг блока */
+.add-row{
+  display:flex; align-items:center; gap:8px; margin-top:12px; padding-top:12px;
+  border-top:1px dashed var(--line); border-left:none; border-right:none; border-bottom:none;
+  border-radius:0; background:transparent;
+}
+.add-row .searchbox{position:relative; flex:1; max-width:320px;}
+.add-row input[type=text]{width:100%;}
+.add-row > .fform{margin:0; width:100%; border:none; background:transparent; padding:0; box-shadow:none;}
+.add-row > .fform > form.enc-sub-add{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px; width:100%;
+  border:none; background:transparent; padding:0; margin:0;
+}
+.add-row .field.field-conclusion{flex:1 1 160px; min-width:160px;}
+.add-row .field.field-conclusion input{width:100%;}
+/* dr-tail после .dr-val.text (span 2 колонки) — всегда в 4-й колонке той же строки */
+.data-row > .dr-tail{grid-column:4; grid-row:1;}
+.data-row > .dxr-panel{grid-column:1 / -1; grid-row:2;}
+
+/* поповер поиска МКБ — ОДИН переиспользуемый компонент вместо
+   дублированного select под каждым результатом */
+.dx-popover{
+  position:absolute; top:calc(100% + 6px); left:0; width:340px; max-height:320px; overflow:auto;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 10px 28px rgba(28,27,25,.16);
+  display:none; z-index:30;
+}
+.dx-popover.open{display:block;}
+.dx-popover .dx-group-label{font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--faint); padding:9px 12px 4px;}
+.dx-opt{padding:8px 12px; font-size:13px; cursor:pointer; display:flex; gap:8px;}
+.dx-opt:hover{background:var(--accent-soft);}
+.dx-opt .dx-code{font-family:var(--mono); font-size:11.5px; color:var(--faint); flex:none; padding-top:1px;}
+
+.plan-chips{display:flex; flex-wrap:wrap; gap:8px;}
+.plan-chip{
+  border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:12.5px; display:flex; flex-direction:column; gap:2px;
+  background:var(--tint);
+}
+.plan-chip b{font-size:13px;}
+
+.hint{font-size:12px; color:var(--faint); margin-top:8px;}
+
+/* ---- Bridge: live patient.html (details.fstep / episode / CDS) ---- */
+body.patient-page details.fstep.section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-3);
+  overflow: hidden;
+}
+body.patient-page details.fstep.section > summary.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+body.patient-page details.fstep.section > summary.section-head::-webkit-details-marker { display: none; }
+body.patient-page details.fstep.section > summary.section-head::before { content: none; }
+body.patient-page details.fstep.section > summary.section-head:hover { background: var(--tint); }
+body.patient-page details.fstep.section .s-rail {
+  width: 3px; align-self: stretch; border-radius: 2px; background: var(--line); margin-right: 2px;
+}
+body.patient-page details.fstep.section.done .s-rail { background: var(--green); }
+body.patient-page details.fstep.section.attention .s-rail,
+body.patient-page details.fstep.section.warn .s-rail { background: var(--amber); }
+/* open не перекрашивает rail — статус done/warn/idle остаётся */
+body.patient-page details.fstep.section .s-icon { width: 20px; text-align: center; color: var(--soft); font-size: 15px; flex: none; }
+body.patient-page details.fstep.section .s-title { font-size: 14px; font-weight: 600; flex: 1; }
+body.patient-page details.fstep.section .s-badge,
+body.patient-page details.fstep.section .section-header__badge {
+  font-size: 11.5px; padding: 2px 9px; border-radius: 20px; font-weight: 600;
+  background: var(--tint); color: var(--soft); border: 1px solid var(--line);
+}
+body.patient-page details.fstep.section .section-badge--danger,
+body.patient-page details.fstep.section .s-badge.warn {
+  background: var(--amber-bg); color: var(--amber); border-color: var(--amber-line);
+}
+body.patient-page details.fstep.section .section-badge--accent,
+body.patient-page details.fstep.section .s-badge.ok {
+  background: var(--green-bg); color: var(--green); border-color: var(--green-line);
+}
+body.patient-page details.fstep.section .s-chev { color: var(--faint); font-size: 12px; transition: transform .15s; margin-left: 4px; }
+body.patient-page details.fstep.section[open] .s-chev { transform: rotate(90deg); }
+body.patient-page details.fstep.section > .fstep-b,
+body.patient-page details.fstep.section > .section-body {
+  padding: 0 16px 16px 16px;
+}
+body.patient-page details.fstep.section:not([open]) > .fstep-b { display: none !important; }
+body.patient-page details.fstep.section[open] > .fstep-b { display: block; }
+
+/* Override prototype .section-body{display:none} for details-based sections */
+body.patient-page details.fstep.section .section-body { display: block; }
+
+body.patient-page .flow { gap: var(--space-3); }
+
+/* Episode card (active diagnosis) */
+body.patient-page .episode {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
+  overflow: hidden;
+}
+body.patient-page .episode .episode-head {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+body.patient-page .episode .icd-chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-weight: 600;
+}
+body.patient-page .episode .kv-row { display: flex; gap: var(--space-4); font-size: 13px; }
+body.patient-page .episode .kv-label { color: var(--faint); min-width: 132px; flex: none; }
+body.patient-page .episode .kv-value { color: var(--ink); line-height: 1.5; }
+body.patient-page .episode .goal-check { color: var(--green); font-weight: 600; font-size: 12.5px; margin-left: 8px; }
+
+/* Protocol banner maps onto #now-action / cds-ok */
+body.patient-page #now-action.cds-ok,
+body.patient-page .protocol-banner.cds-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--green-bg);
+  border: 1px solid var(--green-line);
+  color: var(--green);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  margin-bottom: var(--space-4);
+}
+body.patient-page #now-action.cds-ok .cds-tier { color: var(--green); text-transform: none; letter-spacing: normal; font-size: 13px; font-weight: 600; }
+body.patient-page #now-action { margin-bottom: var(--space-4); border-radius: var(--radius-lg); }
+
+/* Vitals grid inside exam */
+body.patient-page .vitals-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
+body.patient-page .vital {
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; position: relative; background: var(--tint);
+}
+body.patient-page .vital .v-label { font-size: 11px; color: var(--faint); text-transform: uppercase; letter-spacing: .03em; }
+body.patient-page .vital .v-val { font-family: var(--mono); font-size: 19px; font-weight: 600; margin-top: 3px; display: flex; align-items: baseline; gap: 4px; }
+body.patient-page .vital .v-unit { font-family: var(--font); font-size: 11.5px; color: var(--faint); font-weight: 400; }
+body.patient-page .vital.flag .v-val { color: var(--red); }
+body.patient-page .vital .v-flag { position: absolute; top: 8px; right: 10px; font-size: 12px; color: var(--red); }
+body.patient-page .vital .chip-x { position: absolute; bottom: 8px; right: 8px; }
+
+/* Hide old enc-card chrome; keep content */
+body.patient-page .enc-card {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+body.patient-page .enc-toolbar {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  margin-bottom: var(--space-3);
+}
+
+/* Data rows — SSOT выше (.data-row grid); здесь только page overrides */
+
+body.patient-page .gnav { margin: 0 calc(-1 * var(--space-5)) var(--space-5); }
+@media (min-width: 900px) {
+  body.patient-page .gnav {
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding-left: max(var(--space-5), calc(50vw - 420px));
+    padding-right: max(var(--space-5), calc(50vw - 420px));
+  }
+}
+
+body.patient-page details.more-card.section {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  margin: var(--space-4) 0;
+  overflow: hidden;
+}
+body.patient-page details.more-card.section > summary.section-head {
+  display: flex; align-items: center; gap: 10px; padding: 13px 16px;
+  cursor: pointer; list-style: none;
+}
+body.patient-page details.more-card.section > summary.section-head::-webkit-details-marker { display: none; }
+body.patient-page details.more-card.section > summary.section-head::before { content: none; }
+body.patient-page details.more-card.section .s-title { font-size: 14px; font-weight: 600; flex: 1; }
+body.patient-page details.more-card.section .s-chev { color: var(--faint); }
+body.patient-page details.more-card.section[open] .s-chev { transform: rotate(90deg); display: inline-block; }
+body.patient-page details.more-card.section > .section-body { padding: 0 16px 16px; display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* View/edit via pencil on section header */
+body.patient-page details.fstep.section .s-edit {
+  width: 28px; height: 28px; border-radius: 6px; border: 1px solid transparent;
+  background: none; color: var(--faint); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 14px; flex: none; padding: 0;
+}
+body.patient-page details.fstep.section .s-edit:hover {
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line);
+}
+body.patient-page details.fstep.section.editing .text-fact { display: none !important; }
+body.patient-page details.fstep.section.editing .text-edit { display: block !important; }
+body.patient-page details.fstep.section.editing .text-edit[hidden] { display: block !important; }
+body.patient-page details.fstep.section:not(.editing) .text-fact .btn-small[data-text-edit] { display: none; }
+/* editing: не обводить add-row/формы «коробкой» — только мягкий акцент у text-edit */
+body.patient-page details.fstep.section.editing .text-edit {
+  outline: 1px dashed var(--accent-line); outline-offset: 4px; border-radius: 6px;
+}
+
+body.patient-page form.dx-form.add-row {
+  display: flex; align-items: flex-end; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; padding-top: 12px;
+  border-top: 1px dashed var(--line); border-left: none; border-right: none; border-bottom: none;
+  border-radius: 0; background: transparent;
+}
+body.patient-page form.dx-form.dxr-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 0; padding: 0; border: none; background: transparent;
+}
+body.patient-page form.dx-form .searchbox { position: relative; flex: 1 1 200px; max-width: 340px; }
+body.patient-page form.dx-form .dx-search { width: 100%; height: var(--control-h); }
+body.patient-page .dx-popover {
+  position: absolute; top: calc(100% + 6px); left: 0; width: 100%; min-width: 280px;
+  max-height: 280px; overflow: auto; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); box-shadow: 0 10px 28px rgba(28,27,25,.16); display: none; z-index: 40;
+}
+body.patient-page .dx-popover.open { display: block; }
+body.patient-page .dx-opt.hidden { display: none; }
+body.patient-page .dxr-panel .fform { margin: 0; padding: 0; border: none; background: transparent; }
+body.patient-page .dxr-panel form.enc-sub-add {
+  flex-wrap: wrap; width: 100%; max-width: 100%;
+  margin: 0; padding: 0; border: none; background: transparent;
+}
+body.patient-page .dxr-panel form.enc-sub-add .form-actions { margin-left: 0; }
+/* Диагноз: add-row на самой form — без обёртки-коробки у .fform */
+body.patient-page .fform:has(> form.dx-form.add-row) {
+  margin: 0; padding: 0; border: none; background: transparent; box-shadow: none;
+}
+body.patient-page .add-row form.med-form-compact {
+  flex-wrap: nowrap !important;
+  align-items: center;
+  gap: 10px !important;
+}
+body.patient-page .add-row form.med-form-compact > .field.field-fit:first-of-type {
+  flex: 1 1 auto !important;
+  min-width: 140px !important;
+  max-width: none !important;
+  width: auto !important; /* не раздувать JS data-fit до 500px */
+}
+body.patient-page .add-row form.med-form-compact > .field.field-fit:first-of-type select {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.patient-page .add-row form.med-form-compact > .field.field-fit:nth-of-type(2),
+body.patient-page .add-row form.med-form-compact > .field.field-fit:last-of-type {
+  flex: 0 0 7.5rem !important;
+  width: 7.5rem !important;
+  max-width: 7.5rem !important;
+}
+body.patient-page .add-row form.med-form-compact > .field.field-dose {
+  flex: 0 0 5.5rem !important;
+  width: 5.5rem !important;
+}
+body.patient-page .add-row form.med-form-compact > .field.field-dose input {
+  width: 5.5rem !important;
+}
+body.patient-page .add-row form.med-form-compact > .form-actions {
+  margin-left: 2px;
+  flex: 0 0 auto !important;
+}
+body.patient-page .diag-sub {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+body.patient-page .diag-sub h4,
+body.patient-page .diag-sub .subhead {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 0 8px !important;
+}
+
+/* ---- Spec lock (2026-07-30): align live card to prototype decisions ---- */
+
+/* F.28: open does NOT recolor rail — status color stays */
+body.patient-page details.fstep.section[open] .s-rail { background: inherit; }
+body.patient-page details.fstep.section.done[open] .s-rail { background: var(--green); }
+body.patient-page details.fstep.section.attention[open] .s-rail,
+body.patient-page details.fstep.section.warn[open] .s-rail { background: var(--amber); }
+body.patient-page details.fstep.section.idle[open] .s-rail,
+body.patient-page details.fstep.section.active[open] .s-rail { background: var(--line); }
+
+body.patient-page details.fstep.section > .fstep-b,
+body.patient-page details.fstep.section > .section-body {
+  padding: 6px 16px 16px 16px;
+}
+
+body.patient-page .field-label,
+body.patient-page .section-label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--faint);
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+body.patient-page .field-view {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+body.patient-page details.fstep.section:not(.editing) .field-edit[hidden] { display: none !important; }
+body.patient-page details.fstep.section.editing .field-view { display: none !important; }
+body.patient-page details.fstep.section.editing .field-edit,
+body.patient-page details.fstep.section.editing .field-edit[hidden] { display: block !important; }
+
+/* Vitals: stronger alert + add tile */
+body.patient-page .vital.flag {
+  background: var(--red-bg);
+  border-color: var(--red-line);
+}
+body.patient-page .vital.flag .v-val { color: var(--red); }
+body.patient-page .vital.vital-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--faint);
+  border-style: dashed;
+  background: transparent;
+  min-height: 72px;
+}
+body.patient-page .vital.vital-add:hover { background: var(--tint); color: var(--soft); }
+body.patient-page .vital-form-wrap {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+body.patient-page .vital-form-wrap[hidden] { display: none !important; }
+
+/* Data rows / dxr / add-row — SSOT в базовых правилах выше + med-form-compact */
+body.patient-page .data-row {
+  display: grid !important;
+  grid-template-columns: 150px 110px 1fr auto;
+  align-items: baseline;
+  column-gap: 10px;
+  flex-wrap: unset;
+}
+body.patient-page .add-row form.enc-sub-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+body.patient-page .diag-sub form.enc-sub-add .form-actions { margin-left: 0; }
+body.patient-page .add-row .form-actions { margin: 0; }
+body.patient-page .add-row .field label:not(.sr-only) { display: none; }
+body.patient-page .add-row .fform .note,
+body.patient-page .add-row .fform .hint { width: 100%; margin-top: 6px; }
+body.patient-page .vital .v-x,
+body.patient-page .vital form .chip-x.v-x,
+body.patient-page .vital form button.chip-x {
+  position: absolute; bottom: 6px; right: 6px; width: 18px; height: 18px;
+  border: none; background: none; color: var(--faint); cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  padding: 0; opacity: 1;
+}
+body.patient-page .vital form { position: static; margin: 0; }
+body.patient-page .vital form button.chip-x:hover { background: rgba(140,47,47,.12); color: var(--red); }
+
+/* Protocol banner warn/critical + keep sticky */
+body.patient-page #now-action,
+body.patient-page .cds.verdict-panel.dx-issue {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+body.patient-page #now-action.cds-warn,
+body.patient-page .protocol-banner.cds-warn {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-line);
+  color: var(--amber);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  margin-bottom: var(--space-4);
+}
+body.patient-page #now-action.cds-critical,
+body.patient-page .protocol-banner.cds-critical {
+  background: var(--red-bg);
+  border: 1px solid var(--red-line);
+  color: var(--red);
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  margin-bottom: var(--space-4);
+}
+body.patient-page .diag-basis .miss { color: var(--faint); font-weight: 500; }
+body.patient-page .chip.chip-add {
+  border-style: dashed;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+}
+body.patient-page .inline-add[hidden],
+body.patient-page .vital-form-wrap[hidden] { display: none !important; }
+body.patient-page .diag-basis .ds-i.ok,
+body.patient-page .diag-basis .ok { color: var(--green); font-weight: 600; }
+body.patient-page .diag-basis .ds-i.miss { color: var(--faint); font-weight: 500; }
+/* Prototype .section.open rail override (non-details) — never navy on open */
+.section.open:not(.done):not(.warn) .s-rail { background: var(--line); }
+.section.done.open .s-rail { background: var(--green); }
+.section.warn.open .s-rail { background: var(--amber); }
+body.patient-page .btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+body.patient-page .btn.primary:hover { background: var(--accent-hover); }
+
+@media (max-width: 640px) {
+  body.patient-page .gnav { flex-wrap: wrap; gap: 8px; }
+  body.patient-page .data-row .dr-name { min-width: 0; flex: 1 1 100%; }
+  body.patient-page .add-row form.med-form-compact .field.field-fit { flex: 1 1 100%; }
+}

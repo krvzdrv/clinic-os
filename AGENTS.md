@@ -1,5 +1,10 @@
 # Агенты clinic-os
 
+**Агент репозитория:** `CLN · Chart`  
+**Префикс:** `[CLN]` · **Actor:** `CLN-Chart`
+
+Формат как в соседних Alumineu-репо (`CODE · Callsign`). Default-агент чата — Chart; воркеры ниже — роли внутри clinic-os.
+
 Брифы воркеров и промпты: [`docs/agents/`](docs/agents/).  
 Ворота запуска: [`docs/agents/LAUNCH.md`](docs/agents/LAUNCH.md) — воркеров не стартовать без «запускай».
 
@@ -140,20 +145,20 @@ UI врачу: понятный текст + что сделать
 
 ---
 
-Четыре роли. Имена одинаковые в чатах Cursor, ветках и промптах.
+Четыре роли. Имена в ветках/промптах: `clinic-*`. Чат default-агента: `CLN · Chart`.
 
-| Агент | Роль |
-|---|---|
-| `clinic-architect` | План, границы задач, контракты, merge, конфликты |
-| `clinic-protocol` | Протокол ВП (КП №768), правила, evaluate |
-| `clinic-ui` | Карточки пациента, формы, дашборд |
-| `clinic-qa` | Сценарии и e2e |
+| Агент | Callsign / id | Роль |
+|---|---|---|
+| `CLN · Chart` (`clinic-architect`) | Chart · `CLN-Chart` | План, границы задач, контракты, merge, конфликты |
+| `clinic-protocol` | — | Протокол ВП (КП №768), правила, evaluate |
+| `clinic-ui` | — | Карточки пациента, формы, дашборд |
+| `clinic-qa` | — | Сценарии и e2e |
 
-Вы общаетесь с **`clinic-architect`**. Остальные — воркеры по ТЗ от архитектора.
+Вы общаетесь с **`CLN · Chart`** (он же `clinic-architect`). Остальные — воркеры по ТЗ от Chart.
 
 ## Владение файлами
 
-### clinic-architect
+### CLN · Chart (`clinic-architect`)
 - `AGENTS.md`, `docs/architecture.md`, `docs/concepts.md`
 - решает пересечения; правит общие файлы при интеграции
 - **не** параллелит сам с воркерами в одном working tree
@@ -214,5 +219,5 @@ UI врачу: понятный текст + что сделать
   - python3 tools/quality_gate.py (если затронут app.py/verdict/templates/patient.html)
   - python3 tools/visual_gate.py  (если затронуты templates/** / static/clinic.css)
 
-Не коммить. Архитектуру не менять. Нужен общий файл — остановись и спроси clinic-architect.
+Не коммить. Архитектуру не менять. Нужен общий файл — остановись и спроси CLN · Chart (clinic-architect).
 ```

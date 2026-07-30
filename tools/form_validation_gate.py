@@ -257,12 +257,18 @@ def run_ui(port: int, pid: str, pid_soft: str) -> None:
             page.goto(f"{base}/patient/{pid}", wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(400)
 
-            # Открыть Осмотр
-            exam = page.locator("details#flow-exam, details:has(summary:has-text('Осмотр'))").first
+            # Открыть Осмотр (div.section в новом шаблоне)
+            exam = page.locator("#exam-section, .section:has-text('Осмотр')").first
             if exam.count():
-                if not exam.evaluate("e => e.open"):
-                    exam.locator("summary").first.click()
+                if not exam.evaluate("e => e.classList.contains('open')"):
+                    exam.locator(".section-head").first.click()
                 page.wait_for_timeout(200)
+
+            # Форма показателей скрыта до «+ показатель» (view-first)
+            add_vital = page.locator("[data-reveal^='#vital-form'], .vital-add").first
+            if add_vital.count():
+                add_vital.click()
+                page.wait_for_timeout(150)
 
             # Форма показателей (не lab)
             form = page.locator("form.enc-sub-add[action*='/observation']:not([data-lab])").first
@@ -295,6 +301,20 @@ def run_ui(port: int, pid: str, pid_soft: str) -> None:
             page.wait_for_timeout(800)
             check(val.input_value() == "", "после ok значение очищено")
 
+            # soft_refresh возвращает форму в hidden — снова «+ показатель»
+            # После full reload секция осмотра может быть закрыта — открыть заново
+            exam = page.locator("#exam-section, .section:has-text('Осмотр')").first
+            if exam.count() and not exam.evaluate("e => e.classList.contains('open')"):
+                exam.locator(".section-head").first.click()
+                page.wait_for_timeout(200)
+            add_vital = page.locator("[data-reveal^='#vital-form'], .vital-add").first
+            if add_vital.count():
+                add_vital.click()
+                page.wait_for_timeout(150)
+            form = page.locator("form.enc-sub-add[action*='/observation']:not([data-lab])").first
+            code = form.locator("select[name='code']")
+            val = form.locator("input[name='value_numeric']")
+
             code.select_option(value="59408-5")
             val.fill("")
             form.locator("button[type='submit']").click()
@@ -307,7 +327,12 @@ def run_ui(port: int, pid: str, pid_soft: str) -> None:
             page.wait_for_timeout(400)
             check(True, f"открыта Пустова {pid_soft}")
 
-            # Предпочитаем полную форму «Другой препарат» / «Препарат»
+            # Открыть «Лечение» (div.section в новом шаблоне)
+            med_sec = page.locator("#med-section, .section:has-text('Лечение')").first
+            if med_sec.count():
+                if not med_sec.evaluate("e => e.classList.contains('open')"):
+                    med_sec.locator(".section-head").first.click()
+                    page.wait_for_timeout(200)
             for sel_sum in (
                 "details.cds-alt > summary",
                 "details.add-panel > summary:has-text('Препарат')",

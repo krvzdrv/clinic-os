@@ -301,15 +301,15 @@ def patient_detail(pid):
         verdict_by_condition = {
             v["condition_id"]: v["verdict"] for v in verdicts if v.get("condition_id")
         }
-        # Legacy cap/verdict для шаблона (fallback CAP); nested CDS — из verdicts.
-        cap = next(
-            (v["assessment"] for v in verdicts if v.get("protocol_id") == "cap_adult_768"),
-            pcap.evaluate_cap(pid),
-        )
-        verdict = next(
-            (v["verdict"] for v in verdicts if v.get("protocol_id") == "cap_adult_768"),
-            protocol_verdict.verdict_for_ui(cap),
-        )
+        # Primary verdict для шапки карточки — самый приоритетный из всех
+        # применимых протоколов (ВП / ЖДА / …), не только ВП.
+        primary_item = pdisp.pick_primary_assessment(verdicts)
+        if primary_item:
+            cap = primary_item["assessment"]
+            verdict = primary_item["verdict"]
+        else:
+            cap = pcap.evaluate_cap(pid)
+            verdict = protocol_verdict.verdict_for_ui(cap)
         goals = fs.get_goals(pid)
         care_plans = fs.get_care_plans(pid)
 
