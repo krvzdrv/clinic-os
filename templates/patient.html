@@ -201,6 +201,10 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
 .val-unit input{width:84px;}
 .unit-suffix{font-size:12px;color:var(--faint);white-space:nowrap;}
 .obs-hint{width:100%;font-size:11.5px;color:var(--faint);min-height:14px;}
+.undo-toast{position:fixed;right:20px;bottom:20px;z-index:120;display:none;align-items:center;gap:12px;background:var(--ink);color:var(--cream);padding:10px 14px;border-radius:10px;font-size:13px;box-shadow:0 12px 32px rgba(28,27,25,.3);}
+.undo-toast.show{display:flex;}
+.undo-btn{background:none;border:1px solid rgba(231,230,226,.35);color:var(--cream);border-radius:6px;padding:4px 10px;font-size:12.5px;cursor:pointer;}
+.undo-btn:hover{background:rgba(231,230,226,.1);}
 
 @media(max-width:720px){
   .shell{padding:var(--space-4) var(--space-3) 60px;}
@@ -376,15 +380,6 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
       <div class="issue">
         <div class="issue-title">{{ check.title }}</div>
         {% if check.action %}<div class="issue-desc">{{ check.action }}</div>{% endif %}
-        <div class="issue-action">
-          {% if cv.focus_stage == 'med' and cv.suggest_atc %}
-          <button class="btn danger" onclick="document.getElementById('med-section').scrollIntoView({behavior:'smooth'});document.getElementById('med-section').classList.add('open')">{{ cv.cta_label or 'Исправить' }}</button>
-          {% elif cv.focus_stage == 'actions' %}
-          <form method="POST" action="{{ url_for('cap_admit_route', pid=patient.id) }}" style="display:inline;">
-            <button class="btn danger" type="submit">{{ cv.cta_label or 'Госпитализировать' }}</button>
-          </form>
-          {% endif %}
-        </div>
       </div>
       {% endfor %}
       {% endif %}
@@ -1076,17 +1071,15 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
   </div>
 </div>
 
-<!-- CDS Hard-stop dialog -->
+<!-- CDS Hard-stop dialog: противопоказание — без обхода -->
 <div class="cds-overlay" id="cdsHard">
   <div class="cds-dialog hard cds-ov cds-ov-hard">
     <div class="cds-tier">Противопоказание · <span id="cdsHardProto"></span></div>
     <div class="cds-msg" id="cdsHardMsg"></div>
     <ul class="cds-list" id="cdsHardList"></ul>
-    <textarea class="cds-reason" id="cdsHardReason" placeholder="Причина назначения (обязательно)"></textarea>
-    <div class="cds-error" id="cdsHardError">Укажите причину</div>
+    <div class="hint">Назначение заблокировано. Выберите препарат другого класса.</div>
     <div class="cds-actions">
-      <button class="btn ghost" onclick="closeCds('cdsHard')">Отмена</button>
-      <button class="btn danger" onclick="confirmCds('hard')">Назначить несмотря на риск</button>
+      <button class="btn primary" onclick="closeCds('cdsHard')">Понятно</button>
     </div>
   </div>
 </div>
@@ -1149,34 +1142,52 @@ function _disarmDelete(btn){
   if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
 }
 
+// --- Undo: после удаления предлагаем восстановить (soft-delete на сервере) ---
+function _itemLabel(btn){
+  const chip = btn.closest('.chip');
+  if(chip && chip.childNodes.length) return chip.childNodes[0].textContent.trim();
+  const row = btn.closest('.data-row');
+  if(row){ const n = row.querySelector('.dr-name'); if(n) return n.textContent.trim(); }
+  const vital = btn.closest('.vital');
+  if(vital){ const l = vital.querySelector('.v-label'); if(l) return l.textContent.trim(); }
+  return '';
+}
+function _queueUndo(entity, id, btn){
+  try{
+    sessionStorage.setItem('clinic-undo:{{ patient.id }}', JSON.stringify({
+      entity: entity, id: id, label: _itemLabel(btn)
+    }));
+  }catch(e){}
+}
+
 function deleteFlag(fid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("clear_flag_route", pid=patient.id, fid="__FID__") }}'.replace('__FID__', fid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('flag', fid, btn); location.reload(); });
   });
 }
 function deleteObservation(oid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("delete_observation_route", pid=patient.id, oid="__OID__") }}'.replace('__OID__', oid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('observation', oid, btn); location.reload(); });
   });
 }
 function deleteCondition(cid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("delete_condition_route", pid=patient.id, cid="__CID__") }}'.replace('__CID__', cid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('condition', cid, btn); location.reload(); });
   });
 }
 function deleteServiceRequest(sid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("delete_service_request_route", pid=patient.id, sid="__SID__") }}'.replace('__SID__', sid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('service_request', sid, btn); location.reload(); });
   });
 }
 function deleteReport(rid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("delete_report_route", pid=patient.id, rid="__RID__") }}'.replace('__RID__', rid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('report', rid, btn); location.reload(); });
   });
 }
 function stopMedication(mid, btn){
@@ -1188,7 +1199,7 @@ function stopMedication(mid, btn){
 function deleteAllergy(aid, btn){
   _armDelete(btn, () => {
     fetch('{{ url_for("delete_allergy_route", pid=patient.id, aid="__AID__") }}'.replace('__AID__', aid), {method:'POST'})
-      .then(()=>location.reload());
+      .then(()=>{ _queueUndo('allergy', aid, btn); location.reload(); });
   });
 }
 
@@ -1391,8 +1402,33 @@ function validateObservation(e){
   return true;
 }
 
+function _showUndoToast(){
+  let data = null;
+  try{ data = JSON.parse(sessionStorage.getItem('clinic-undo:{{ patient.id }}') || 'null'); }catch(e){}
+  if(!data || !data.id) return;
+  const names = {condition:'Диагноз удалён', observation:'Показатель удалён',
+                 service_request:'Заказ удалён', report:'Результат удалён',
+                 flag:'Признак удалён', allergy:'Аллергия удалена'};
+  document.getElementById('undoToastText').textContent =
+    (names[data.entity] || 'Запись удалена') + (data.label ? ': ' + data.label : '');
+  const toast = document.getElementById('undoToast');
+  document.getElementById('undoBtn').onclick = () => {
+    sessionStorage.removeItem('clinic-undo:{{ patient.id }}');
+    fetch('{{ url_for("undelete_route", pid=patient.id, entity="__E__", eid="__I__") }}'
+        .replace('__E__', data.entity).replace('__I__', data.id),
+        {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
+      .then(()=>location.reload());
+  };
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+    sessionStorage.removeItem('clinic-undo:{{ patient.id }}');
+  }, 10000);
+}
+
 document.addEventListener('DOMContentLoaded', function(){
   _restoreUiState();
+  _showUndoToast();
   checkMedication();
   document.querySelectorAll('form select[name="code"]').forEach(sel => {
     if(sel.closest('form') && sel.closest('form').querySelector('.obs-hint')) updateObsHint(sel);
@@ -1412,5 +1448,11 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 {% include "_double_submit_guard.html" %}
+
+<!-- Undo-тост после удаления (soft-delete) -->
+<div class="undo-toast" id="undoToast" role="status">
+  <span id="undoToastText"></span>
+  <button class="undo-btn" id="undoBtn" type="button">Отменить</button>
+</div>
 </body>
 </html>

@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS condition_ (
     -- для UI (денормализовано, чтобы не джойнить diagnostic_report/observation).
     source_kind      TEXT,
     source_id        TEXT,
-    source_label     TEXT
+    source_label     TEXT,
+    deleted          INTEGER DEFAULT 0  -- soft-delete: 1 = «удалено», восстановимо из UI
 );
 
 -- ===== Измерения и анализы (числовые) =====
@@ -73,7 +74,8 @@ CREATE TABLE IF NOT EXISTS observation (
     ref_high      REAL,
     interpretation TEXT,  -- normal / high / low
     status        TEXT,
-    date          TEXT
+    date          TEXT,
+    deleted       INTEGER DEFAULT 0
 );
 
 -- ===== Заключения исследований (ЭКГ, УЗИ, холтер) =====
@@ -88,7 +90,8 @@ CREATE TABLE IF NOT EXISTS diagnostic_report (
     status        TEXT,   -- registered / partial / final
     conclusion    TEXT,
     attachment_url TEXT,
-    date          TEXT
+    date          TEXT,
+    deleted       INTEGER DEFAULT 0
 );
 
 -- ===== Заказы (назначения анализов/исследований) =====
@@ -103,7 +106,8 @@ CREATE TABLE IF NOT EXISTS service_request (
     status        TEXT,   -- active / completed / cancelled
     intent        TEXT,   -- order
     occurrence_date TEXT,
-    reason_code   TEXT
+    reason_code   TEXT,
+    deleted       INTEGER DEFAULT 0
 );
 
 -- ===== Назначения препаратов =====
@@ -198,7 +202,8 @@ CREATE TABLE IF NOT EXISTS allergy_intolerance (
     display        TEXT,
     criticality    TEXT,
     reaction_type  TEXT,   -- ige / non-ige / unknown (тип реакции на β-лактамы)
-    recorded_date  TEXT
+    recorded_date  TEXT,
+    deleted        INTEGER DEFAULT 0
 );
 
 -- ===== Структурированный анамнез/осмотр/факторы риска =====
@@ -214,7 +219,8 @@ CREATE TABLE IF NOT EXISTS clinical_flag (
     key           TEXT,   -- что за флаг (напр. "hospitalized_3mo", "local_signs", "bronchial_obstruction")
     value         TEXT,   -- "true"/"false" или категория
     category      TEXT,   -- social_risk / exam / complication / context / vaccination
-    recorded_date TEXT
+    recorded_date TEXT,
+    deleted       INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_clinflag_patient ON clinical_flag (patient_id, key);

@@ -178,6 +178,10 @@ def init_schema():
     _ensure_column("condition_", "source_kind", "TEXT")
     _ensure_column("condition_", "source_id", "TEXT")
     _ensure_column("condition_", "source_label", "TEXT")
+    # Soft-delete: записи не удаляются физически — восстановление через «Отменить» в UI.
+    for _tbl in ("condition_", "observation", "service_request",
+                 "diagnostic_report", "clinical_flag", "allergy_intolerance"):
+        _ensure_column(_tbl, "deleted", "INTEGER DEFAULT 0")
     # Append-only аудит CDS override + reasonReference M2M (idempotent CREATE).
     db_execute_ddl(
         "CREATE TABLE IF NOT EXISTS cds_override_log ("

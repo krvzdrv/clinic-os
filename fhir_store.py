@@ -45,24 +45,25 @@ def load_pid_cache(pid):
     SQLite: отдельные SELECT (json_agg/row_to_json недоступны) — иначе карточка падает.
     """
     if db.backend() == "sqlite":
+        nd = " AND COALESCE(deleted, 0) = 0"
         _PID_CACHE[pid] = {
             "patient": db.fetchone("SELECT * FROM patient WHERE id = %s", (pid,)),
             "encounters": db.fetchall(
                 "SELECT * FROM encounter WHERE patient_id = %s ORDER BY start DESC", (pid,)),
             "conditions": db.fetchall(
-                "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC", (pid,)),
+                "SELECT * FROM condition_ WHERE patient_id = %s" + nd + " ORDER BY onset_date DESC", (pid,)),
             "observations": db.fetchall(
-                "SELECT * FROM observation WHERE patient_id = %s ORDER BY date DESC", (pid,)),
+                "SELECT * FROM observation WHERE patient_id = %s" + nd + " ORDER BY date DESC", (pid,)),
             "diagnostic_reports": db.fetchall(
-                "SELECT * FROM diagnostic_report WHERE patient_id = %s ORDER BY date DESC", (pid,)),
+                "SELECT * FROM diagnostic_report WHERE patient_id = %s" + nd + " ORDER BY date DESC", (pid,)),
             "service_requests": db.fetchall(
-                "SELECT * FROM service_request WHERE patient_id = %s ORDER BY occurrence_date DESC", (pid,)),
+                "SELECT * FROM service_request WHERE patient_id = %s" + nd + " ORDER BY occurrence_date DESC", (pid,)),
             "medications_all": db.fetchall(
                 "SELECT * FROM medication_request WHERE patient_id = %s ORDER BY date DESC", (pid,)),
             "flags": db.fetchall(
-                "SELECT * FROM clinical_flag WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,)),
+                "SELECT * FROM clinical_flag WHERE patient_id = %s" + nd + " ORDER BY recorded_date DESC", (pid,)),
             "allergies": db.fetchall(
-                "SELECT * FROM allergy_intolerance WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,)),
+                "SELECT * FROM allergy_intolerance WHERE patient_id = %s" + nd + " ORDER BY recorded_date DESC", (pid,)),
             "goals": db.fetchall(
                 "SELECT * FROM goal WHERE patient_id = %s ORDER BY start_date DESC", (pid,)),
             "care_plans": db.fetchall(
@@ -71,17 +72,18 @@ def load_pid_cache(pid):
         }
         return
 
+    nd = " AND COALESCE(deleted, 0) = 0"
     sql = (
         "SELECT "
         "(SELECT row_to_json(t) FROM (SELECT * FROM patient WHERE id = %s) t) AS patient, "
         "(SELECT json_agg(t) FROM (SELECT * FROM encounter WHERE patient_id = %s ORDER BY start DESC) t) AS encounters, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC) t) AS conditions, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM observation WHERE patient_id = %s ORDER BY date DESC) t) AS observations, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM diagnostic_report WHERE patient_id = %s ORDER BY date DESC) t) AS diagnostic_reports, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM service_request WHERE patient_id = %s ORDER BY occurrence_date DESC) t) AS service_requests, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM condition_ WHERE patient_id = %s" + nd + " ORDER BY onset_date DESC) t) AS conditions, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM observation WHERE patient_id = %s" + nd + " ORDER BY date DESC) t) AS observations, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM diagnostic_report WHERE patient_id = %s" + nd + " ORDER BY date DESC) t) AS diagnostic_reports, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM service_request WHERE patient_id = %s" + nd + " ORDER BY occurrence_date DESC) t) AS service_requests, "
         "(SELECT json_agg(t) FROM (SELECT * FROM medication_request WHERE patient_id = %s ORDER BY date DESC) t) AS medications_all, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM clinical_flag WHERE patient_id = %s ORDER BY recorded_date DESC) t) AS flags, "
-        "(SELECT json_agg(t) FROM (SELECT * FROM allergy_intolerance WHERE patient_id = %s ORDER BY recorded_date DESC) t) AS allergies, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM clinical_flag WHERE patient_id = %s" + nd + " ORDER BY recorded_date DESC) t) AS flags, "
+        "(SELECT json_agg(t) FROM (SELECT * FROM allergy_intolerance WHERE patient_id = %s" + nd + " ORDER BY recorded_date DESC) t) AS allergies, "
         "(SELECT json_agg(t) FROM (SELECT * FROM goal WHERE patient_id = %s ORDER BY start_date DESC) t) AS goals, "
         "(SELECT json_agg(t) FROM (SELECT * FROM care_plan WHERE patient_id = %s ORDER BY created_date DESC) t) AS care_plans, "
         "(SELECT row_to_json(t) FROM (SELECT * FROM pathway WHERE patient_id = %s) t) AS pathway"
@@ -295,7 +297,8 @@ def get_condition(pid):
     rows = _cached(pid, "conditions")
     if rows is None:
         rows = db.fetchall(
-            "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,))
+            "SELECT * FROM condition_ WHERE patient_id = %s AND COALESCE(deleted, 0) = 0 "
+            "ORDER BY recorded_date DESC", (pid,))
     for c in rows:
         if c.get("clinical_status") == "active":
             return c
@@ -306,14 +309,15 @@ def get_conditions(pid):
     if c is not None:
         return c
     return db.fetchall(
-        "SELECT * FROM condition_ WHERE patient_id = %s ORDER BY onset_date DESC", (pid,))
+        "SELECT * FROM condition_ WHERE patient_id = %s AND COALESCE(deleted, 0) = 0 "
+        "ORDER BY onset_date DESC", (pid,))
 
 
 def get_active_conditions_by_patient():
     """patient_id → первый активный Condition (дашборд; demo — один диагноз)."""
     rows = db.fetchall(
         "SELECT patient_id, code, display, onset_date FROM condition_ "
-        "WHERE clinical_status = 'active' ORDER BY onset_date DESC"
+        "WHERE clinical_status = 'active' AND COALESCE(deleted, 0) = 0 ORDER BY onset_date DESC"
     ) or []
     out = {}
     for r in rows:
@@ -356,7 +360,7 @@ def get_observations(pid, code=None, limit=None):
         if limit:
             rows = rows[:limit]
         return rows
-    sql = "SELECT * FROM observation WHERE patient_id = %s"
+    sql = "SELECT * FROM observation WHERE patient_id = %s AND COALESCE(deleted, 0) = 0"
     params = [pid]
     if code:
         sql += " AND code = %s"
@@ -375,7 +379,8 @@ def get_last_observation(pid, code):
                 return o
         return None
     return db.fetchone(
-        "SELECT * FROM observation WHERE patient_id = %s AND code = %s ORDER BY date DESC LIMIT 1",
+        "SELECT * FROM observation WHERE patient_id = %s AND code = %s AND COALESCE(deleted, 0) = 0 "
+        "ORDER BY date DESC LIMIT 1",
         (pid, code))
 
 def add_observation(pid, code, display, value_numeric=None, value_unit=None,
@@ -399,7 +404,9 @@ def get_diagnostic_reports(pid):
     c = _cached(pid, "diagnostic_reports")
     if c is not None:
         return c
-    return db.fetchall("SELECT * FROM diagnostic_report WHERE patient_id = %s ORDER BY date DESC", (pid,))
+    return db.fetchall(
+        "SELECT * FROM diagnostic_report WHERE patient_id = %s AND COALESCE(deleted, 0) = 0 "
+        "ORDER BY date DESC", (pid,))
 
 def add_diagnostic_report(pid, code, display, conclusion=None, attachment_url=None,
                           status="final", rep_date=None, encounter_id=None):
@@ -419,7 +426,7 @@ def get_service_requests(pid, status=None):
     cached = _cached(pid, "service_requests")
     if cached is not None:
         return [sr for sr in cached if status is None or sr["status"] == status]
-    sql = "SELECT * FROM service_request WHERE patient_id = %s"
+    sql = "SELECT * FROM service_request WHERE patient_id = %s AND COALESCE(deleted, 0) = 0"
     params = [pid]
     if status:
         sql += " AND status = %s"
@@ -546,7 +553,7 @@ def get_encounter_reasons(encounter_id):
     if ids:
         return ids
     legacy = db.fetchall(
-        "SELECT id FROM condition_ WHERE encounter_id=%s",
+        "SELECT id FROM condition_ WHERE encounter_id=%s AND COALESCE(deleted, 0) = 0",
         (encounter_id,),
     )
     return [r["id"] for r in (legacy or [])]
@@ -561,11 +568,11 @@ def get_condition_encounters(condition_id):
 
 
 def delete_observation(oid):
-    db.execute("DELETE FROM observation WHERE id = %s", (oid,))
+    db.execute("UPDATE observation SET deleted = 1 WHERE id = %s", (oid,))
 
 
 def delete_condition(cid):
-    db.execute("DELETE FROM condition_ WHERE id = %s", (cid,))
+    db.execute("UPDATE condition_ SET deleted = 1 WHERE id = %s", (cid,))
 
 
 def resolve_condition(pid, cid):
@@ -580,11 +587,36 @@ def resolve_condition(pid, cid):
 
 
 def delete_service_request(sid):
-    db.execute("DELETE FROM service_request WHERE id = %s", (sid,))
+    db.execute("UPDATE service_request SET deleted = 1 WHERE id = %s", (sid,))
 
 
 def delete_report(rid):
-    db.execute("DELETE FROM diagnostic_report WHERE id = %s", (rid,))
+    db.execute("UPDATE diagnostic_report SET deleted = 1 WHERE id = %s", (rid,))
+
+
+# ---------- Soft-delete undo ----------
+_UNDELETE_TABLES = {
+    "condition": "condition_",
+    "observation": "observation",
+    "service_request": "service_request",
+    "report": "diagnostic_report",
+    "flag": "clinical_flag",
+    "allergy": "allergy_intolerance",
+}
+
+
+def undelete(entity, eid, pid):
+    """Восстановить запись, «удалённую» через UI (кнопка «Отменить» в тосте)."""
+    table = _UNDELETE_TABLES.get(entity)
+    if not table:
+        return False
+    row = db.fetchone(
+        "SELECT id FROM %s WHERE id = %%s AND patient_id = %%s" % table, (eid, pid))
+    if not row:
+        return False
+    db.execute("UPDATE %s SET deleted = 0 WHERE id = %%s" % table, (eid,))
+    clear_pid_cache(pid)
+    return True
 
 
 # ============ MedicationKnowledge (кэш справочника) ============
@@ -654,7 +686,9 @@ def get_allergies(pid):
     c = _cached(pid, "allergies")
     if c is not None:
         return c
-    return db.fetchall("SELECT * FROM allergy_intolerance WHERE patient_id = %s", (pid,))
+    return db.fetchall(
+        "SELECT * FROM allergy_intolerance WHERE patient_id = %s AND COALESCE(deleted, 0) = 0",
+        (pid,))
 
 def betalactam_allergy_type(pid):
     """
@@ -689,14 +723,15 @@ def add_allergy(pid, code, display, criticality="high", reaction_type="unknown",
 
 
 def delete_allergy(pid, aid):
-    """Убрать запись аллергии (ошибка ввода / уточнение анамнеза)."""
+    """Убрать запись аллергии (ошибка ввода / уточнение анамнеза).
+    Soft-delete: восстановимо через «Отменить» в UI."""
     row = db.fetchone(
         "SELECT id FROM allergy_intolerance WHERE id = %s AND patient_id = %s",
         (aid, pid),
     )
     if not row:
         return False
-    db.execute("DELETE FROM allergy_intolerance WHERE id = %s AND patient_id = %s", (aid, pid))
+    db.execute("UPDATE allergy_intolerance SET deleted = 1 WHERE id = %s AND patient_id = %s", (aid, pid))
     clear_pid_cache(pid)
     return True
 
@@ -804,10 +839,12 @@ def get_flags(pid, category=None):
         return [f for f in cached if category is None or f["category"] == category]
     if category:
         return db.fetchall(
-            "SELECT * FROM clinical_flag WHERE patient_id = %s AND category = %s ORDER BY recorded_date DESC",
+            "SELECT * FROM clinical_flag WHERE patient_id = %s AND category = %s "
+            "AND COALESCE(deleted, 0) = 0 ORDER BY recorded_date DESC",
             (pid, category))
     return db.fetchall(
-        "SELECT * FROM clinical_flag WHERE patient_id = %s ORDER BY recorded_date DESC", (pid,))
+        "SELECT * FROM clinical_flag WHERE patient_id = %s AND COALESCE(deleted, 0) = 0 "
+        "ORDER BY recorded_date DESC", (pid,))
 
 
 def get_flag(pid, key):
@@ -820,7 +857,7 @@ def get_flag(pid, key):
         return None
     return db.fetchone(
         "SELECT * FROM clinical_flag WHERE patient_id = %s AND key = %s "
-        "ORDER BY recorded_date DESC LIMIT 1",
+        "AND COALESCE(deleted, 0) = 0 ORDER BY recorded_date DESC LIMIT 1",
         (pid, key))
 
 
@@ -844,7 +881,7 @@ def add_flag(pid, key, value="true", category="exam", encounter_id=None, recorde
 
 def delete_flag(fid):
     row = db.fetchone("SELECT patient_id FROM clinical_flag WHERE id = %s", (fid,))
-    db.execute("DELETE FROM clinical_flag WHERE id = %s", (fid,))
+    db.execute("UPDATE clinical_flag SET deleted = 1 WHERE id = %s", (fid,))
     if row and row.get("patient_id"):
         clear_pid_cache(row["patient_id"])
 

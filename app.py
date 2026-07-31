@@ -885,20 +885,19 @@ def add_medication_route(pid):
     soft_stops = [i for i in issues if i.get("severity") == "warning"]
     eid = request.form.get("encounter_id") or None
 
-    if hard_stops and not confirmed:
+    # Hard-stop (противопоказание, напр. аллергия) — без обхода: назначение
+    # блокируется всегда, override не предусмотрен. Врач выбирает другой класс.
+    if hard_stops:
         if _wants_json():
+            if not confirmed:
+                return jsonify({
+                    "ok": False, "need_confirm": True, "level": "hard",
+                    "cds": _cds_summary(verdict),
+                })
             return jsonify({
-                "ok": False, "need_confirm": True, "level": "hard",
+                "ok": False, "error": "Противопоказание — назначение заблокировано",
                 "cds": _cds_summary(verdict),
-            })
-        return redirect(url_for("patient_detail", pid=pid))
-    if hard_stops and confirmed and not override_reason:
-        if _wants_json():
-            return jsonify({
-                "ok": False, "need_confirm": True, "level": "hard",
-                "error": "Укажите причину назначения",
-                "cds": _cds_summary(verdict),
-            }), 400
+            }), 403
         return redirect(url_for("patient_detail", pid=pid))
     if soft_stops and not hard_stops and not (confirmed and ack):
         if _wants_json():
@@ -1053,6 +1052,16 @@ def delete_observation_route(pid, oid):
     if _wants_json():
         return _json_after_clinical(pid)
     _refresh_protocol(pid)
+    return redirect(url_for("patient_detail", pid=pid))
+
+
+@app.route("/patient/<pid>/undelete/<entity>/<eid>", methods=["POST"])
+def undelete_route(pid, entity, eid):
+    """Восстановление «удалённой» записи — кнопка «Отменить» в тосте после удаления."""
+    ok = fs.undelete(entity, eid, pid)
+    _refresh_protocol(pid)
+    if _wants_json():
+        return jsonify({"ok": bool(ok)})
     return redirect(url_for("patient_detail", pid=pid))
 
 
