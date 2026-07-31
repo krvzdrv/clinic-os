@@ -54,6 +54,41 @@ app.config["TEMPLATES_AUTO_RELOAD"] = True
 fs.init_db()
 
 
+# ---------- Jinja-helpers: данные языком врача (не сырые коды/ISO) ----------
+# Регистрируются и как globals (вызов `route_display(x)`), и как pipe-фильтры.
+_ROUTE_LABELS = {"oral": "внутрь", "iv": "в/в", "im": "в/м", "inh": "ингаляционно"}
+
+
+def route_display(code):
+    """Код маршрута → подпись для врача (oral → внутрь)."""
+    if not code:
+        return ""
+    return _ROUTE_LABELS.get(str(code).strip().lower(), str(code))
+
+
+def ru_date(value):
+    """ISO-дата (2026-07-30 или с временем) → ДД.ММ.ГГГГ; прочее — как есть."""
+    s = str(value or "")
+    if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+        return "%s.%s.%s" % (s[8:10], s[5:7], s[0:4])
+    return s
+
+
+def fmt_num(value):
+    """Число показателя без хвоста .0 (86.0 → 86); 36.6 остаётся 36.6."""
+    try:
+        f = float(value)
+    except (TypeError, ValueError):
+        return value if value is not None else ""
+    return str(int(f)) if f == int(f) else ("%g" % f)
+
+
+for _fn in (route_display, ru_date, fmt_num):
+    app.add_template_global(_fn)
+    app.add_template_filter(_fn)
+
+
+
 def _wants_json():
     """Запрос пришёл через fetch (AJAX), а не обычной отправкой формы."""
     return request.headers.get("X-Requested-With") == "XMLHttpRequest" or \
@@ -803,7 +838,14 @@ def add_medication_route(pid):
     display = request.form.get("display", "").strip()
     if not display and drug:
         display = drug.get("name") or ""
-    dose = request.form.get("dose", "").strip() or (drug.get("default_dose") if drug else None)
+    dose = request.form.get("dose", "").strip()
+    if not dose:
+        # Раздельный ввод: число + единица из словаря (не одной строкой).
+        dv = request.form.get("dose_value", "").strip().replace(",", ".")
+        du = request.form.get("dose_unit", "").strip()
+        if dv:
+            dose = ("%s %s" % (dv, du)).strip()
+    dose = dose or (drug.get("default_dose") if drug else None)
     frequency = request.form.get("frequency", "").strip() or (drug.get("default_frequency") if drug else None)
 
     # Замена АБТ с экрана протокола: сначала снять другие активные J01,

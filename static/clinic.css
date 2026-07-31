@@ -1040,6 +1040,7 @@ textarea{padding:8px 10px; height:auto; width:100%; resize:vertical; min-height:
   background:var(--tint);
 }
 .vital .v-label{font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.03em;}
+.vital.flag .v-label{padding-right:78px;} /* не наезжать на .v-flag в правом верхнем углу */
 .vital .v-val{font-family:var(--mono); font-size:19px; font-weight:600; margin-top:3px; display:flex; align-items:baseline; gap:4px;}
 .vital .v-unit{font-family:var(--font); font-size:11.5px; color:var(--faint); font-weight:400;}
 .vital.flag .v-val{color:var(--red);}

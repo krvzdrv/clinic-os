@@ -195,6 +195,8 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
 .inline-form .field{display:flex;flex-direction:column;gap:4px;}
 .inline-form label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;}
 .inline-form input,.inline-form select{height:var(--control-h);}
+.dose-fields{display:flex;gap:6px;}
+.dose-fields input{width:76px;}
 
 @media(max-width:720px){
   .shell{padding:var(--space-4) var(--space-3) 60px;}
@@ -229,7 +231,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="pt-meta">
           <span>{{ age }} лет</span><span class="dot"></span>
           <span>{{ 'муж.' if patient.gender == 'male' else 'жен.' }}</span><span class="dot"></span>
-          <span>{{ patient.birth_date or '—' }}</span>
+          <span>{{ ru_date(patient.birth_date) or '—' }}</span>
         </div>
         {% if allergies %}
         <div class="allergy-pill has-allergy">⚠ Аллергия: {{ allergies|map(attribute='display')|join(', ') }}</div>
@@ -330,7 +332,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         </div>
         <div class="episode-sub">
           <span class="status-dot {{ 'critical' if cv and cv.tier == 'critical' else ('warn' if cv and not cv.ok else '') }}"></span>
-          активный · открыт {{ c.onset_date or c.recorded_date or '—' }} · приём {{ 'стационарный' if cv and cv.setting_label == 'Стационар' else 'амбулаторный' }}
+          активный · открыт {{ ru_date(c.onset_date or c.recorded_date) or '—' }} · приём {{ 'стационарный' if cv and cv.setting_label == 'Стационар' else 'амбулаторный' }}
         </div>
       </div>
       <form method="POST" action="{{ url_for('resolve_condition_route', pid=patient.id, cid=c.id) }}" onsubmit="return confirm('Отметить выздоровление?')">
@@ -345,7 +347,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="kv-label">Лечение</div>
         <div class="kv-value">
           {% for m in therapy %}
-          {{ m.display }} · {{ m.dose or '—' }} · {{ m.route or '—' }} · {{ m.frequency or '—' }}{% if m.period_end %} · до {{ m.period_end }}{% endif %}{% if not loop.last %}<br>{% endif %}
+          {{ m.display }} · {{ m.dose or '—' }} · {{ route_display(m.route) or '—' }} · {{ m.frequency or '—' }}{% if m.period_end %} · до {{ ru_date(m.period_end) }}{% endif %}{% if not loop.last %}<br>{% endif %}
           {% endfor %}
         </div>
       </div>
@@ -398,7 +400,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
     <div class="history-body">
       {% for c in history_conditions %}
       <div class="visit-row">
-        <span class="vd">{{ c.onset_date or c.recorded_date or '—' }}</span>
+        <span class="vd">{{ ru_date(c.onset_date or c.recorded_date) or '—' }}</span>
         <span class="vs">{{ c.display or c.code }}</span>
         <span class="badge grey">закрыт</span>
       </div>
@@ -418,7 +420,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
       <div>
         <div class="episode-title" style="font-size:14px;">
           {{ 'Контрольный визит' if e0.class == 'followup' else 'Приём' }}
-          <span class="icd-chip">{{ e0.start or '—' }}</span>
+          <span class="icd-chip">{{ ru_date(e0.start) or '—' }}</span>
         </div>
         <div class="episode-sub">
           {{ 'амбулаторный' if e0.class == 'ambulatory' else ('стационарный' if e0.class == 'inpatient' else 'контрольный') }}
@@ -554,7 +556,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           <div class="vital {% if label %}flag{% endif %}">
             {% if label %}<span class="v-flag">{{ label }}</span>{% endif %}
             <div class="v-label">{{ loinc_display(code) }}</div>
-            <div class="v-val">{{ o.value_numeric }}<span class="v-unit">{{ loinc_unit(code) }}</span></div>
+            <div class="v-val">{{ fmt_num(o.value_numeric) }}<span class="v-unit">{{ loinc_unit(code) }}</span></div>
             <button class="v-x" onclick="deleteObservation('{{ o.id }}')">×</button>
           </div>
           {% endif %}
@@ -686,7 +688,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           {% for o in bucket.obs if o.code in lab_loinc %}
           <div class="data-row">
             <span class="dr-name">{{ loinc_display(o.code) }}</span>
-            <span class="dr-val {% if o.interpretation == 'high' %}flag{% elif o.interpretation == 'low' %}flag down{% endif %}">{{ o.value_numeric }} {{ loinc_unit(o.code) }}</span>
+            <span class="dr-val {% if o.interpretation == 'high' %}flag{% elif o.interpretation == 'low' %}flag down{% endif %}">{{ fmt_num(o.value_numeric) }} {{ loinc_unit(o.code) }}</span>
             <span></span>
             <span class="dr-tail"><button class="dr-x" onclick="deleteObservation('{{ o.id }}')">×</button></span>
           </div>
@@ -833,7 +835,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="data-row">
           <span class="dr-name">{{ m.display }}</span>
           <span class="dr-val">{{ m.dose or '—' }}</span>
-          <span class="dr-meta">{{ m.frequency or '—' }} · {{ m.route or '—' }}{% if m.period_end %} · до {{ m.period_end }}{% endif %}</span>
+          <span class="dr-meta">{{ m.frequency or '—' }} · {{ route_display(m.route) or '—' }}{% if m.period_end %} · до {{ ru_date(m.period_end) }}{% endif %}</span>
           <span class="dr-tail"><button class="dr-x" onclick="stopMedication('{{ m.id }}')">×</button></span>
         </div>
         {% endfor %}
@@ -852,7 +854,16 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           </div>
           <div class="field">
             <label>Доза</label>
-            <input type="text" name="dose" id="med-dose" placeholder="500 мг">
+            <div class="dose-fields">
+              <input type="text" name="dose_value" id="med-dose-value" inputmode="decimal" placeholder="500" aria-label="Значение дозы">
+              <select name="dose_unit" id="med-dose-unit" aria-label="Единица дозы">
+                <option>мг</option>
+                <option>г</option>
+                <option>мкг</option>
+                <option>мл</option>
+                <option>ЕД</option>
+              </select>
+            </div>
           </div>
           <div class="field">
             <label>Кратность</label>
@@ -888,7 +899,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
     <div class="section-body">
       <div class="plan-chips">
         {% for f in followups %}
-        <div class="plan-chip"><b>{{ f.complaint or 'Контрольный визит' }}</b><span>{{ f.start }}</span></div>
+        <div class="plan-chip"><b>{{ f.complaint or 'Контрольный визит' }}</b><span>{{ ru_date(f.start) }}</span></div>
         {% endfor %}
       </div>
       <div class="add-row">
@@ -939,7 +950,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
     <div class="history-body">
       {% for e in encounters %}
       <div class="visit-row">
-        <span class="vd">{{ e.start or '—' }}</span>
+        <span class="vd">{{ ru_date(e.start) or '—' }}</span>
         <span class="vs">
           {{ e.complaint or ('Контрольный визит' if e.class == 'followup' else 'Приём') }}
           {% if e.id == current_eid %}<span class="badge accent">текущий</span>{% endif %}
@@ -1064,6 +1075,36 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
 </div>
 
 <script>
+// --- Состояние гармошек: переживает перезагрузку после сабмита форм ---
+const UI_STATE_KEY = 'clinic-ui:{{ patient.id }}';
+const _uiSecs = [...document.querySelectorAll('.section[data-section]')];
+_uiSecs.forEach((s, i) => { if(!s.id) s.id = 'sec-' + i; });
+const _uiRows = [...document.querySelectorAll('.add-row[style*="display:none"]')];
+_uiRows.forEach((r, i) => { if(!r.id) r.id = 'row-' + i; });
+const _uiFolds = [...document.querySelectorAll('details.history-fold')];
+_uiFolds.forEach((f, i) => { if(!f.id) f.id = 'fold-' + i; });
+
+function _saveUiState(){
+  const data = {
+    sections: _uiSecs.filter(s => s.classList.contains('open')).map(s => s.id),
+    rows: _uiRows.filter(r => r.classList.contains('open')).map(r => r.id),
+    folds: _uiFolds.filter(f => f.open).map(f => f.id),
+  };
+  try { localStorage.setItem(UI_STATE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+
+function _restoreUiState(){
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(UI_STATE_KEY) || 'null'); } catch(e) {}
+  if(!saved) return;
+  (saved.sections || []).forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('open'); });
+  (saved.rows || []).forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('open'); });
+  (saved.folds || []).forEach(id => { const el = document.getElementById(id); if(el) el.open = true; });
+}
+
+document.addEventListener('click', () => setTimeout(_saveUiState, 0), true);
+_uiFolds.forEach(f => f.addEventListener('toggle', _saveUiState));
+
 function toggleSection(head){ head.closest('.section').classList.toggle('open'); }
 function toggleEdit(btn){ const s = btn.closest('.section'); if(!s.classList.contains('open')) s.classList.add('open'); s.classList.toggle('editing'); }
 
@@ -1105,11 +1146,27 @@ function deleteAllergy(aid){
 
 let pendingMed = null;
 
+function _setDoseUnit(u){
+  const sel = document.getElementById('med-dose-unit');
+  if(!u){ sel.value = 'мг'; return; }
+  let found = [...sel.options].find(o => o.value === u);
+  if(!found){
+    found = document.createElement('option');
+    found.value = u; found.textContent = u;
+    sel.appendChild(found);
+  }
+  sel.value = u;
+}
+
 function checkMedication(){
   const code = document.getElementById('med-code-now').value;
   const opt = document.querySelector(`#med-code-now option[value="${code}"]`);
   if(opt){
-    document.getElementById('med-dose').value = opt.dataset.dose || '';
+    // Доза из каталога («500 мг», «1–2 г») раскладывается на число и единицу.
+    const doseStr = (opt.dataset.dose || '').trim();
+    const m = doseStr.match(/^([\d.,]+(?:\s*[–-]\s*[\d.,]+)?)\s*(.*)$/);
+    document.getElementById('med-dose-value').value = m ? m[1].replace(/\s+/g, '') : doseStr;
+    _setDoseUnit(m && m[2] ? m[2].trim() : '');
     document.getElementById('med-freq').value = opt.dataset.freq || '';
     const routes = (opt.dataset.route || 'oral').split(',');
     const routeSel = document.getElementById('med-route');
@@ -1262,6 +1319,7 @@ function validateObservation(e){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  _restoreUiState();
   checkMedication();
   const medForm = document.getElementById('med-form');
   if (medForm) medForm.addEventListener('submit', submitMedication);
