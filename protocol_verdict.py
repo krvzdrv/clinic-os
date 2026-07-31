@@ -170,9 +170,11 @@ def _therapy_next_step(expected_regimen: dict | None, setting: str,
     if not therapy["title"]:
         label = "антибактериальную терапию" if is_cap else "терапию железом"
         return f"Назначить {label} по протоколу"
+    # Двоеточие: название ЛС — сущность, а не часть глагольной фразы
+    # («Назначить: Железа сульфат внутрь» вместо «Назначить Железа сульфат внутрь»).
     if is_cap:
-        return f"Назначить {therapy['title']} на 7–14 дней"
-    return f"Назначить {therapy['title']}"
+        return f"Назначить: {therapy['title']} на 7–14 дней"
+    return f"Назначить: {therapy['title']}"
 
 
 def _compact_abt_action(recommendation: str | None, fallback: str | None = None) -> str:
@@ -308,7 +310,7 @@ _FOCUS_BY_GAP = {
     "hospitalization_indicated": "actions",
     "icu_indicated": "actions",
     "inpatient_preferable": "actions",
-    "diagnosis_unsupported": "cond",
+    "diagnosis_unsupported": "exam",
     # --- ЖДА (КП №23) — свои коды ---
     "transfusion_indicated": "actions",
     "no_iron_therapy": "med",
@@ -465,6 +467,8 @@ def _cta_label(
     if focus == "cond":
         return "Поставить диагноз"
     if focus == "exam":
+        if primary_code == "diagnosis_unsupported":
+            return "Дополнить осмотр и анамнез"
         return "Сохранить осмотр"
     if focus == "diag":
         return "Назначить исследование"
@@ -592,6 +596,12 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
         and (focus in ("med", "reassess") or has_therapy_gap)
         and primary_code not in ("no_reassessment", "no_hb_reassessment")
     )
+    # Ожидаемая терапия для UI («Ожидается по протоколу») — заполняем всегда,
+    # когда протокол знает режим, а вердикт не «соответствует».
+    exp_therapy = (
+        _expected_therapy(expected, setting) if (expected and not ok)
+        else {"title": "", "detail": ""}
+    )
     # Маршрут — явно из ожидаемого режима (ЖДА: перорально/в/в по факторам, не по setting),
     # иначе — по условиям лечения ВП (амбулаторно = внутрь, стационар = в/в).
     suggest_route = (expected.get("route") if expected else None) or (
@@ -609,7 +619,7 @@ def verdict_for_ui(assessment: dict, protocol_id: str = DEFAULT_PROTOCOL_ID) -> 
         "headline": headline,
         "reason": reason if not ok else None,
         "next_step": step_for_ui,
-        "expected_therapy": {"title": "", "detail": ""},
+        "expected_therapy": exp_therapy,
         "show_therapy": False,
         "suggest_atc": suggest_atc if suggest_med else None,
         "suggest_route": suggest_route if suggest_med else None,

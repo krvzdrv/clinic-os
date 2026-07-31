@@ -305,6 +305,10 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
       <form method="POST" action="{{ url_for('schedule_repeat_cxr_route', pid=patient.id) }}" style="display:inline;">
         <button class="btn primary" type="submit">{{ v.cta_label }}</button>
       </form>
+      {% elif v.focus_stage == 'exam' %}
+      <button class="btn primary" onclick="document.getElementById('exam-section').scrollIntoView({behavior:'smooth'});document.getElementById('exam-section').classList.add('open')">{{ v.cta_label }}</button>
+      {% elif v.focus_stage == 'diag' %}
+      <button class="btn primary" onclick="document.getElementById('flow-diag').scrollIntoView({behavior:'smooth'});document.getElementById('flow-diag').classList.add('open')">{{ v.cta_label }}</button>
       {% elif v.focus_stage == 'cond' %}
       <button class="btn primary" onclick="document.getElementById('dx-section').scrollIntoView({behavior:'smooth'});document.getElementById('dx-section').classList.add('open')">{{ v.cta_label }}</button>
       {% endif %}
