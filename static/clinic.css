@@ -1361,11 +1361,11 @@ body.patient-page .add-row form.med-form-compact > .field:first-of-type select {
   width: 100% !important;
   max-width: 100% !important;
 }
-body.patient-page .add-row form.med-form-compact .dose-fields input { width: 52px !important; }
-body.patient-page .add-row form.med-form-compact .dose-fields select { width: 62px !important; }
-body.patient-page .add-row form.med-form-compact #med-freq { width: 108px !important; }
-body.patient-page .add-row form.med-form-compact #med-route { width: 100px !important; }
-body.patient-page .add-row form.med-form-compact input[name="period_end"] { width: 126px !important; }
+body.patient-page .add-row form.med-form-compact .dose-fields input { width: 76px !important; }
+body.patient-page .add-row form.med-form-compact .dose-fields select { width: 78px !important; }
+body.patient-page .add-row form.med-form-compact #med-freq { width: 120px !important; }
+body.patient-page .add-row form.med-form-compact #med-route { width: 96px !important; }
+body.patient-page .add-row form.med-form-compact input[name="period_end"] { width: 118px !important; }
 body.patient-page .add-row form.med-form-compact > .form-actions {
   margin-left: 2px;
   flex: 0 0 auto !important;

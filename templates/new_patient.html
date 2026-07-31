@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Новый пациент</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,6 +17,8 @@
   .field label{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:6px;}
   .field label .ti{font-size:13px;letter-spacing:normal;}
   .field input,.field select{width:100%;padding:10px 12px;font-size:15px;font-family:var(--font);border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);}
+  /* Глобальный select в clinic.css фиксирует height:34px — здесь поле крупнее, отменяем, иначе текст режется. */
+  .field select{height:auto;min-height:44px;}
   .field input:focus,.field select:focus{outline:2px solid color-mix(in srgb, var(--accent) 35%, transparent);border-color:var(--accent);}
   .row{display:flex;gap:12px;}
   .row .field{flex:1;}

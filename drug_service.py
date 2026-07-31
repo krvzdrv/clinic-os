@@ -19,7 +19,7 @@
 регламент (Слой 3b).
 """
 import fhir_store as fs
-from terminology import atc_group, atc_display
+from terminology import atc_group, atc_display, allergen_display
 
 
 # Классы аллергии и МКБ/ATC-коды, которые к ним относятся.
@@ -264,14 +264,14 @@ def evaluate_medication(pid, atc_code):
             issues.append({
                 "severity": "hard-stop",
                 "category": "allergy",
-                "message": f"Аллергия на класс «{cls}»: препарат противопоказан.",
+                "message": f"Аллергия на класс «{allergen_display(cls)}»: препарат противопоказан.",
             })
     for cls in rule.get("caution_if_allergy", []):
         if _has_allergy_class(state, cls):
             issues.append({
                 "severity": "warning",
                 "category": "allergy_caution",
-                "message": f"У пациента аллергия на класс «{cls}» — назначать с осторожностью.",
+                "message": f"У пациента аллергия на класс «{allergen_display(cls)}» — назначать с осторожностью.",
             })
     # 5b. Текстовое совпадение (на случай, если аллергия заведена произвольным текстом)
     for allergy in state["allergies"]:

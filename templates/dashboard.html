@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
 <title>Пациенты</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -131,7 +132,7 @@
     <div class="metric-cell" style="animation-delay:150ms">
       <p class="k">Доля соответствия</p>
       <div class="v-row">
-        <p class="v">{{ measure.rate }}%</p>
+        <p class="v">{{ '%s'|format(measure.rate)|replace('.', ',') }}%</p>
         <span class="goal">цель ≥70%</span>
       </div>
       <div class="metric-progress{% if rate_ok %} ok{% endif %}">
@@ -241,7 +242,7 @@
           <a class="now-link" href="{{ url_for('patient_detail', pid=p.id) }}" onclick="event.stopPropagation()">
             {# Только госпитализация/ОРИТ — чип срочности; АБТ/ЖДА/«сейчас» дублировали текст. #}
             {% if urgent %}<span class="badge red">срочно</span>{% endif %}
-            <span class="now-text">{{ p.next_step }}</span>
+            <span class="now-text" title="{{ p.next_step }}">{{ p.next_step }}</span>
             <i class="ti ti-chevron-right" aria-hidden="true"></i>
           </a>
           {% else %}<span style="color:var(--text-muted);font-weight:400;">—</span>{% endif %}

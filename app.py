@@ -83,7 +83,17 @@ def fmt_num(value):
     return str(int(f)) if f == int(f) else ("%g" % f)
 
 
-for _fn in (route_display, ru_date, fmt_num):
+def plural(n, one, few, many):
+    """Русская плюрализация: plural(2, 'запись', 'записи', 'записей') → 'записи'."""
+    n = abs(int(n))
+    if n % 10 == 1 and n % 100 != 11:
+        return one
+    if 2 <= n % 10 <= 4 and not (12 <= n % 100 <= 14):
+        return few
+    return many
+
+
+for _fn in (route_display, ru_date, fmt_num, plural):
     app.add_template_global(_fn)
     app.add_template_filter(_fn)
 
@@ -538,6 +548,7 @@ def patient_detail(pid):
             loinc_display=loinc_display,
             loinc_unit=loinc_unit,
             loinc_reference=loinc_reference,
+            interpret_value=interpret_value,
             sane_range=sane_range,
             vital_status_label=vital_status_label,
             bp_status_label=bp_status_label,
@@ -835,6 +846,11 @@ def add_medication_route(pid):
         return "Пациент не найден", 404
     code = request.form.get("code", "").strip().upper()
     drug = fs.get_drug(code) if code else None
+    if not drug:
+        # Препарат только из словаря — пустой/неизвестный код не сохраняем.
+        if _wants_json():
+            return jsonify({"ok": False, "error": "Выберите препарат из списка"}), 400
+        return redirect(url_for("patient_detail", pid=pid))
     display = request.form.get("display", "").strip()
     if not display and drug:
         display = drug.get("name") or ""
