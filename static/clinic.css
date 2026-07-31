@@ -1344,34 +1344,28 @@ body.patient-page .dxr-panel form.enc-sub-add .form-actions { margin-left: 0; }
 body.patient-page .fform:has(> form.dx-form.add-row) {
   margin: 0; padding: 0; border: none; background: transparent; box-shadow: none;
 }
+/* Лечение: вся форма назначения в одну строку — препарат тянется, остальные фикс. */
 body.patient-page .add-row form.med-form-compact {
   flex-wrap: nowrap !important;
   align-items: center;
-  gap: 10px !important;
+  gap: 8px !important;
 }
-body.patient-page .add-row form.med-form-compact > .field.field-fit:first-of-type {
-  flex: 1 1 auto !important;
-  min-width: 140px !important;
+body.patient-page .add-row form.med-form-compact > .field { flex: 0 0 auto; }
+body.patient-page .add-row form.med-form-compact > .field:first-of-type {
+  flex: 1 1 0 !important;
+  min-width: 120px !important;
   max-width: none !important;
-  width: auto !important; /* не раздувать JS data-fit до 500px */
+  width: auto !important;
 }
-body.patient-page .add-row form.med-form-compact > .field.field-fit:first-of-type select {
+body.patient-page .add-row form.med-form-compact > .field:first-of-type select {
   width: 100% !important;
   max-width: 100% !important;
 }
-body.patient-page .add-row form.med-form-compact > .field.field-fit:nth-of-type(2),
-body.patient-page .add-row form.med-form-compact > .field.field-fit:last-of-type {
-  flex: 0 0 7.5rem !important;
-  width: 7.5rem !important;
-  max-width: 7.5rem !important;
-}
-body.patient-page .add-row form.med-form-compact > .field.field-dose {
-  flex: 0 0 5.5rem !important;
-  width: 5.5rem !important;
-}
-body.patient-page .add-row form.med-form-compact > .field.field-dose input {
-  width: 5.5rem !important;
-}
+body.patient-page .add-row form.med-form-compact .dose-fields input { width: 52px !important; }
+body.patient-page .add-row form.med-form-compact .dose-fields select { width: 62px !important; }
+body.patient-page .add-row form.med-form-compact #med-freq { width: 108px !important; }
+body.patient-page .add-row form.med-form-compact #med-route { width: 100px !important; }
+body.patient-page .add-row form.med-form-compact input[name="period_end"] { width: 126px !important; }
 body.patient-page .add-row form.med-form-compact > .form-actions {
   margin-left: 2px;
   flex: 0 0 auto !important;
@@ -1485,6 +1479,20 @@ body.patient-page .vital form button.chip-x {
 body.patient-page .vital form { position: static; margin: 0; }
 body.patient-page .vital form button.chip-x:hover { background: rgba(140,47,47,.12); color: var(--red); }
 
+/* Двухшаговое удаление: «вооружённая» кнопка — красная пилюля «Удалить?» */
+.chip-x.armed, .dr-x.armed, .v-x.armed,
+body.patient-page .vital .v-x.armed,
+body.patient-page .vital form button.chip-x.armed {
+  width: auto !important; height: auto !important; min-width: 52px;
+  padding: 2px 8px !important; border-radius: 6px !important;
+  background: var(--red) !important; color: #fff !important;
+  font-size: 11px !important; font-weight: 600; line-height: 1.6;
+}
+.chip-x.armed:hover, .dr-x.armed:hover, .v-x.armed:hover,
+body.patient-page .vital form button.chip-x.armed:hover {
+  background: #7a2828 !important; color: #fff !important;
+}
+
 /* Protocol banner warn/critical + keep sticky */
 body.patient-page #now-action,
 body.patient-page .cds.verdict-panel.dx-issue {
@@ -1536,7 +1544,8 @@ body.patient-page .btn.primary:hover { background: var(--accent-hover); }
 @media (max-width: 640px) {
   body.patient-page .gnav { flex-wrap: wrap; gap: 8px; }
   body.patient-page .data-row .dr-name { min-width: 0; flex: 1 1 100%; }
-  body.patient-page .add-row form.med-form-compact .field.field-fit { flex: 1 1 100%; }
+  body.patient-page .add-row form.med-form-compact { flex-wrap: wrap !important; }
+  body.patient-page .add-row form.med-form-compact > .field:first-of-type { flex: 1 1 100% !important; }
 }
 
 /* ============================================================

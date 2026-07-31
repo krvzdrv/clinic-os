@@ -196,7 +196,10 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
 .inline-form label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.03em;}
 .inline-form input,.inline-form select{height:var(--control-h);}
 .dose-fields{display:flex;gap:6px;}
-.dose-fields input{width:76px;}
+.val-unit{display:flex;align-items:center;gap:6px;}
+.val-unit input{width:84px;}
+.unit-suffix{font-size:12px;color:var(--faint);white-space:nowrap;}
+.obs-hint{width:100%;font-size:11.5px;color:var(--faint);min-height:14px;}
 
 @media(max-width:720px){
   .shell{padding:var(--space-4) var(--space-3) 60px;}
@@ -496,7 +499,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="field-label">Факторы риска</div>
         <div class="chips">
           {% for f in bucket.flag if f.category in ('social_risk', 'context') %}
-          <span class="chip">{{ f.key }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}')">×</button></span>
+          <span class="chip">{{ f.key }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}', this)">×</button></span>
           {% endfor %}
           <span class="chip chip-add" onclick="this.nextElementSibling.classList.toggle('open')">+ добавить</span>
           <div class="add-row" style="display:none;width:100%;">
@@ -557,7 +560,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
             {% if label %}<span class="v-flag">{{ label }}</span>{% endif %}
             <div class="v-label">{{ loinc_display(code) }}</div>
             <div class="v-val">{{ fmt_num(o.value_numeric) }}<span class="v-unit">{{ loinc_unit(code) }}</span></div>
-            <button class="v-x" onclick="deleteObservation('{{ o.id }}')">×</button>
+            <button class="v-x" onclick="deleteObservation('{{ o.id }}', this)">×</button>
           </div>
           {% endif %}
           {% endfor %}
@@ -570,21 +573,25 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
             <input type="hidden" name="encounter_id" value="{{ e0.id }}">
             <div class="field">
               <label>Показатель</label>
-              <select name="code">
+              <select name="code" onchange="updateObsHint(this)">
                 {% for code in exam_loinc %}
-                <option value="{{ code }}" data-unit="{{ loinc_unit(code) }}" data-low="{{ sane_range(code)[0] if sane_range(code) else '' }}" data-high="{{ sane_range(code)[1] if sane_range(code) else '' }}">{{ loinc_display(code) }}</option>
+                <option value="{{ code }}" data-unit="{{ loinc_unit(code) }}" data-ref-low="{{ loinc_reference(code)[0] or '' }}" data-ref-high="{{ loinc_reference(code)[1] or '' }}" data-low="{{ sane_range(code)[0] if sane_range(code) else '' }}" data-high="{{ sane_range(code)[1] if sane_range(code) else '' }}">{{ loinc_display(code) }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="field">
               <label>Значение</label>
-              <input type="text" name="value_numeric" placeholder="36.6" aria-invalid="false" oninput="this.classList.remove('is-invalid');this.setAttribute('aria-invalid','false');this.closest('form').querySelector('.note').style.display='none';">
+              <div class="val-unit">
+                <input type="text" name="value_numeric" placeholder="36.6" aria-invalid="false" oninput="this.classList.remove('is-invalid');this.setAttribute('aria-invalid','false');this.closest('form').querySelector('.note').style.display='none';">
+                <span class="unit-suffix"></span>
+              </div>
             </div>
             <div class="field">
               <label>Дата</label>
               <input type="date" name="date" value="{{ today }}">
             </div>
             <button class="btn primary" type="submit">Сохранить</button>
+            <div class="obs-hint"></div>
             <div class="note" style="display:none;width:100%;font-size:12px;color:var(--text-danger);margin-top:4px;"></div>
           </form>
         </div>
@@ -593,7 +600,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="field-label">Клинические признаки</div>
         <div class="chips">
           {% for f in bucket.flag if f.key in CAP_PHYSICAL_FLAG_KEYS %}
-          <span class="chip">{{ flag_options.get(f.key, (f.key, ''))[0] }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}')">×</button></span>
+          <span class="chip">{{ flag_options.get(f.key, (f.key, ''))[0] }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}', this)">×</button></span>
           {% endfor %}
           <span class="chip chip-add" onclick="this.nextElementSibling.classList.toggle('open')">+ добавить</span>
           <div class="add-row" style="display:none;width:100%;">
@@ -634,7 +641,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
       </div>
       <div class="chips">
         {% for c in active_conditions %}
-        <span class="chip">{{ c.display or c.code }} <span class="icd-chip" style="margin:0 2px;">{{ c.code }}</span><button class="chip-x" onclick="deleteCondition('{{ c.id }}')">×</button></span>
+        <span class="chip">{{ c.display or c.code }} <span class="icd-chip" style="margin:0 2px;">{{ c.code }}</span><button class="chip-x" onclick="deleteCondition('{{ c.id }}', this)">×</button></span>
         {% endfor %}
       </div>
       {% endif %}
@@ -690,14 +697,14 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
             <span class="dr-name">{{ loinc_display(o.code) }}</span>
             <span class="dr-val {% if o.interpretation == 'high' %}flag{% elif o.interpretation == 'low' %}flag down{% endif %}">{{ fmt_num(o.value_numeric) }} {{ loinc_unit(o.code) }}</span>
             <span></span>
-            <span class="dr-tail"><button class="dr-x" onclick="deleteObservation('{{ o.id }}')">×</button></span>
+            <span class="dr-tail"><button class="dr-x" onclick="deleteObservation('{{ o.id }}', this)">×</button></span>
           </div>
           {% endfor %}
           {% for sr in bucket.sr if study_category(sr.code) == 'lab' %}
           <div class="data-row">
             <span class="dr-name">{{ sr.display }}</span>
             <span class="dr-val text">заказан</span>
-            <span class="dr-tail"><button class="dr-x" onclick="deleteServiceRequest('{{ sr.id }}')">×</button></span>
+            <span class="dr-tail"><button class="dr-x" onclick="deleteServiceRequest('{{ sr.id }}', this)">×</button></span>
           </div>
           {% endfor %}
         </div>
@@ -716,25 +723,30 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           </form>
         </div>
         <div class="add-row">
-          <form method="POST" action="{{ url_for('add_observation_route', pid=patient.id) }}" class="inline-form enc-sub-add" data-lab="1">
+          <form method="POST" action="{{ url_for('add_observation_route', pid=patient.id) }}" class="inline-form enc-sub-add" data-lab="1" onsubmit="return validateObservation(event)">
             <input type="hidden" name="encounter_id" value="{{ e0.id }}">
             <div class="field">
               <label>Показатель</label>
-              <select name="code">
+              <select name="code" onchange="updateObsHint(this)">
                 {% for code in lab_loinc %}
-                <option value="{{ code }}">{{ loinc_display(code) }}</option>
+                <option value="{{ code }}" data-unit="{{ loinc_unit(code) }}" data-ref-low="{{ loinc_reference(code)[0] or '' }}" data-ref-high="{{ loinc_reference(code)[1] or '' }}" data-low="{{ sane_range(code)[0] if sane_range(code) else '' }}" data-high="{{ sane_range(code)[1] if sane_range(code) else '' }}">{{ loinc_display(code) }}</option>
                 {% endfor %}
               </select>
             </div>
             <div class="field">
               <label>Значение</label>
-              <input type="text" name="value_numeric" placeholder="0">
+              <div class="val-unit">
+                <input type="text" name="value_numeric" placeholder="0" aria-invalid="false" oninput="this.classList.remove('is-invalid');this.setAttribute('aria-invalid','false');this.closest('form').querySelector('.note').style.display='none';">
+                <span class="unit-suffix"></span>
+              </div>
             </div>
             <div class="field">
               <label>Дата</label>
               <input type="date" name="date" value="{{ today }}">
             </div>
             <button class="btn primary" type="submit">Сохранить</button>
+            <div class="obs-hint"></div>
+            <div class="note" style="display:none;width:100%;font-size:12px;color:var(--text-danger);margin-top:4px;"></div>
           </form>
         </div>
       </div>
@@ -745,14 +757,14 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           <div class="data-row">
             <span class="dr-name">{{ r.display }}</span>
             <span class="dr-val text">{{ r.conclusion or '—' }}</span>
-            <span class="dr-tail"><button class="dr-x" onclick="deleteReport('{{ r.id }}')">×</button></span>
+            <span class="dr-tail"><button class="dr-x" onclick="deleteReport('{{ r.id }}', this)">×</button></span>
           </div>
           {% endfor %}
           {% for sr in bucket.sr if study_category(sr.code) == 'instr' %}
           <div class="data-row">
             <span class="dr-name">{{ sr.display }}</span>
             <span class="dr-val text">заказан</span>
-            <span class="dr-tail"><button class="dr-x" onclick="deleteServiceRequest('{{ sr.id }}')">×</button></span>
+            <span class="dr-tail"><button class="dr-x" onclick="deleteServiceRequest('{{ sr.id }}', this)">×</button></span>
           </div>
           {% endfor %}
         </div>
@@ -797,7 +809,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
         <div class="field-label">Рентгенологические признаки</div>
         <div class="chips">
           {% for f in bucket.flag if f.key in CAP_IMAGING_FLAG_KEYS %}
-          <span class="chip">{{ flag_options.get(f.key, (f.key, ''))[0] }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}')">×</button></span>
+          <span class="chip">{{ flag_options.get(f.key, (f.key, ''))[0] }} <button class="chip-x" onclick="deleteFlag('{{ f.id }}', this)">×</button></span>
           {% endfor %}
           <span class="chip chip-add" onclick="this.nextElementSibling.classList.toggle('open')">+ добавить</span>
           <div class="add-row" style="display:none;width:100%;">
@@ -836,12 +848,12 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
           <span class="dr-name">{{ m.display }}</span>
           <span class="dr-val">{{ m.dose or '—' }}</span>
           <span class="dr-meta">{{ m.frequency or '—' }} · {{ route_display(m.route) or '—' }}{% if m.period_end %} · до {{ ru_date(m.period_end) }}{% endif %}</span>
-          <span class="dr-tail"><button class="dr-x" onclick="stopMedication('{{ m.id }}')">×</button></span>
+          <span class="dr-tail"><button class="dr-x" onclick="stopMedication('{{ m.id }}', this)">×</button></span>
         </div>
         {% endfor %}
       </div>
       <div class="add-row">
-        <form method="POST" action="{{ url_for('add_medication_route', pid=patient.id) }}" class="inline-form" id="med-form" data-ajax="1">
+        <form method="POST" action="{{ url_for('add_medication_route', pid=patient.id) }}" class="inline-form med-form-compact" id="med-form" data-ajax="1">
           <input type="hidden" name="encounter_id" value="{{ e0.id }}">
           {% if bucket.med %}<input type="hidden" name="replace_abt" value="1">{% endif %}
           <div class="field" style="flex:1;min-width:180px;">
@@ -1015,7 +1027,7 @@ textarea{padding:8px 10px;height:auto;width:100%;resize:vertical;min-height:56px
     <div class="section-body">
       <div class="chips">
         {% for a in allergies %}
-        <span class="chip">{{ a.display }} <button class="chip-x" onclick="deleteAllergy('{{ a.id }}')">×</button></span>
+        <span class="chip">{{ a.display }} <button class="chip-x" onclick="deleteAllergy('{{ a.id }}', this)">×</button></span>
         {% endfor %}
       </div>
       <div class="add-row">
@@ -1108,54 +1120,84 @@ _uiFolds.forEach(f => f.addEventListener('toggle', _saveUiState));
 function toggleSection(head){ head.closest('.section').classList.toggle('open'); }
 function toggleEdit(btn){ const s = btn.closest('.section'); if(!s.classList.contains('open')) s.classList.add('open'); s.classList.toggle('editing'); }
 
-function deleteFlag(fid){
-  if(!confirm('Удалить признак?')) return;
-  fetch('{{ url_for("clear_flag_route", pid=patient.id, fid="__FID__") }}'.replace('__FID__', fid), {method:'POST'})
-    .then(()=>location.reload());
+// --- Двухшаговое удаление: × → «Удалить?» → исполнение. Автоотмена через 2.5 сек. ---
+function _armDelete(btn, proceed, label){
+  if(!btn || !btn.dataset){
+    proceed();
+    return;
+  }
+  if(!btn.dataset.armed){
+    btn.dataset.armed = '1';
+    btn.dataset.origHtml = btn.innerHTML;
+    btn.classList.add('armed');
+    btn.textContent = label || 'Удалить?';
+    btn._disarmTimer = setTimeout(() => _disarmDelete(btn), 2500);
+    return;
+  }
+  clearTimeout(btn._disarmTimer);
+  _disarmDelete(btn);
+  proceed();
 }
-function deleteObservation(oid){
-  if(!confirm('Удалить показатель?')) return;
-  fetch('{{ url_for("delete_observation_route", pid=patient.id, oid="__OID__") }}'.replace('__OID__', oid), {method:'POST'})
-    .then(()=>location.reload());
+function _disarmDelete(btn){
+  delete btn.dataset.armed;
+  btn.classList.remove('armed');
+  if(btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
 }
-function deleteCondition(cid){
-  if(!confirm('Удалить диагноз?')) return;
-  fetch('{{ url_for("delete_condition_route", pid=patient.id, cid="__CID__") }}'.replace('__CID__', cid), {method:'POST'})
-    .then(()=>location.reload());
+
+function deleteFlag(fid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("clear_flag_route", pid=patient.id, fid="__FID__") }}'.replace('__FID__', fid), {method:'POST'})
+      .then(()=>location.reload());
+  });
 }
-function deleteServiceRequest(sid){
-  if(!confirm('Удалить заказ?')) return;
-  fetch('{{ url_for("delete_service_request_route", pid=patient.id, sid="__SID__") }}'.replace('__SID__', sid), {method:'POST'})
-    .then(()=>location.reload());
+function deleteObservation(oid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("delete_observation_route", pid=patient.id, oid="__OID__") }}'.replace('__OID__', oid), {method:'POST'})
+      .then(()=>location.reload());
+  });
 }
-function deleteReport(rid){
-  if(!confirm('Удалить результат?')) return;
-  fetch('{{ url_for("delete_report_route", pid=patient.id, rid="__RID__") }}'.replace('__RID__', rid), {method:'POST'})
-    .then(()=>location.reload());
+function deleteCondition(cid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("delete_condition_route", pid=patient.id, cid="__CID__") }}'.replace('__CID__', cid), {method:'POST'})
+      .then(()=>location.reload());
+  });
 }
-function stopMedication(mid){
-  if(!confirm('Отменить назначение?')) return;
-  fetch('{{ url_for("stop_medication_route", pid=patient.id, mid="__MID__") }}'.replace('__MID__', mid), {method:'POST'})
-    .then(()=>location.reload());
+function deleteServiceRequest(sid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("delete_service_request_route", pid=patient.id, sid="__SID__") }}'.replace('__SID__', sid), {method:'POST'})
+      .then(()=>location.reload());
+  });
 }
-function deleteAllergy(aid){
-  if(!confirm('Удалить аллергию?')) return;
-  fetch('{{ url_for("delete_allergy_route", pid=patient.id, aid="__AID__") }}'.replace('__AID__', aid), {method:'POST'})
-    .then(()=>location.reload());
+function deleteReport(rid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("delete_report_route", pid=patient.id, rid="__RID__") }}'.replace('__RID__', rid), {method:'POST'})
+      .then(()=>location.reload());
+  });
+}
+function stopMedication(mid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("stop_medication_route", pid=patient.id, mid="__MID__") }}'.replace('__MID__', mid), {method:'POST'})
+      .then(()=>location.reload());
+  }, 'Отменить?');
+}
+function deleteAllergy(aid, btn){
+  _armDelete(btn, () => {
+    fetch('{{ url_for("delete_allergy_route", pid=patient.id, aid="__AID__") }}'.replace('__AID__', aid), {method:'POST'})
+      .then(()=>location.reload());
+  });
 }
 
 let pendingMed = null;
 
-function _setDoseUnit(u){
+function _setDoseUnits(units, preselect){
   const sel = document.getElementById('med-dose-unit');
-  if(!u){ sel.value = 'мг'; return; }
-  let found = [...sel.options].find(o => o.value === u);
-  if(!found){
-    found = document.createElement('option');
-    found.value = u; found.textContent = u;
-    sel.appendChild(found);
-  }
-  sel.value = u;
+  sel.innerHTML = '';
+  units.forEach(u => {
+    const o = document.createElement('option');
+    o.value = u; o.textContent = u;
+    sel.appendChild(o);
+  });
+  if(preselect && units.includes(preselect)) sel.value = preselect;
 }
 
 function checkMedication(){
@@ -1163,10 +1205,13 @@ function checkMedication(){
   const opt = document.querySelector(`#med-code-now option[value="${code}"]`);
   if(opt){
     // Доза из каталога («500 мг», «1–2 г») раскладывается на число и единицу.
+    // Единицы — только относящиеся к препарату (из его дозы в каталоге),
+    // а не весь список размерностей.
     const doseStr = (opt.dataset.dose || '').trim();
     const m = doseStr.match(/^([\d.,]+(?:\s*[–-]\s*[\d.,]+)?)\s*(.*)$/);
     document.getElementById('med-dose-value').value = m ? m[1].replace(/\s+/g, '') : doseStr;
-    _setDoseUnit(m && m[2] ? m[2].trim() : '');
+    const drugUnit = m && m[2] ? m[2].trim() : '';
+    _setDoseUnits(drugUnit ? [drugUnit] : ['мг', 'г', 'мкг', 'мл', 'ЕД'], drugUnit);
     document.getElementById('med-freq').value = opt.dataset.freq || '';
     const routes = (opt.dataset.route || 'oral').split(',');
     const routeSel = document.getElementById('med-route');
@@ -1286,6 +1331,22 @@ function _softRefreshUi(){
   location.reload();
 }
 
+function updateObsHint(sel){
+  const form = sel.closest('form');
+  const o = sel.options[sel.selectedIndex];
+  const unit = o.dataset.unit || '';
+  const rl = o.dataset.refLow, rh = o.dataset.refHigh;
+  const sl = o.dataset.low, sh = o.dataset.high;
+  const ref = (rl && rh) ? `Норма: ${rl}–${rh} ${unit}` : '';
+  const sane = (sl && sh) ? `Допустимо: ${sl}–${sh} ${unit}` : '';
+  const hint = form.querySelector('.obs-hint');
+  if(hint) hint.textContent = [ref, sane].filter(Boolean).join('  ·  ');
+  const suf = form.querySelector('.unit-suffix');
+  if(suf) suf.textContent = unit;
+  const inp = form.querySelector('input[name="value_numeric"]');
+  if(inp && rl && rh) inp.placeholder = `${rl}–${rh}`;
+}
+
 function validateObservation(e){
   const form = e.target;
   const code = form.querySelector('select[name="code"]');
@@ -1321,6 +1382,9 @@ function validateObservation(e){
 document.addEventListener('DOMContentLoaded', function(){
   _restoreUiState();
   checkMedication();
+  document.querySelectorAll('form select[name="code"]').forEach(sel => {
+    if(sel.closest('form') && sel.closest('form').querySelector('.obs-hint')) updateObsHint(sel);
+  });
   const medForm = document.getElementById('med-form');
   if (medForm) medForm.addEventListener('submit', submitMedication);
   // Open sections that need attention: critical vitals, protocol issues, or active therapy problems
